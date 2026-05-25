@@ -17,7 +17,7 @@ class RemotionTool(BaseModelTool):
         output_path: Path,
         words: List[Dict[str, Any]],
         composition_id: str = "Subtitles",
-        intrigue_header: str = None
+        top_headline: str = None
     ) -> None:
         """
         Renders a Remotion composition with provided data.
@@ -28,8 +28,8 @@ class RemotionTool(BaseModelTool):
         input_json = data_dir / "input.json"
         
         payload = {"words": words}
-        if intrigue_header:
-            payload["intrigueHeader"] = intrigue_header
+        if top_headline:
+            payload["topHeadline"] = top_headline
 
         with open(input_json, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)

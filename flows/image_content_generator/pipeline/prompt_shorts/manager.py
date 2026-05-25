@@ -120,16 +120,14 @@ class PromptManagerShorts(BasePromptManager):
             ]
         else:
             styles = [
-                "Style: Hyper-realistic cinematic lighting. Dark moody colors, misty background, high detail, professional photography style.",
-                "Style: Cinematic National Geographic style documentary. Vibrant colors, ultra-detailed, mysterious and awe-inspiring atmosphere.",
-                "Style: Vintage anatomical/technical sketch on aged parchment. Sepia ink, detailed, mysterious journal look.",
-                "Style: Dark digital art. Neon accents, glitchy textures, high contrast, futuristic mystery vibe."
+                "Style: Cinematic Dark Documentary. Volumetric lighting, dramatic chiaroscuro (heavy shadows), moody atmosphere, teal and orange or deep amber color grading. Macro photography or wide-angle cinematic shots, 85mm lens, shallow depth of field (blurred background), sharp textures. 8k resolution, hyper-realistic, unreal engine 5 render style, highly detailed skin/material textures."
             ]
         selected_style = random.choice(styles)
         
         Messenger.info(f"🎨 Selected Visual Style: {selected_style}")
 
         # Inyectar el estilo y el área de enfoque
+
         full_idea_prompt = (
             f"{idea_prompt.format(visual_style=selected_style)}\n\n"
             f"**MANDATORY CENTRAL TOPIC:** {selected_area}\n"

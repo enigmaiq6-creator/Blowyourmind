@@ -867,13 +867,13 @@ class Pipeline(BaseModelTool):
         remotion_frames_dir.mkdir(parents=True, exist_ok=True)
         
         # --- NUEVO: Obtener encabezado de intriga del script ---
-        intrigue_text = getattr(script_data, "intrigue_header", None)
+        intrigue_text = getattr(script_data, "top_headline", None)
         
         self.remotion.render_subtitles(
             remotion_path=remotion_root,
             output_path=remotion_overlay,
             words=word_data,
-            intrigue_header=intrigue_text
+            top_headline=intrigue_text
         )
 
         # 4. Multi-layer Composition with filter_complex

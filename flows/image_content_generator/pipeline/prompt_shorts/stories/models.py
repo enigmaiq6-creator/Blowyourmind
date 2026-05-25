@@ -5,8 +5,8 @@ from pydantic import Field
 
 class StoryIdea(BaseIdea):
     IDEA_PROMPT: ClassVar[str] = story_constants.IDEA_PROMPT_STORY
-    intrigue_header: str = Field(description="A short, punchy 3-5 word phrase to persist at the top of the video to create extreme intrigue (e.g., 'EL SECRETO DEL MILLONARIO', 'MIRA HASTA EL FINAL').")
-    caption: str = Field(description="Una descripción para redes sociales (Facebook/Instagram) altamente viral, intrigante y que invite a comentar. DEBE incluir entre 5 y 8 hashtags extremadamente virales acordes al tema (Ej: #Curiosidades #Misterio #DatosCuriosos + específicos del tema).")
+    top_headline: str = Field(description="A Curiosity Gap headline for the video (e.g., 'THEY LIED TO US ABOUT THIS'). Static, Bold, Uppercase.")
+    caption: str = Field(description="A highly viral, intriguing social media caption in English that invites comments. MUST include 5 to 8 extremely viral hashtags (e.g., #Mystery #MindBlowingFacts).")
 
 class StoryHandler(CategoryHandler):
     category: str = "stories"
