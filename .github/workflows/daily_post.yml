@@ -1,0 +1,101 @@
+name: Daily Content Automation (3 Reels + 3 Images)
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_type:
+        description: '0=Image, 1=Video'
+        required: false
+        type: string
+
+jobs:
+  post-content:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'flows/image_content_generator/remotion/package-lock.json'
+
+      - name: Install Remotion Dependencies
+        run: |
+          cd flows/image_content_generator/remotion
+          npm ci
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Create GCP Credentials
+        env:
+          GCP_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+        run: |
+          python -c "import os, json; f=open('gcp_credentials.json', 'w'); json.dump(json.loads(os.environ.get('GCP_JSON', '{}'), strict=False), f, indent=2)"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp_credentials.json" >> $GITHUB_ENV
+
+      - name: Run Automation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          USE_VERTEX_AI_IMAGE: "true"
+          USE_VERTEX_AI_AUDIO: "true"
+        run: |
+          # Solo videos por defecto, imágenes desactivadas
+          RUN_VIDEO=true
+          RUN_IMAGE=false
+          
+          if [[ "${{ github.event.inputs.force_type }}" == "0" ]]; then
+            RUN_VIDEO=false
+            RUN_IMAGE=true
+          elif [[ "${{ github.event.inputs.force_type }}" == "1" ]]; then
+            RUN_VIDEO=true
+            RUN_IMAGE=false
+          fi
+          
+          if [ "$RUN_VIDEO" = true ]; then
+            echo "🎬 GENERATING VIRAL CURIOSITY REEL..."
+            export POST_TYPE="video"
+            poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
+            sleep 5
+          fi
+          
+          if [ "$RUN_IMAGE" = true ]; then
+            echo "🎨 GENERATING ¿SABÍAS QUE...? COMPOSITE IMAGE..."
+            export POST_TYPE="image"
+            poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
+          fi
+
+      - name: Commit and Push Changes (Tracking Repetition)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -f flows/image_content_generator/out_short/automated_posts_history.csv flows/image_content_generator/out_short/ideas_tracking.csv
+          git commit -m "chore: update tracking and history [skip ci]" || echo "No changes to commit"
+          git pull --rebase --autostash origin main
+          git push origin main || echo "No changes to push"

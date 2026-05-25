@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "video-automation"
+version = "0.1.0"
+description = "Video Automation Project"
+authors = ["Hans <hans.acha.brand@gmail.com>"]
+readme = "README.md"
+packages = [{ include = "flows" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.2.0"
+python-dotenv = "^1.0.1"
+rich = "^13.7.1"
+google-genai = "^1.56.0"
+pillow = "^12.1.0"
+pydantic = "^2.12.5"
+selenium = "^4.41.0"
+pydantic-settings = "^2.13.1"
+google-cloud-aiplatform = "^1.148.1"
+google-cloud-texttospeech = "^2.36.0"
+openai-whisper = "^20250625"
+setuptools-rust = "^1.12.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^26.3.1"
+isort = "^8.0.1"
+flake8 = "^7.3.0"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pyright]
+include = ["flows", "tools", "models"]
+exclude = ["**/node_modules", "**/__pycache__", ".venv"]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+pythonVersion = "3.11"
+pythonPlatform = "Darwin"
+executionEnvironments = [
+  { root = "flows" },
+  { root = "tools" },
+  { root = "models" }
+]

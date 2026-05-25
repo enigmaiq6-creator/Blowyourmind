@@ -1,0 +1,13 @@
+node_modules/
+.env
+content/
+google_creds.json
+*.log
+*.txt
+*.mp4
+*.mp3
+*.srt
+*.png
+*.jpg
+*.wav
+temp/

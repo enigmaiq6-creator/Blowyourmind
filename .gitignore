@@ -1,0 +1,27 @@
+# OS
+.DS_Store
+
+# IDE
+**.log
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+# Environments
+**/.env
+**/.venv
+
+# folders
+models
+**/out
+**/out_long
+**/out_short
+**/node_modules/
+**/scratch/
+
+# future versions
+**/video_content_generator
+gcp_credentials.json
+*.json
+!package.json
+!package-lock.json
