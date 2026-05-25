@@ -37,7 +37,10 @@ class GeminiBase(BaseModelTool):
         self._location = location
         api_key = os.getenv("GEMINI_API_KEY")
 
-        if project_id:
+        if api_key:
+            Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
+            self._client = Client(api_key=api_key, http_options={"timeout": 300})
+        elif project_id:
             Messenger.info(f"✨ Using Vertex AI (Enterprise) for Gemini in project: {project_id}...")
             self._client = Client(
                 vertexai=True,
@@ -46,10 +49,7 @@ class GeminiBase(BaseModelTool):
                 http_options={"timeout": 300}
             )
         else:
-            Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
-            if not api_key:
-                raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
-            self._client = Client(api_key=api_key, http_options={"timeout": 300})
+            raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
 
     @retry(
         wait=wait_fixed(60),
