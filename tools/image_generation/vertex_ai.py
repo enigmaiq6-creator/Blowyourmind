@@ -164,6 +164,7 @@ class VertexAIImageGenerator:
                 return True
             except Exception as e:
                 Messenger.error(f"Error in scene {i}: {str(e)}")
+                # Return False but don't re-raise — let the batch decide
                 return False
 
         import concurrent.futures
@@ -171,7 +172,14 @@ class VertexAIImageGenerator:
             results = list(executor.map(process_task, enumerate(tasks, start=1)))
 
         successful = sum(results)
+        failed = total - successful
         Messenger.step_success(f"Batch complete: {successful}/{total} scenes processed successfully.")
 
-        if successful < total:
-            raise RuntimeError(f"❌ Failed to generate {total - successful} images in batch. Stopping pipeline.")
+        # Only stop the pipeline if MORE than half the images failed.
+        # A single failed scene (e.g. due to content policy) should not kill the whole video.
+        if successful == 0:
+            raise RuntimeError(f"❌ ALL {total} images failed to generate. Stopping pipeline.")
+        elif failed > total // 2:
+            raise RuntimeError(f"❌ Too many failures ({failed}/{total}). Stopping pipeline.")
+        elif failed > 0:
+            Messenger.warning(f"⚠️ {failed} scene(s) failed but pipeline will continue with the {successful} successful images.")
