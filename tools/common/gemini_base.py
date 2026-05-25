@@ -43,13 +43,13 @@ class GeminiBase(BaseModelTool):
                 vertexai=True,
                 project=project_id,
                 location=location,
-                http_options={"timeout": 90}
+                http_options={"timeout": 300}
             )
         else:
             Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
             if not api_key:
                 raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
-            self._client = Client(api_key=api_key, http_options={"timeout": 90})
+            self._client = Client(api_key=api_key, http_options={"timeout": 300})
 
     @retry(
         wait=wait_fixed(60),

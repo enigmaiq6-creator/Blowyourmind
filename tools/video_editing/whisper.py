@@ -54,7 +54,7 @@ class WhisperTool(BaseModelTool):
         # Run transcription with word-level timestamps and initial prompt context
         result = self._model.transcribe(
             str(audio_path),
-            language="es",
+            language="en",
             word_timestamps=True,
             initial_prompt=prompt,
             condition_on_previous_text=False, # Previene que Whisper alucine o se quede en un bucle infinito repitiendo letras raras
