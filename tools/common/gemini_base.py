@@ -3,7 +3,7 @@ import httpx
 from typing import Any, Callable, Optional
 
 from dotenv import load_dotenv
-from google.genai import Client, errors
+from google.genai import Client, errors, types
 from pydantic import PrivateAttr
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
@@ -39,14 +39,14 @@ class GeminiBase(BaseModelTool):
 
         if api_key:
             Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
-            self._client = Client(api_key=api_key, http_options={"timeout": 300})
+            self._client = Client(api_key=api_key, http_options=types.HttpOptions(timeout=300000))
         elif project_id:
             Messenger.info(f"✨ Using Vertex AI (Enterprise) for Gemini in project: {project_id}...")
             self._client = Client(
                 vertexai=True,
                 project=project_id,
                 location=location,
-                http_options={"timeout": 300}
+                http_options=types.HttpOptions(timeout=300000)
             )
         else:
             raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
