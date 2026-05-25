@@ -1099,12 +1099,13 @@ class Pipeline(BaseModelTool):
         """
         Generates the visual curiosity text (for drawing on the image), the post description,
         and a matching dedicated image prompt using Gemini.
+        All content is generated exclusively in English for BlowYourMind.
         """
         prompt = f"""
         You are a star creative copywriter for the channel "BlowYourMind" on Facebook.
         We are going to create a "Did you know...?" type post based on this topic: "{title}"
         
-        We need three texts in JSON format:
+        We need three texts in JSON format (ALL IN ENGLISH):
         1. **card_text**: A super interesting, brief, and fascinating fun fact about the topic. 
            It must be maximum 25-30 words (2-3 lines). It must be perfectly written, without spelling errors, easy to understand, and extremely impactful.
            Example: "Octopuses have three hearts, nine brains, and their blood is bright blue due to a copper-based protein."
@@ -1114,6 +1115,8 @@ class Pipeline(BaseModelTool):
         3. **image_prompt**: A highly descriptive and detailed prompt in English to generate an ultra-high-quality photorealistic image that EXACTLY represents the fun fact explained in `card_text`. 
            The prompt must be extremely specific about the exact animal or subject of `card_text` so there is no inconsistency. The main subject should be centered and not too close to the edges to allow horizontal cropping.
            Example: "A highly detailed close-up shot of a colorful chameleon on a green branch, focusing on its unique rotating eyes looking in different directions. Cinematic lighting, photorealistic, 8k resolution, depth of field."
+
+        IMPORTANT: ALL three fields MUST be written in native English only. No Spanish, no other languages.
 
         Mandatory JSON output format:
         {{
@@ -1150,10 +1153,10 @@ class Pipeline(BaseModelTool):
                 "image_prompt": f"A beautiful artistic representing the mysterious concept of {title}, cinematic, photorealistic."
             }
 
-    def compose_sabias_que_card(self, original_img_path: Path, output_path: Path, card_text: str):
+    def compose_did_you_know_card(self, original_img_path: Path, output_path: Path, card_text: str):
         """
-        Composes a highly professional, stunning vertical ¿Sabías que...? card (1080x1350)
-        from a raw generated image.
+        Composes a highly professional, stunning vertical "Did You Know?" card (1080x1350)
+        from a raw generated image. All text is in English.
         """
         from PIL import Image, ImageDraw, ImageFont, ImageFilter
         
@@ -1331,11 +1334,11 @@ class Pipeline(BaseModelTool):
         # Save composed canvas
         canvas = canvas.convert("RGB")
         canvas.save(output_path, "JPEG", quality=95)
-        Messenger.success(f"🎨 Composed beautifully styled ¿Sabías que...? image at: {output_path}")
+        Messenger.success(f"🎨 Composed 'Did You Know?' image card at: {output_path}")
 
     def step8_upload_image_to_facebook(self):
         """
-        Upload Image to Facebook: Uploads a single beautifully composed "¿Sabías que...?" image.
+        Upload Image to Facebook: Uploads a single beautifully composed "Did You Know?" image.
         Used for the '30 images weekly' requirement.
         """
         idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
@@ -1346,7 +1349,7 @@ class Pipeline(BaseModelTool):
         Messenger.info(f"\n--- Composing and Uploading Image Post: {idea_obj.title} ---")
 
         # 1. Generate customized content for card and post (including dedicated image prompt!)
-        Messenger.info("Generating customized ¿Sabías que...? text content and dedicated image prompt via Gemini...")
+        Messenger.info("Generating customized 'Did You Know?' text content and image prompt via Gemini...")
         content_data = self.generate_sabias_que_content(idea_obj.title)
         
         card_text = content_data["card_text"]
@@ -1395,8 +1398,8 @@ class Pipeline(BaseModelTool):
         composed_img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "sabias_que_composed.jpg")
         
         # 5. Compose card
-        Messenger.info("Composing premium card canvas with Pillow...")
-        self.compose_sabias_que_card(img_path, composed_img_path, card_text)
+        Messenger.info("Composing premium 'Did You Know?' card canvas with Pillow...")
+        self.compose_did_you_know_card(img_path, composed_img_path, card_text)
 
         # 6. Append Transparency Footer to Description
         transparency_footer = (

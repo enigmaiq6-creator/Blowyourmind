@@ -48,13 +48,13 @@ class PromptManagerShorts(BasePromptManager):
             idea_model = GeographyIdea
             idea_prompt = geo_constants.IDEA_PROMPT_GEOGRAPHY
             script_prompt = geo_constants.SCRIPT_PROMPT_GEOGRAPHY
-            series_name = "EnigmaIQ Geografía"
+            series_name = "BlowYourMind Geography"
         else:
             category = "stories"
             idea_model = StoryIdea
             idea_prompt = story_constants.IDEA_PROMPT_STORY
             script_prompt = story_constants.SCRIPT_PROMPT
-            series_name = "EnigmaIQ"
+            series_name = "BlowYourMind"
         
         # Scan both the list and the extra_avoid string for the series name
         parts_count = sum(1 for t in titles_to_avoid if series_name in str(t))
@@ -126,7 +126,7 @@ class PromptManagerShorts(BasePromptManager):
         
         Messenger.info(f"🎨 Selected Visual Style: {selected_style}")
 
-        # Inyectar el estilo y el área de enfoque
+        # Inject the selected style and focus area into the prompt
 
         full_idea_prompt = (
             f"{idea_prompt.format(visual_style=selected_style)}\n\n"
@@ -149,14 +149,14 @@ class PromptManagerShorts(BasePromptManager):
         )
         script = content_gen.generate_text(full_script_prompt, GeographyHandler if mode == "geography" else VideoScript)
 
-        # --- BLINDAJE CONTRA BANEOS (TRANS-STORY) ---
+        # --- BAN SHIELD: Append transparency footer to caption/hook ---
         transparency_footer = (
             "\n\n---\n"
-            "💡 **Transparency**: This narrative content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
+            "💡 **Transparency**: This content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
             "✨ Created by the BlowYourMind team."
         )
         
-        # Inyectar el footer en el caption o hook (Blindaje)
+        # Inject transparency footer into caption or hook field
         if "caption" in idea_data.model_fields:
             new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
             setattr(idea_data, "caption", new_val)
