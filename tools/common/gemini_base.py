@@ -42,18 +42,19 @@ class GeminiBase(BaseModelTool):
             self._client = Client(
                 vertexai=True,
                 project=project_id,
-                location=location
+                location=location,
+                http_options={"timeout": 90}
             )
         else:
             Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
             if not api_key:
                 raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
-            self._client = Client(api_key=api_key)
+            self._client = Client(api_key=api_key, http_options={"timeout": 90})
 
     @retry(
         wait=wait_fixed(60),
         stop=stop_after_attempt(5),
-        retry=retry_if_exception_type((errors.ServerError, errors.ClientError, httpx.RequestError, httpx.RemoteProtocolError, httpx.HTTPError)),
+        retry=retry_if_exception_type((errors.ServerError, errors.ClientError, httpx.RequestError, httpx.RemoteProtocolError, httpx.HTTPError, httpx.TimeoutException, TimeoutError)),
         before_sleep=lambda retry_state: Messenger.info(
             f"⏳ Gemini bloqueado (Saturación o Error de Red). Reintentando en 60s... "
             f"(Intento {retry_state.attempt_number}/5)"
@@ -63,6 +64,7 @@ class GeminiBase(BaseModelTool):
     def _execute_with_retry(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """
         Executes a Gemini API call with a 60s retry on ServerError or ClientError (429).
+        Timeout is set to 90s per request to prevent infinite hangs.
         """
         return func(*args, **kwargs)
 
