@@ -314,14 +314,14 @@ class Pipeline(BaseModelTool):
         if self.mode != "stickman":
             Messenger.info("   Generating alternative Hook B...")
             prompt_b = f"""
-            Tienes el siguiente guion de video:
-            Título: {idea_data.title}
-            Gancho A (Original): {script.scenes[0].narration}
+            You have the following video script:
+            Title: {idea_data.title}
+            Hook A (Original): {script.scenes[0].narration}
 
-            Escribe un NUEVO GANCHO (Escena 1) completamente diferente. 
-            Si el original era agresivo/directo, haz este curioso/misterioso (o viceversa).
-            Debe durar máximo 3 segundos (15 palabras).
-            Responde SOLO con el texto narrativo del nuevo gancho, sin comillas ni texto extra.
+            Write a COMPLETELY DIFFERENT new Hook (Scene 1).
+            If the original was aggressive/direct, make this one curious/mysterious (or vice versa).
+            Must last maximum 3 seconds (15 words). Must be in English.
+            Respond ONLY with the narrative text of the new hook, no quotes or extra text.
             """
             hook_b = self.text_gen.generate(prompt_b)
             self.cost_tracker.add_text_cost(200)
@@ -983,8 +983,36 @@ class Pipeline(BaseModelTool):
         self.store.save(idea_obj)
         Messenger.success(f"Step 7 ready: {State.COMPLETED} finalized.\n")
         
+        # --- STEP 7B: GOOGLE DRIVE UPLOAD ---
+        try:
+            self.step7b_upload_to_drive(idea_obj, named_final)
+        except Exception as e:
+            Messenger.error(f"Failed to auto-upload to Google Drive: {e}")
+        
         # FINAL COST REPORT
         self.cost_tracker.report()
+
+    def step7b_upload_to_drive(self, idea_obj: Any, named_final_path: Path):
+        """
+        Step 7b: Uploads the final named video to Google Drive.
+        Retrieves folder ID from GOOGLE_DRIVE_FOLDER_ID environment variable.
+        """
+        import os
+        folder_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID")
+        if not folder_id:
+            Messenger.warning("   ⚠️ GOOGLE_DRIVE_FOLDER_ID environment variable is not set. Skipping Google Drive upload.")
+            return
+
+        Messenger.info(f"\n--- Step 7b: Uploading video to Google Drive ---")
+        try:
+            from tools.utils.google_drive import upload_video_to_drive
+            link = upload_video_to_drive(named_final_path, folder_id)
+            if link:
+                Messenger.success(f"   🚀 Video successfully uploaded to Google Drive! Link: {link}")
+            else:
+                Messenger.warning("   ⚠️ Google Drive upload returned no link.")
+        except Exception as e:
+            Messenger.error(f"   ❌ Google Drive upload failed with error: {e}")
 
     def generate_facebook_description(self, title: str) -> str:
         """

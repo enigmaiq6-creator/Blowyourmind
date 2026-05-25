@@ -20,6 +20,8 @@ google-cloud-aiplatform = "^1.148.1"
 google-cloud-texttospeech = "^2.36.0"
 openai-whisper = "^20250625"
 setuptools-rust = "^1.12.1"
+google-api-python-client = "^2.160.0"
+google-auth = "^2.38.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.1"
