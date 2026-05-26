@@ -6,8 +6,8 @@ from flows.image_content_generator.pipeline.prompt_shorts.geography import const
 
 class GeographyIdea(BaseIdea):
     IDEA_PROMPT: ClassVar[str] = geo_constants.IDEA_PROMPT_GEOGRAPHY
-    intrigue_header: str = Field(description="A short, punchy 3-5 word phrase to persist at the top of the video in ALL CAPS to create extreme intrigue (e.g., 'EL MURO DE COLOMBIA', 'EL SECRETO DE LOS ANDES').")
-    caption: str = Field(description="Una descripción para redes sociales (Facebook/Instagram) altamente viral, educativa e intrigante sobre el misterio geográfico presentado. DEBE incluir entre 5 y 8 hashtags extremadamente virales (Ej: #Geografia #SabiasQue #Curiosidades #DatosGeograficos + específicos del tema).")
+    intrigue_header: str = Field(description="A short, punchy 3-5 word phrase to persist at the top of the video in ALL CAPS to create extreme intrigue (e.g., 'THE WALL OF COLOMBIA', 'THE SECRET OF THE ANDES').")
+    caption: str = Field(description="A highly viral, educational, and intriguing social media caption (Facebook/Instagram) about the presented geographical mystery in English. MUST include 5 to 8 extremely viral hashtags (e.g., #Geography #MindBlowingFacts #EarthSecrets + topic specific tags).")
     category: str = "geography"
 
 
@@ -20,11 +20,11 @@ class MapCamera(BaseModel):
 
 
 class GeographyScene(Scene):
-    camera: MapCamera = Field(description="Configuración de la cámara del mapa satelital 3D para esta escena.")
-    highlight_region: str = Field(default="none", description="Nombre de la región, país o accidente geográfico a resaltar de forma brillante en el mapa (ej. 'Colombia', 'Andes Mountains', o 'none' si no se resalta nada).")
-    arrow_direction: str = Field(default="none", description="Descripción del flujo de una flecha animada en el mapa (ej. 'from: Pacific Ocean, to: Andes Mountains' o 'none').")
-    floating_label: str = Field(default="none", description="Etiqueta flotante con datos clave o números de impacto en mayúsculas (ej: '52.32 MILLONES', '3 CORDILLERAS' o 'none').")
-    sfx: str = Field(default="none", description="Efecto de sonido ambiental o de impacto para esta escena ('jungle_ambient', 'rain_and_thunder', 'heavy_wind', 'digital_swoosh', 'ocean_waves', o 'none').")
+    camera: MapCamera = Field(description="Satellite 3D map camera configuration for this scene.")
+    highlight_region: str = Field(default="none", description="Name of the region, country, or geographical feature to highlight brightly on the map (e.g. 'Colombia', 'Andes Mountains', or 'none' if nothing is highlighted).")
+    arrow_direction: str = Field(default="none", description="Description of the flow of an animated arrow on the map (e.g. 'from: Pacific Ocean, to: Andes Mountains' or 'none').")
+    floating_label: str = Field(default="none", description="Floating label with key impact data or numbers in ALL CAPS (e.g. '52.32 MILLION', '3 MOUNTAIN RANGES' or 'none').")
+    sfx: str = Field(default="none", description="Environmental or impact sound effect for this scene ('jungle_ambient', 'rain_and_thunder', 'heavy_wind', 'digital_swoosh', 'ocean_waves', or 'none').")
 
 
 class GeographyHandler(CategoryHandler):

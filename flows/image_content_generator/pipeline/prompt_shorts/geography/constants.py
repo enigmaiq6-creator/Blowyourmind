@@ -1,54 +1,67 @@
 # Prompt constants for Geography/History Reels
 
 IDEA_PROMPT_GEOGRAPHY = """
-Genera una idea altamente viral para un video corto sobre "Curiosidades Geográficas y Climáticas de Latinoamérica".
-El tema debe ser **EXTREMADAMENTE ASOMBROSO Y FASCINANTE**, explicando cómo la geografía de un lugar (montañas, costas, ríos, desiertos) define su clima, su vida o su historia.
-Ejemplos ideales:
-- "¿Por qué la costa del Pacífico colombiano es uno de los lugares más lluviosos del planeta?"
-- "¿Cómo la cordillera de los Andes actúa como un muro gigante que divide climas y biodiversidad?"
-- "El misterio de los ríos voladores de la Amazonía."
-- "¿Por qué la geografía de Colombia la convierte en una potencia mundial de agua y biodiversidad?"
+You are the Fully Autonomous Lead Producer for the channel "Sci-Tech Mysteries" focusing on "Geographical and Climatic Curiosities of Latin America".
+Generate a highly viral idea for a short video.
+The topic must be **EXTREMELY AMAZING AND FASCINATING**, explaining how the geography of a place (mountains, coasts, rivers, deserts) defines its climate, life, or history.
 
-El video debe tener un guion que explique todo el concepto de principio a fin, con un gancho brutal de inicio, desarrollo y una **CONCLUSIÓN CERRADA** y satisfactoria.
-Debe estar pensado para un video fluido, de ritmo rápido, compuesto por **6 a 8 escenas cortas** para que visualmente nunca se sienta estancado.
-La narración completa de TODAS las escenas sumadas NO DEBE SUPERAR LAS 120 PALABRAS, para garantizar que el video dure menos de 60 segundos.
+Ideal examples:
+- "Why the Pacific coast of Colombia is one of the wettest places on earth?"
+- "How the Andes Mountain range acts as a giant wall dividing climates and biodiversity?"
+- "The mystery of the flying rivers of the Amazon."
+- "Why Colombia's unique geography makes it a global powerhouse of water and biodiversity?"
 
-**ESTILO VISUAL DE IMAGEN DE RESPALDO (si se requiere):**
-Aplica un estilo cinematográfico detallado: "{visual_style}"
+The video must have a script that explains the entire concept from beginning to end, with a brutal starting hook, high-retention development, and a **CLOSED AND SATISFYING CONCLUSION**.
+It must be designed for a fluid, fast-paced video composed of **6 to 8 short scenes** to ensure the viewer never gets bored.
+The total narration of ALL scenes combined MUST NOT EXCEED 120 WORDS to ensure the video stays under 60 seconds.
+
+**MANDATORY OUTPUT FIELDS (ALL IN ENGLISH):**
+- `title`: An SEO-optimized title for the story.
+- `intrigue_header`: The Hook Bar text in ALL CAPS (3-5 words).
+- `hook`: The initial disruption sentence (10-15 words).
+- `caption`: A highly deep, detailed description for social media in English that explains the story in-depth, accompanied by 5 to 8 viral hashtags.
+
+**BACKING IMAGE VISUAL STYLE:**
+Apply a highly detailed cinematic style: "{visual_style}"
+
+**CRITICAL: EVERYTHING MUST BE EXCLUSIVELY IN ENGLISH.**
 """
 
 AUDIO_PROMPT_GEOGRAPHY = """
-Usa un tono narrativo formal, profesional, extremadamente intrigante, dramático e informativo. Como el narrador de un documental premium de geografía e historia de gran presupuesto (estilo Vox o RealLifeLore).
+Use a narrative tone that is formal, professional, extremely intriguing, dramatic, and informative. Like the narrator of a premium, high-budget geography and history documentary (Vox or RealLifeLore style).
 
-TEXTO A NARRAR:
+TEXT TO NARRATE:
 {audio_text}
 """
 
 SCRIPT_PROMPT_GEOGRAPHY = """
-Basándote en la IDEA de geografía e historia proporcionada, escribe un guion de video estructurado para un Reel de máximo 50 segundos.
-Divide el video en **6 a 8 escenas cortas** con alta densidad visual y dinamismo.
+You are the Fully Autonomous Lead Producer for "Sci-Tech Mysteries."
+Based on the provided geography and history IDEA, write a structured video script for a Reel lasting up to 50 seconds.
+Divide the video into **6 to 8 short scenes** with high visual density and dynamism.
 
-Para cada escena debes definir:
-1. `scene_number`: Número secuencial (1 a N).
-2. `visual_type`: Escoge `"map_3d"` (por defecto para mostrar mapas satelitales 3D, relieves, barreras de viento, etc.), o `"stock_video"` (para clips de selvas, playas, lluvia, gente), o `"ai_image"` (para recrear escenas históricas, cavernícolas o esquemas muy específicos de corte transversal de la Tierra).
-3. `pexels_query`: Si elegiste `"stock_video"`, escribe 1 a 3 palabras clave EN INGLÉS (ej. 'amazon jungle drone', 'heavy rain pacific', 'andes mountains'). Deja vacío en caso contrario.
-4. `image_prompt`: La descripción detallada EN INGLÉS del estilo visual que debe tener la imagen de respaldo (siempre obligatoria).
-5. `narration`: Lo que dirá el locutor de forma fluida e intrigante en español (LATAM).
-6. `camera`: Configuración de la cámara del mapa satelital 3D (aunque la escena sea stock_video, define esto para pre-ubicar la posición geográfica relativa de la escena):
-   - `latitude`: Latitud exacta del lugar (ej. 4.570868 para Colombia, -15.783333 para Brasil).
-   - `longitude`: Longitud exacta del lugar (ej. -74.297333 para Colombia, -47.916667 para Brasil).
-   - `zoom`: Nivel de zoom del mapa (valores decimales entre 3.0 para continente y 12.0 para ciudades/cordilleras).
-   - `pitch`: Inclinación de la cámara (valores entre 30 y 60 grados para dar un look 2.5D/3D).
-   - `bearing`: Dirección de la cámara en grados (entre -180 y 180 para rotar el mapa).
-7. `highlight_region`: Nombre de la región, país o accidente geográfico que se debe colorear y resaltar en el mapa (ej. 'Colombia', 'Brazil', 'Andes Mountains', 'Pacific Coast', 'Amazon Basin', o 'none').
-8. `arrow_direction`: Describe brevemente el flujo de una flecha animada sobre el mapa si aplica (ej. 'from: Pacific Ocean, to: Andes Mountains' para mostrar el viento bloqueado, o 'from: Amazon River, to: Atlantic Ocean', o 'none').
-9. `floating_label`: Una etiqueta flotante con datos de impacto en mayúsculas (ej: '52.32 MILLONES', '3 CORDILLERAS', '8,000 MM DE LLUVIA', o 'none').
-10. `sfx`: Efecto de sonido ambiental o de impacto para esta escena (escoge entre: 'jungle_ambient', 'rain_and_thunder', 'heavy_wind', 'digital_swoosh', 'ocean_waves', 'none').
+For each scene, define:
+1. `scene_number`: Sequential number (1 to N).
+2. `visual_type`: Choose `"map_3d"` (default to show satellite 3D maps, terrains, wind barriers, etc.), or `"stock_video"` (for clips of jungles, beaches, rain, people), or `"ai_image"` (to recreate historical scenes, ancient humans, or specific Earth cross-section diagrams).
+3. `pexels_query`: If `"stock_video"` is chosen, write 1 to 3 keywords in English (e.g., 'amazon jungle drone', 'heavy rain pacific', 'andes mountains'). Leave empty otherwise.
+4. `image_prompt`: A detailed description in ENGLISH of the visual style the backing image must have (always mandatory).
+5. `narration`: Spoken script/narration for this scene. CRITICAL: MUST be written 100% in English. Never use Spanish.
+6. `camera`: 3D satellite map camera configuration (even if visual_type is stock_video, define this to pre-locate the relative geographical position):
+   - `latitude`: Exact latitude of the location (e.g. 4.570868 for Colombia, -15.783333 for Brazil).
+   - `longitude`: Exact longitude of the location (e.g. -74.297333 for Colombia, -47.916667 for Brazil).
+   - `zoom`: Zoom level of the map (decimal values between 3.0 for continent/country view and 12.0 for local spots/mountain ranges).
+   - `pitch`: Camera inclination angle in degrees (values between 30 and 60 degrees to give a 3D/2.5D look).
+   - `bearing`: Camera orientation/rotation angle in degrees (values between -180 and 180 to rotate the map).
+7. `highlight_region`: Name of the region, country, or geographical feature to color and highlight on the map (e.g. 'Colombia', 'Brazil', 'Andes Mountains', 'Pacific Coast', 'Amazon Basin', or 'none').
+8. `arrow_direction`: Briefly describe the flow of an animated arrow on the map if applicable (e.g. 'from: Pacific Ocean, to: Andes Mountains' to show blocked wind, or 'from: Amazon River, to: Atlantic Ocean', or 'none').
+9. `floating_label`: A floating label with impact data or key numbers in ALL CAPS (e.g. '52.32 MILLION', '3 MOUNTAIN RANGES', '8,000 MM OF RAIN', or 'none').
+10. `sfx`: Environmental or impact sound effect for this scene (choose: 'jungle_ambient', 'rain_and_thunder', 'heavy_wind', 'digital_swoosh', 'ocean_waves', 'none').
 
-REGLAS CRÍTICAS:
-1. **LÍMITE ESTRICTO DE PALABRAS:** La narración completa del video completo sumando todas las escenas **NO DEBE EXCEDER LAS 120 PALABRAS**. Sé ultra directo, conciso y de alto impacto.
-2. **COORDEANADAS DE MAPA EXACTAS Y REALISTAS:** Investiga y define coordenadas geográficas correctas de latitud y longitud correspondientes a los lugares de los que se habla en cada escena. ¡Es un video de geografía, la precisión cartográfica es vital!
-3. **DISEÑO SONORO COMPLETO:** Elige efectos de sonido (`sfx`) acordes al contenido de la escena para asegurar un diseño de audio envolvente.
-4. **INTRIGA EN EL HEADER:** El `intrigue_header` debe ser un título de 3 a 5 palabras en MAYÚSCULAS persistente al inicio (ej: "EL MURO DE COLOMBIA", "EL LUGAR MÁS LLUVIOSO", "EL SECRETO DE LOS ANDES").
-5. **CTA AGRESIVO:** Termina el video con un llamado a la acción intrigante que invite al usuario a dejar su opinión o experiencia en los comentarios.
+CRITICAL RULES:
+1. **STRICT WORD LIMIT:** The total narration across all scenes combined **MUST NOT EXCEED 120 WORDS**. Keep it direct, punchy, and high-impact.
+2. **REALISTIC AND ACCURATE MAP COORDINATES:** Research and define correct geographical coordinates of latitude and longitude corresponding to the actual places mentioned in each scene. Precision cartography is vital!
+3. **COMPLETE SOUND DESIGN:** Choose sound effects (`sfx`) matching the scene content to ensure an immersive audio design.
+4. **INTRIGUING HEADER:** The `intrigue_header` must be a persistent 3 to 5 word title in ALL CAPS at the start (e.g., "THE WALL OF COLOMBIA", "THE WETTEST PLACE", "THE SECRET OF THE ANDES").
+5. **AGRESSIVE CTA:** End the video with an intriguing call to action inviting viewers to leave their opinion or experience in the comments.
+
+**CRITICAL: ALL NARRATION AND DIALOGUE MUST BE EXCLUSIVELY IN ENGLISH. DO NOT TRANSLATE OR WRITE IN SPANISH UNDER ANY CIRCUMSTANCES.**
 """

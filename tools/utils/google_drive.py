@@ -75,7 +75,8 @@ def upload_video_to_drive(file_path: Path, folder_id: str) -> str | None:
         request = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields="id, webViewLink"
+            fields="id, webViewLink",
+            supportsAllDrives=True
         )
 
         response = None
@@ -98,6 +99,7 @@ def upload_video_to_drive(file_path: Path, folder_id: str) -> str | None:
 
     except Exception as e:
         error_str = str(e)
+        service_email = creds.service_account_email if (creds and hasattr(creds, "service_account_email")) else "your service account email"
         if "accessNotConfigured" in error_str or "has not been used" in error_str or "is disabled" in error_str:
             Messenger.error("❌ Google Drive API is NOT ENABLED in your Google Cloud project!")
             Messenger.error("👉 To fix this, follow these steps:")
@@ -105,6 +107,15 @@ def upload_video_to_drive(file_path: Path, folder_id: str) -> str | None:
             Messenger.error("      https://console.developers.google.com/apis/api/drive.googleapis.com/overview")
             Messenger.error("   2. Click 'ENABLE' to activate the Google Drive API.")
             Messenger.error("   3. Wait 1-2 minutes and re-run the workflow.")
+        elif "storageQuotaExceeded" in error_str or "storage quota" in error_str:
+            Messenger.error("❌ Google Drive Service Account has EXCEEDED ITS STORAGE QUOTA!")
+            Messenger.error("👉 Service Accounts do not have their own storage quota. To resolve this:")
+            Messenger.error("   1. In Google Drive, create a new Shared Drive (Unidad Compartida).")
+            Messenger.error(f"   2. Add the service account email as a member of the Shared Drive:")
+            Messenger.error(f"      Email: {service_email}")
+            Messenger.error("      Role: 'Contributor' (Contribuyente) or 'Content Manager' (Gestor de contenido).")
+            Messenger.error("   3. Move your target folder into this Shared Drive, OR use the Shared Drive's own ID as the GOOGLE_DRIVE_FOLDER_ID.")
+            Messenger.error("   4. The files will then be uploaded successfully using the Shared Drive's quota.")
         else:
             Messenger.error(f"Google Drive upload encountered an error: {e}")
         return None

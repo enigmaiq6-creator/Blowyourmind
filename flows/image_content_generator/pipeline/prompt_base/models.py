@@ -12,8 +12,8 @@ class BaseIdea(BaseModel):
     Base model for all AI-generated ideas, ensuring every idea has a title and a hook.
     Forces all subclasses to define an IDEA_PROMPT.
     """
-    title: str = Field(description="Título creativo y descriptivo de la idea")
-    hook: str = Field(description="Gancho de interrupción (10-15 palabras) para detener el scroll")
+    title: str = Field(description="Creative and descriptive title of the idea in English.")
+    hook: str = Field(description="Scroll-stopping hook (10-15 words) in English.")
     IDEA_PROMPT: ClassVar[str] = ""
 
 
@@ -95,10 +95,10 @@ class ImagePrompt(BaseModel):
 class Scene(BaseModel):
     model_config = ConfigDict(extra='ignore')
     scene_number: int = Field(description="Sequential number of the scene (Integer)")
-    visual_type: str = Field(default="stock_video", description="Elije 'stock_video' si la escena es común/realista, o 'ai_image' si es histórica, fantasiosa o muy específica y difícil de filmar.")
+    visual_type: str = Field(default="stock_video", description="Choose 'stock_video' if the scene is common/realistic, or 'ai_image' if it is historical, fantasy-based, or highly specific and hard to film.")
     image_prompt: str = Field(description="Physical description and style in ENGLISH. Use a unified block of text.")
     pexels_query: str = Field(default="", description="1-3 English keywords to search for a free stock video on Pexels (e.g. 'cat sleeping'). Leave empty if visual_type is 'ai_image'.")
-    narration: str = Field(description="Spoken narration for this scene in SPANISH (LATAM)")
+    narration: str = Field(description="Spoken narration for this scene. CRITICAL: MUST be written 100% in English. Never use Spanish or other languages under any circumstances.")
     movement_instruction: Optional[str] = Field(default=None, description="Instructions for video animation/movement")
 
 
