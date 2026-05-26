@@ -1131,26 +1131,39 @@ class Pipeline(BaseModelTool):
         """
         prompt = f"""
         You are a star creative copywriter for the channel "BlowYourMind" on Facebook.
-        We are going to create a "Did you know...?" type post based on this topic: "{title}"
+        We are going to create a "Did you know...?" style image post based on this topic: "{title}"
         
-        We need three texts in JSON format (ALL IN ENGLISH):
-        1. **card_text**: A super interesting, brief, and fascinating fun fact about the topic. 
-           It must be maximum 25-30 words (2-3 lines). It must be perfectly written, without spelling errors, easy to understand, and extremely impactful.
-           Example: "Octopuses have three hearts, nine brains, and their blood is bright blue due to a copper-based protein."
+        We need three fields in JSON format (ALL IN ENGLISH):
+        1. **card_text**: A mind-bending, high-curiosity teaser/hook about the topic to draw on the image.
+           It must be framed as a "Hard Truth" or a "Secret" that triggers ego or curiosity.
+           It MUST be in ALL CAPS. Max 15-20 words (1-2 lines).
+           It should end with a cliffhanger or teaser (e.g. "...but the secret truth is much darker.", "...and the reason why is terrifying.")
+           Examples:
+           - "SHARKS WERE HERE BEFORE THE TREES... AND THE SCIENTIFIC REASON WHY IS MINDBLOWING."
+           - "AI IS NOW READING HUMAN DREAMS... AND WHAT IT DECODED WILL TERRIFY YOU."
+           - "OCTOPUSES HAVE THREE HEARTS AND NINE BRAINS... BUT THERE IS A 10TH SECRET THAT SCIENTISTS HID."
         
-        2. **post_description**: The caption to accompany the image on Facebook. It must be intriguing, short (maximum 2 lines), invite comments (CTA), and contain exactly 10 viral hashtags relevant to the topic, always including: #DidYouKnow #Curiosities #MindBlowing #BlowYourMind
+        2. **post_description**: A deep, detailed, high-retention caption to accompany the image.
+           It must NOT be generic or short. It must be highly detailed and go deep into the science/facts.
+           Structure:
+           - First line: The immediate mind-blowing answer/resolution to the cliffhanger from the image.
+           - Next paragraphs: A deep dive (100-150 words) with 3 rapid-fire evidence points, scientific background, or sensory explanations.
+           - Ending: A paradox question or loop invitation (e.g., "If nature is capable of this, what else are they hiding from us? Let us know in the comments 👇").
+           - Contain exactly 10 viral hashtags, always including: #DidYouKnow #Curiosities #MindBlowing #BlowYourMind
         
-        3. **image_prompt**: A highly descriptive and detailed prompt in English to generate an ultra-high-quality photorealistic image that EXACTLY represents the fun fact explained in `card_text`. 
-           The prompt must be extremely specific about the exact animal or subject of `card_text` so there is no inconsistency. The main subject should be centered and not too close to the edges to allow horizontal cropping.
-           Example: "A highly detailed close-up shot of a colorful chameleon on a green branch, focusing on its unique rotating eyes looking in different directions. Cinematic lighting, photorealistic, 8k resolution, depth of field."
+        3. **image_prompt**: A highly descriptive and detailed prompt in English to generate a premium hyper-realistic image via Vertex AI Imagen 3.
+           It must follow these aesthetic parameters based on the topic:
+           - If Animal/Nature: "National Geographic style, extreme close-up (macro), 8k, bokeh background, hyper-detailed fur/scales, natural sunlight, cinematic color grading."
+           - If Science/Space: "Interstellar movie aesthetic, volumetric lighting, deep blacks, high contrast, scientific accuracy but epic scale, sharp focus."
+           - If Tech/Futuristic: "Cyberpunk minimalism, sleek metallic textures, neon accents (teal/orange), macro lens, shallow depth of field, futuristic realism."
 
-        IMPORTANT: ALL three fields MUST be written in native English only. No Spanish, no other languages.
+        IMPORTANT: ALL fields MUST be in native English only.
 
         Mandatory JSON output format:
         {{
-          "card_text": "Exact text that will be drawn on the image",
-          "post_description": "Exact text of the post description",
-          "image_prompt": "Prompt in English for image generation"
+          "card_text": "HOOK IN CAPS",
+          "post_description": "Detailed deep caption text",
+          "image_prompt": "Prompt for Vertex AI Imagen 3 matching style guidelines"
         }}
         """
         try:
@@ -1176,9 +1189,9 @@ class Pipeline(BaseModelTool):
         except Exception as e:
             Messenger.warning(f"Failed to generate custom Did You Know content: {e}. Using fallback.")
             return {
-                "card_text": f"The incredible phenomenon behind: {title}.",
-                "post_description": f"🤯 Did you know this about {title}? Let us know in the comments 👇\n\n#DidYouKnow #Curiosities #MindBlowing #Mysteries #BlowYourMind",
-                "image_prompt": f"A beautiful artistic representing the mysterious concept of {title}, cinematic, photorealistic."
+                "card_text": f"{title.upper()} HAS A SECRET... AND THE SCIENTIFIC REASON WILL BLOW YOUR MIND.",
+                "post_description": f"🤯 Here is the complete story behind {title}.\n\nThis phenomenon has baffled scientists for decades due to its unique nature and characteristics. Recent research shows that the implications are far more profound than we originally thought.\n\nWhat do you think about this? Let us know in the comments below! 👇\n\n#DidYouKnow #Curiosities #MindBlowing #Mysteries #BlowYourMind",
+                "image_prompt": f"Extreme close-up macro shot representing the mysterious concept of {title}, volumetric lighting, high contrast, cinematic color grading, 8k."
             }
 
     def compose_did_you_know_card(self, original_img_path: Path, output_path: Path, card_text: str):
@@ -1359,10 +1372,38 @@ class Pipeline(BaseModelTool):
                 
             draw.text((line_x, start_y + i * line_height), line, font=font_body, fill=fill_color)
             
+        # 7. Draw High-Impact CTA Banner at the very bottom (y = 1270 to 1330) to drive caption reading
+        cta_y = 1270
+        cta_h = 55
+        cta_w = 960
+        cta_x = (canvas_w - cta_w) // 2
+        
+        draw.rounded_rectangle(
+            [cta_x, cta_y, cta_x + cta_w, cta_y + cta_h],
+            radius=12,
+            fill=(255, 255, 0, 15), # subtle yellow tint background
+            outline=(255, 255, 0, 180), # glowing golden outline
+            width=2
+        )
+        
+        cta_text = "👇 READ THE FULL STORY IN THE CAPTION 👇"
+        try:
+            font_cta = ImageFont.truetype(str(font_bold_path), 26)
+        except Exception:
+            font_cta = font_body
+            
+        cta_bbox = font_cta.getbbox(cta_text)
+        cta_text_w = cta_bbox[2] - cta_bbox[0]
+        cta_text_h = cta_bbox[3] - cta_bbox[1]
+        cta_text_x = cta_x + (cta_w - cta_text_w) // 2
+        cta_text_y = cta_y + (cta_h - cta_text_h) // 2 - 2
+        
+        draw.text((cta_text_x, cta_text_y), cta_text, font=font_cta, fill=(255, 255, 0, 255))
+            
         # Save composed canvas
         canvas = canvas.convert("RGB")
         canvas.save(output_path, "JPEG", quality=95)
-        Messenger.success(f"🎨 Composed 'Did You Know?' image card at: {output_path}")
+        Messenger.success(f"🎨 Composed 'Did You Know?' image card with premium CTA at: {output_path}")
 
     def step8_upload_image_to_facebook(self):
         """
