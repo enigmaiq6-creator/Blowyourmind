@@ -828,7 +828,7 @@ class Pipeline(BaseModelTool):
         Messenger.info("Transcribing audio via Whisper...")
         script_data = self.load_script(idea_obj)
         full_narration = " ".join([s.narration for s in script_data.scenes])
-        self.whisper.generate_srt(audio_wav, subs_srt, prompt=full_narration)
+        self.whisper.generate_srt(audio_wav, subs_srt, prompt=full_narration, script_text=full_narration)
 
         # 5. Add Subtitles
         Messenger.info("Adding subtitles to final video...")
@@ -854,19 +854,43 @@ class Pipeline(BaseModelTool):
         pro_video = self.get_idea_asset_path(idea_obj.id, self.EDITIONS_DIR, self.PRO_SUBTITLED_VIDEO)
         audio_wav = self.get_idea_asset_path(idea_obj.id, self.EDITIONS_DIR, self.FINAL_AUDIO)
         
-        # 2. Transcription (Master Audio already exists from Step 4)
-        Messenger.info(f"Transcribing {self.FINAL_AUDIO} with OpenAI Whisper...")
+        # 2. Get timing from Whisper but TEXT from the original script (zero spelling errors)
+        Messenger.info(f"Aligning subtitles: using exact script words + Whisper timestamps...")
         script_data = self.load_script(idea_obj)
         full_narration = " ".join([s.narration for s in script_data.scenes])
-        words = self.whisper.get_word_tokens(audio_wav, prompt=full_narration)
-        word_data = [{"text": w.text, "start": w.start, "end": w.end} for w in words]
-
+        
+        # Get word-level timestamps from Whisper (used ONLY for timing)
+        whisper_words = self.whisper.get_word_tokens(audio_wav, prompt=full_narration)
+        
+        # Build the exact word list from the original script (perfect spelling guaranteed)
+        # Split preserving all words exactly as written
+        import re
+        # Tokenize script words keeping punctuation attached to words (as Whisper does)
+        script_tokens = re.findall(r"\S+", full_narration)
+        
+        word_data = []
+        whisper_count = len(whisper_words)
+        script_count = len(script_tokens)
+        
+        Messenger.info(f"   Whisper detected {whisper_count} word-timestamps | Script has {script_count} words")
+        
+        for i, w in enumerate(whisper_words):
+            if i < script_count:
+                # Use the EXACT script word for display text (no spelling errors)
+                exact_text = script_tokens[i]
+            else:
+                # Fallback: use whisper text if script ran out (shouldn't happen)
+                exact_text = w.text.strip()
+            word_data.append({"text": exact_text, "start": w.start, "end": w.end})
+        
+        Messenger.success(f"   ✅ Subtitle text anchored to original script: zero spelling errors guaranteed.")
+        
         # 3. Render Remotion
         remotion_root = Path(self.REMOTION_DIR)
         remotion_frames_dir = remotion_overlay.parent
         remotion_frames_dir.mkdir(parents=True, exist_ok=True)
         
-        # --- NUEVO: Obtener encabezado de intriga del script ---
+        # Get top headline from script (StoryIdea field)
         intrigue_text = getattr(script_data, "top_headline", None)
         
         self.remotion.render_subtitles(

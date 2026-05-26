@@ -97,5 +97,14 @@ def upload_video_to_drive(file_path: Path, folder_id: str) -> str | None:
         return web_link
 
     except Exception as e:
-        Messenger.error(f"Google Drive upload encountered an error: {e}")
+        error_str = str(e)
+        if "accessNotConfigured" in error_str or "has not been used" in error_str or "is disabled" in error_str:
+            Messenger.error("❌ Google Drive API is NOT ENABLED in your Google Cloud project!")
+            Messenger.error("👉 To fix this, follow these steps:")
+            Messenger.error("   1. Open this URL in your browser:")
+            Messenger.error("      https://console.developers.google.com/apis/api/drive.googleapis.com/overview")
+            Messenger.error("   2. Click 'ENABLE' to activate the Google Drive API.")
+            Messenger.error("   3. Wait 1-2 minutes and re-run the workflow.")
+        else:
+            Messenger.error(f"Google Drive upload encountered an error: {e}")
         return None

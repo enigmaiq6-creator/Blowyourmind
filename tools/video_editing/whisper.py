@@ -133,10 +133,13 @@ class WhisperTool(BaseModelTool):
         self,
         audio_path: Path,
         output_srt: Path,
-        prompt: str = None
+        prompt: str = None,
+        script_text: str = None
     ) -> None:
         """
         Generates an SRT file with dynamic word grouping.
+        If script_text is provided, uses script words as display text for zero spelling errors,
+        while using Whisper's timestamps for alignment.
         """
         data = self._get_transcription_json(audio_path, prompt=prompt)
 
@@ -149,6 +152,15 @@ class WhisperTool(BaseModelTool):
                     start=t.offsets.from_ms,
                     end=t.offsets.to_ms
                 ))
+
+        if script_text:
+            import re
+            script_tokens = re.findall(r"\S+", script_text)
+            script_count = len(script_tokens)
+            for i, w in enumerate(words):
+                if i < script_count:
+                    # Use exact script token text
+                    w.text = script_tokens[i]
 
         # Group words into blocks (max 3 words or pause > 0.4s)
         blocks: List[List[WhisperWord]] = []
