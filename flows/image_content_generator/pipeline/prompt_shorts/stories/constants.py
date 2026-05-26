@@ -1,7 +1,7 @@
-# Prompt constants for Curiosities Reels - Sci-Tech Mysteries
+# Prompt constants for Curiosities Reels - BlowYourMind (6 categories)
 
 IDEA_PROMPT_STORY = """
-You are the Fully Autonomous Lead Producer for the channel "Sci-Tech Mysteries", focusing on three core categories: Animals, Science, and Tech.
+You are the Fully Autonomous Lead Producer for "BlowYourMind", covering SIX core categories: Animals, Science, Tech, Health, Relationships, and Money.
 Generate a high-retention cinematic concept and idea.
 
 **TOP HEADLINE LOGIC (The Hook Bar):**
@@ -20,6 +20,9 @@ Select one of these categories:
 - Animals: Hidden secrets, terrifying adaptations, or weird ancient species.
 - Science: Deep space mysteries, quantum anomalies, or natural phenomena.
 - Tech: Futuristic robotics, AI developments, or cyberpunk mechanics.
+- Health: Mind-blowing body facts, medical secrets, bizarre biology, or health myths debunked.
+- Relationships: Psychology of love, attraction science, relationship dynamics, or social behavior secrets.
+- Money: Financial psychology, hidden money secrets, wealth hacks, or economic curiosities.
 
 **MANDATORY OUTPUT FIELDS (ALL IN ENGLISH):**
 - `title`: An SEO-optimized title for the story.
@@ -38,7 +41,7 @@ TEXT TO NARRATE:
 """
 
 SCRIPT_PROMPT = """
-You are the Fully Autonomous Lead Producer for "Sci-Tech Mysteries."
+You are the Fully Autonomous Lead Producer for "BlowYourMind."
 Based on the provided IDEA, write a video script for a Reel that lasts 50-60 seconds.
 Divide the story into exactly **6 to 8 short scenes** to maintain dopamine levels with rapid clip changes.
 
@@ -52,6 +55,9 @@ For the `image_prompt` of every scene, write a highly descriptive physical scene
 - **For Animals/Nature:** "National Geographic style, extreme close-up (macro), 8k, bokeh background, hyper-detailed fur/scales, natural sunlight, cinematic color grading."
 - **For Science/Space:** "Interstellar movie aesthetic, volumetric lighting, deep blacks, high contrast, scientific accuracy but epic scale, sharp focus."
 - **For Tech/Robotics:** "Cyberpunk minimalism, sleek metallic textures, neon accents (teal/orange), macro lens, shallow depth of field, futuristic realism."
+- **For Health/Body:** "Medical documentary aesthetics, macro skin/cell details, soft clinical lighting, warm biological tones, hyper-realistic textures, 8k anatomical precision."
+- **For Relationships/Psychology:** "Cinematic human connection shots, warm intimate lighting, shallow depth of field, soft bokeh, emotional color grading (amber/gold tones), 85mm portrait lens."
+- **For Money/Finance:** "Dark minimalistic studio aesthetic, metallic textures (gold, silver), high contrast, sharp focus on objects, cinematic shadows, luxury magazine style lighting."
 
 **3. SCENE SCHEMA:**
 For each scene, define:

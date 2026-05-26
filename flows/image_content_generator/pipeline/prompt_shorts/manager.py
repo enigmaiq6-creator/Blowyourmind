@@ -87,7 +87,13 @@ class PromptManagerShorts(BasePromptManager):
                 "ANCIENT JAPAN AND SAMURAI SECRETS: Unusual daily customs, the real origin of ninjas, and psychological warfare tactics.",
                 "VIKING CULTURE CURIOSITIES: Peculiar hygiene methods, bleaching hair with lye, or how they used urine to make fire.",
                 "ANCIENT INDIA MYSTERIES: Pioneering plastic surgeries of Sushruta, ancient Ayurvedic medicine, or war elephant tactics.",
-                "INCA EMPIRE AND ANDEAN CULTURE SECRETS: The quipu knot system, the incredibly fast chasqui messengers, or Andean mummification techniques."
+                "INCA EMPIRE AND ANDEAN CULTURE SECRETS: The quipu knot system, the incredibly fast chasqui messengers, or Andean mummification techniques.",
+                "HEALTH BODY SECRETS: Mind-blowing facts about the human body, bizarre medical mysteries, health myths debunked, or hidden biological superpowers.",
+                "HEALTH BRAIN SCIENCE: How the brain really works, memory manipulation secrets, sleep mysteries, or the science of habits and addiction.",
+                "RELATIONSHIPS ATTRACTION SCIENCE: The psychology of love, chemical reactions behind falling in love, pheromones, or what really creates attraction.",
+                "RELATIONSHIPS SOCIAL DYNAMICS: Hidden rules of social behavior, body language secrets, persuasion techniques, or the science of first impressions.",
+                "MONEY PSYCHOLOGY: Cognitive biases that keep people poor, the psychology of spending, how rich people think differently, or hidden money traps.",
+                "MONEY ECONOMIC CURIOSITIES: Bizarre historical economic facts, how money really works, hidden inflation mechanisms, or surprising wealth statistics."
             ]
         selected_area = random.choice(focus_areas)
         Messenger.info(f"🎯 Random Focus Area: {selected_area}")
