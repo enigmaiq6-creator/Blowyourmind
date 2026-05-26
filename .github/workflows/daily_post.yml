@@ -68,6 +68,7 @@ jobs:
           SAVE_AS_DRAFT: ${{ secrets.SAVE_AS_DRAFT }}
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
+          VERTEX_IMAGE_RATIO: "10"
         run: |
           # Determine post type: if forced by input, use it. Otherwise, use auto (random choice inside python script)
           export POST_TYPE="auto"
