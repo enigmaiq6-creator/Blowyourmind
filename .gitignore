@@ -19,6 +19,9 @@ models
 **/node_modules/
 **/scratch/
 
+# jimeng proxy (cloned repo)
+jimeng-proxy/
+
 # future versions
 **/video_content_generator
 gcp_credentials.json

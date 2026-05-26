@@ -20,6 +20,7 @@ from tools.common.base_model import BaseModelTool
 from tools.common.messenger import Messenger
 from tools.image_generation.gemini import GeminiImageGenerator
 from tools.image_generation.jimeng import JimengImageGenerator
+from tools.image_generation.pollinations import PollinationsImageGenerator
 from tools.image_generation.vertex_ai import VertexAIImageGenerator
 from tools.image_generation.midjourney import ImageTask
 from tools.text_generation.gemini import GeminiTextGenerator
@@ -49,6 +50,7 @@ class Pipeline(BaseModelTool):
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
     _image_gen: Optional[Union[GeminiImageGenerator, VertexAIImageGenerator]] = PrivateAttr(default=None)
     _jimeng_gen: Optional[JimengImageGenerator] = PrivateAttr(default=None)
+    _pollinations_gen: Optional[PollinationsImageGenerator] = PrivateAttr(default=None)
     _audio_gen: Optional[Union[GeminiAudioGenerator, VertexAIAudioGenerator]] = PrivateAttr(default=None)
     _ffmpeg: Optional[FFmpegTool] = PrivateAttr(default=None)
     _whisper: Optional[WhisperTool] = PrivateAttr(default=None)
@@ -166,6 +168,13 @@ class Pipeline(BaseModelTool):
             ar_value = "9:16" if self.orientation == VideoOrientation.SHORT else "16:9"
             self._jimeng_gen = JimengImageGenerator(aspect_ratio=ar_value)
         return self._jimeng_gen
+
+    @property
+    def pollinations_gen(self) -> PollinationsImageGenerator:
+        if self._pollinations_gen is None:
+            ar_value = "9:16" if self.orientation == VideoOrientation.SHORT else "16:9"
+            self._pollinations_gen = PollinationsImageGenerator(aspect_ratio=ar_value)
+        return self._pollinations_gen
 
     @property
     def cost_tracker(self) -> CostTracker:
@@ -399,32 +408,47 @@ class Pipeline(BaseModelTool):
         if tasks:
             tasks[0].output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Distribute load: 50% Vertex AI, 50% Jimeng (if configured)
+        # Distribute load: Vertex AI vs free alternative (Pollinations/Jimeng)
+        # VERTEX_IMAGE_RATIO = percentage of images to send to Vertex AI (default 20%)
+        # Set to 0 to use only the free alternative, 100 for only Vertex AI
         jimeng_key = os.getenv("JIMENG_API_KEY")
         use_jimeng = bool(jimeng_key)
-        if use_jimeng and len(tasks) > 1:
-            jimeng_tasks = tasks[::2]
-            vertex_tasks = tasks[1::2]
-            Messenger.info(f"Load balancing: {len(vertex_tasks)} to Vertex AI, {len(jimeng_tasks)} to Jimeng")
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                futures = []
-                futures.append(executor.submit(self.image_gen.generate_images, vertex_tasks))
-                futures.append(executor.submit(self.jimeng_gen.generate_images, jimeng_tasks))
-                for f in concurrent.futures.as_completed(futures):
-                    try:
-                        f.result()
-                    except Exception as e:
-                        Messenger.warning(f"One generator failed: {e}")
-            self.cost_tracker.add_image_cost(len(tasks))
+        alt_name = "Jimeng" if use_jimeng else "Pollinations"
+        alt_gen = self.jimeng_gen if use_jimeng else self.pollinations_gen
+
+        vertex_ratio = int(os.getenv("VERTEX_IMAGE_RATIO", "20"))
+        vertex_ratio = max(0, min(100, vertex_ratio))
+
+        if vertex_ratio >= 100:
+            vertex_tasks = list(tasks)
+            alt_tasks = []
+            Messenger.info(f"All {len(tasks)} images to Vertex AI (ratio=100%)")
+        elif vertex_ratio <= 0:
+            vertex_tasks = []
+            alt_tasks = list(tasks)
+            Messenger.info(f"All {len(tasks)} images to {alt_name} (ratio=0%)")
+        elif len(tasks) > 1:
+            split_idx = max(1, len(tasks) * vertex_ratio // 100)
+            vertex_tasks = tasks[:split_idx]
+            alt_tasks = tasks[split_idx:]
+            Messenger.info(f"Load balancing: {len(vertex_tasks)} to Vertex AI ({vertex_ratio}%), {len(alt_tasks)} to {alt_name}")
         else:
-            if use_jimeng and len(tasks) == 1:
-                Messenger.info("Only 1 image, sending to Jimeng")
-                self.jimeng_gen.generate_images(tasks)
-            else:
-                Messenger.info("Jimeng not configured, sending all to Vertex AI")
-                self.image_gen.generate_images(tasks)
-            self.cost_tracker.add_image_cost(len(tasks))
+            vertex_tasks = list(tasks)
+            alt_tasks = []
+
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            futures = []
+            if vertex_tasks:
+                futures.append(executor.submit(self.image_gen.generate_images, vertex_tasks))
+            if alt_tasks:
+                futures.append(executor.submit(alt_gen.generate_images, alt_tasks))
+            for f in concurrent.futures.as_completed(futures):
+                try:
+                    f.result()
+                except Exception as e:
+                    Messenger.warning(f"One generator failed: {e}")
+        self.cost_tracker.add_image_cost(len(tasks))
 
         # Update State
         idea_obj.state = State.IMAGES_GENERATED
