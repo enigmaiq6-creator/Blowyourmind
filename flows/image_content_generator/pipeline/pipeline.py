@@ -19,6 +19,7 @@ from tools.audio_generation.vertex_ai_tts import VertexAIAudioGenerator
 from tools.common.base_model import BaseModelTool
 from tools.common.messenger import Messenger
 from tools.image_generation.gemini import GeminiImageGenerator
+from tools.image_generation.jimeng import JimengImageGenerator
 from tools.image_generation.vertex_ai import VertexAIImageGenerator
 from tools.image_generation.midjourney import ImageTask
 from tools.text_generation.gemini import GeminiTextGenerator
@@ -47,6 +48,7 @@ class Pipeline(BaseModelTool):
 
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
     _image_gen: Optional[Union[GeminiImageGenerator, VertexAIImageGenerator]] = PrivateAttr(default=None)
+    _jimeng_gen: Optional[JimengImageGenerator] = PrivateAttr(default=None)
     _audio_gen: Optional[Union[GeminiAudioGenerator, VertexAIAudioGenerator]] = PrivateAttr(default=None)
     _ffmpeg: Optional[FFmpegTool] = PrivateAttr(default=None)
     _whisper: Optional[WhisperTool] = PrivateAttr(default=None)
@@ -156,6 +158,14 @@ class Pipeline(BaseModelTool):
         if self._video_gen is None:
             self._video_gen = GeminiVideoGenerator()
         return self._video_gen
+
+    @property
+    def jimeng_gen(self) -> JimengImageGenerator:
+        if self._jimeng_gen is None:
+            import os
+            ar_value = "9:16" if self.orientation == VideoOrientation.SHORT else "16:9"
+            self._jimeng_gen = JimengImageGenerator(aspect_ratio=ar_value)
+        return self._jimeng_gen
 
     @property
     def cost_tracker(self) -> CostTracker:
@@ -389,9 +399,32 @@ class Pipeline(BaseModelTool):
         if tasks:
             tasks[0].output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Generate all frames
-        self.image_gen.generate_images(tasks)
-        self.cost_tracker.add_image_cost(len(tasks))
+        # Distribute load: 50% Vertex AI, 50% Jimeng (if configured)
+        jimeng_key = os.getenv("JIMENG_API_KEY")
+        use_jimeng = bool(jimeng_key)
+        if use_jimeng and len(tasks) > 1:
+            jimeng_tasks = tasks[::2]
+            vertex_tasks = tasks[1::2]
+            Messenger.info(f"Load balancing: {len(vertex_tasks)} to Vertex AI, {len(jimeng_tasks)} to Jimeng")
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                futures = []
+                futures.append(executor.submit(self.image_gen.generate_images, vertex_tasks))
+                futures.append(executor.submit(self.jimeng_gen.generate_images, jimeng_tasks))
+                for f in concurrent.futures.as_completed(futures):
+                    try:
+                        f.result()
+                    except Exception as e:
+                        Messenger.warning(f"One generator failed: {e}")
+            self.cost_tracker.add_image_cost(len(tasks))
+        else:
+            if use_jimeng and len(tasks) == 1:
+                Messenger.info("Only 1 image, sending to Jimeng")
+                self.jimeng_gen.generate_images(tasks)
+            else:
+                Messenger.info("Jimeng not configured, sending all to Vertex AI")
+                self.image_gen.generate_images(tasks)
+            self.cost_tracker.add_image_cost(len(tasks))
 
         # Update State
         idea_obj.state = State.IMAGES_GENERATED
