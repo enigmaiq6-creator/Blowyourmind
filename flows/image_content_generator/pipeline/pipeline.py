@@ -1042,6 +1042,10 @@ class Pipeline(BaseModelTool):
         """
         Generates a short, highly viral description for Facebook/Instagram Reels.
         """
+        # Clean title from A/B testing tags like [Hook B] or [Hook A]
+        import re
+        title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", title, flags=re.IGNORECASE).strip()
+
         prompt = f"""
         You are the social media expert for "BlowYourMind", a super viral channel about curious facts, mysteries, and science.
         Write the "Caption" (description) for the following video: "{title}"
@@ -1091,7 +1095,9 @@ class Pipeline(BaseModelTool):
 
             # 3. Generates optimized description
             Messenger.info("   Generating AI-optimized description...")
-            description = self.generate_facebook_description(video_title)
+            import re
+            cleaned_video_title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", video_title, flags=re.IGNORECASE).strip()
+            description = self.generate_facebook_description(cleaned_video_title)
 
             # --- BLINDAJE CONTRA BANEOS (TODO ES TODO) ---
             # 1. AI Transparency (Mandatory Meta 2026)
@@ -1111,7 +1117,7 @@ class Pipeline(BaseModelTool):
                 video_id = self.facebook.upload_video(
                     file_path=video_path,
                     description=final_description,
-                    title=video_title
+                    title=cleaned_video_title
                 )
                 
                 if video_id:
@@ -1153,6 +1159,10 @@ class Pipeline(BaseModelTool):
         and a matching dedicated image prompt using Gemini.
         All content is generated exclusively in English for BlowYourMind.
         """
+        # Clean title from A/B testing tags like [Hook B] or [Hook A]
+        import re
+        title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", title, flags=re.IGNORECASE).strip()
+
         prompt = f"""
         You are a star creative copywriter for the channel "BlowYourMind" on Facebook.
         We are going to create a "Did you know...?" style image post based on this topic: "{title}"
