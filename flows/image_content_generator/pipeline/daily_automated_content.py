@@ -147,8 +147,8 @@ class DailyAutomator:
         
         # Implement 75% video / 25% image probability if set to auto
         if post_type == "auto":
-            post_type = random.choices(["video", "image"], weights=[75, 25], k=1)[0]
-            Messenger.info(f"🎲 Randomly selected content type: {post_type.upper()} (75% video / 25% image probability)")
+            post_type = random.choices(["video", "image"], weights=[90, 10], k=1)[0]
+            Messenger.info(f"🎲 Randomly selected content type: {post_type.upper()} (90% video / 10% image probability)")
         else:
             Messenger.info(f"🚀 Starting Automated Post (Forced Type: {post_type.upper()})...")
         
