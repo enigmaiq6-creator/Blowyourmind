@@ -63,7 +63,6 @@ jobs:
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
           # Set to 'true' to save videos as drafts (unpublished) in Meta Business Suite
           # This allows manual review and publishing + cross-posting to Instagram Reels
           SAVE_AS_DRAFT: ${{ secrets.SAVE_AS_DRAFT }}
