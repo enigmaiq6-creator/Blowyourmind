@@ -1114,10 +1114,13 @@ class Pipeline(BaseModelTool):
 
             # 4. Uploads via FacebookTool.
             try:
+                save_as_draft_env = os.getenv("SAVE_AS_DRAFT", "false").lower() in ("true", "1", "yes")
+                
                 video_id = self.facebook.upload_video(
                     file_path=video_path,
                     description=final_description,
-                    title=cleaned_video_title
+                    title=cleaned_video_title,
+                    published=not save_as_draft_env
                 )
                 
                 if video_id:
@@ -1132,18 +1135,22 @@ class Pipeline(BaseModelTool):
                         Messenger.warning(f"   ⚠️ Failed to upload English captions: {cap_e}")
 
                     # --- FASE 4: AUTO-COMENTARIO (Cebo de engagement) ---
-                    Messenger.info("   Generating polemic auto-comment...")
-                    prompt_comment = f"""
-                    You are the creator of the series "BlowYourMind". You just uploaded a video titled: "{video_title}".
-                    Write a short comment (1 line) in the form of a POLEMIC QUESTION to pin as the first comment of the video.
-                    The goal is for people to debate or argue in the replies. 
-                    Do not use hashtags. Be direct, a bit cynical, and very controversial.
-                    """
-                    try:
-                        polemic_comment = self.text_gen.generate(prompt_comment).strip()
-                        self.facebook.add_comment(video_id, polemic_comment)
-                    except Exception as e:
-                        Messenger.warning(f"Failed to generate or post auto-comment: {e}")
+                    # Only add public comment if the video is actually published (not a draft)
+                    if not save_as_draft_env:
+                        Messenger.info("   Generating polemic auto-comment...")
+                        prompt_comment = f"""
+                        You are the creator of the series "BlowYourMind". You just uploaded a video titled: "{video_title}".
+                        Write a short comment (1 line) in the form of a POLEMIC QUESTION to pin as the first comment of the video.
+                        The goal is for people to debate or argue in the replies. 
+                        Do not use hashtags. Be direct, a bit cynical, and very controversial.
+                        """
+                        try:
+                            polemic_comment = self.text_gen.generate(prompt_comment).strip()
+                            self.facebook.add_comment(video_id, polemic_comment)
+                        except Exception as e:
+                            Messenger.warning(f"Failed to generate or post auto-comment: {e}")
+                    else:
+                        Messenger.info("   Skipping polemic comment (draft mode active).")
 
                 # 5. Updates state to UPLOADED.
                 idea_obj.state = State.UPLOADED

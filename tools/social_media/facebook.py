@@ -30,10 +30,12 @@ class FacebookTool(BaseModelTool):
         self,
         file_path: Path,
         description: str = "",
-        title: Optional[str] = None
+        title: Optional[str] = None,
+        published: bool = True
     ) -> str:
         """
         Uploads a video to a Facebook Page using the resumable (chunked) upload API.
+        Can be saved as an unpublished draft if published=False.
         """
         if not file_path.exists():
             raise FileNotFoundError(f"Video file not found: {file_path}")
@@ -102,12 +104,15 @@ class FacebookTool(BaseModelTool):
         }
         if title:
             finish_params["title"] = title
+        if not published:
+            finish_params["published"] = "false"
 
         response = requests.post(f"{self.video_url}/{self.page_id}/videos", params=finish_params)
         response.raise_for_status()
         
         if response.json().get("success"):
-            Messenger.success(f"✅ Video published successfully! ID: {video_id}")
+            status_msg = "published successfully" if published else "saved as draft (unpublished)"
+            Messenger.success(f"✅ Video {status_msg}! ID: {video_id}")
             return video_id
         else:
             raise RuntimeError(f"Finish phase failed: {response.text}")
