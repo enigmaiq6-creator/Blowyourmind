@@ -1116,27 +1116,51 @@ class Pipeline(BaseModelTool):
             try:
                 save_as_draft_env = os.getenv("SAVE_AS_DRAFT", "false").lower() in ("true", "1", "yes")
                 
-                video_id = self.facebook.upload_video(
-                    file_path=video_path,
-                    description=final_description,
-                    title=cleaned_video_title,
-                    published=not save_as_draft_env
-                )
-                
-                if video_id:
-                    # --- FASE 5: MULTILINGUAL CAPTIONS ---
-                    try:
-                        subs_srt = self.get_idea_asset_path(idea_obj.id, self.EDITIONS_DIR, self.FINAL_SUBS)
-                        if subs_srt.exists():
-                            Messenger.info("   Uploading native English captions to Facebook...")
-                            # Upload to Facebook directly since they are already in English
-                            self.facebook.upload_captions(video_id, subs_srt, locale="en_US")
-                    except Exception as cap_e:
-                        Messenger.warning(f"   ⚠️ Failed to upload English captions: {cap_e}")
+                if save_as_draft_env:
+                    # Mode: Only Draft (Draft Mode manually enabled)
+                    Messenger.info("   Draft Mode active. Performing single upload as draft...")
+                    video_id = self.facebook.upload_video(
+                        file_path=video_path,
+                        description=final_description,
+                        title=cleaned_video_title,
+                        published=False
+                    )
+                    
+                    if video_id:
+                        # --- FASE 5: MULTILINGUAL CAPTIONS ---
+                        try:
+                            subs_srt = self.get_idea_asset_path(idea_obj.id, self.EDITIONS_DIR, self.FINAL_SUBS)
+                            if subs_srt.exists():
+                                Messenger.info("   Uploading native English captions to Facebook...")
+                                self.facebook.upload_captions(video_id, subs_srt, locale="en_US")
+                        except Exception as cap_e:
+                            Messenger.warning(f"   ⚠️ Failed to upload English captions: {cap_e}")
+                        
+                        Messenger.info("   Skipping polemic comment (draft mode active).")
+                else:
+                    # Mode: Double Upload (Publish to Facebook + Save Draft for Instagram cross-posting)
+                    Messenger.info("   Normal Mode. Performing double upload (Public Facebook Reel + Instagram Draft)...")
+                    
+                    # 1. PUBLIC Facebook Upload
+                    Messenger.info("   Uploading public Facebook Reel...")
+                    video_id = self.facebook.upload_video(
+                        file_path=video_path,
+                        description=final_description,
+                        title=cleaned_video_title,
+                        published=True
+                    )
+                    
+                    if video_id:
+                        # --- FASE 5: MULTILINGUAL CAPTIONS ---
+                        try:
+                            subs_srt = self.get_idea_asset_path(idea_obj.id, self.EDITIONS_DIR, self.FINAL_SUBS)
+                            if subs_srt.exists():
+                                Messenger.info("   Uploading native English captions to Facebook...")
+                                self.facebook.upload_captions(video_id, subs_srt, locale="en_US")
+                        except Exception as cap_e:
+                            Messenger.warning(f"   ⚠️ Failed to upload English captions: {cap_e}")
 
-                    # --- FASE 4: AUTO-COMENTARIO (Cebo de engagement) ---
-                    # Only add public comment if the video is actually published (not a draft)
-                    if not save_as_draft_env:
+                        # --- FASE 4: AUTO-COMENTARIO (Cebo de engagement) ---
                         Messenger.info("   Generating polemic auto-comment...")
                         prompt_comment = f"""
                         You are the creator of the series "BlowYourMind". You just uploaded a video titled: "{video_title}".
@@ -1149,8 +1173,20 @@ class Pipeline(BaseModelTool):
                             self.facebook.add_comment(video_id, polemic_comment)
                         except Exception as e:
                             Messenger.warning(f"Failed to generate or post auto-comment: {e}")
-                    else:
-                        Messenger.info("   Skipping polemic comment (draft mode active).")
+                    
+                    # 2. DRAFT Upload (Instagram Cross-posting placeholder)
+                    Messenger.info("   Uploading Instagram Draft placeholder to Facebook...")
+                    draft_title = f"[Instagram Draft] {cleaned_video_title}"
+                    try:
+                        self.facebook.upload_video(
+                            file_path=video_path,
+                            description=final_description,
+                            title=draft_title,
+                            published=False
+                        )
+                    except Exception as draft_e:
+                        # Don't fail the entire process if the secondary draft upload fails
+                        Messenger.error(f"   ⚠️ Failed to upload Instagram draft placeholder: {draft_e}")
 
                 # 5. Updates state to UPLOADED.
                 idea_obj.state = State.UPLOADED
