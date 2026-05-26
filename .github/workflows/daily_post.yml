@@ -67,30 +67,17 @@ jobs:
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
         run: |
-          # Solo videos por defecto, imágenes desactivadas
-          RUN_VIDEO=true
-          RUN_IMAGE=false
+          # Determine post type: if forced by input, use it. Otherwise, use auto (random choice inside python script)
+          export POST_TYPE="auto"
           
           if [[ "${{ github.event.inputs.force_type }}" == "0" ]]; then
-            RUN_VIDEO=false
-            RUN_IMAGE=true
-          elif [[ "${{ github.event.inputs.force_type }}" == "1" ]]; then
-            RUN_VIDEO=true
-            RUN_IMAGE=false
-          fi
-          
-          if [ "$RUN_VIDEO" = true ]; then
-            echo "🎬 GENERATING VIRAL CURIOSITY REEL..."
-            export POST_TYPE="video"
-            poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
-            sleep 5
-          fi
-          
-          if [ "$RUN_IMAGE" = true ]; then
-            echo "🎨 GENERATING ¿SABÍAS QUE...? COMPOSITE IMAGE..."
             export POST_TYPE="image"
-            poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
+          elif [[ "${{ github.event.inputs.force_type }}" == "1" ]]; then
+            export POST_TYPE="video"
           fi
+          
+          echo "🚀 Executing automated post with type: $POST_TYPE"
+          poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
         run: |

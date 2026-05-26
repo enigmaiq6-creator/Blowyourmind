@@ -141,9 +141,16 @@ class DailyAutomator:
         """
         Main entry point for GitHub Actions.
         Determines type based on POST_TYPE env var.
+        Supports 'auto' for high-probability video vs image choice (75% video, 25% image).
         """
-        post_type = os.getenv("POST_TYPE", "video").lower()
-        Messenger.info(f"🚀 Starting Automated Post (Type: {post_type.upper()})...")
+        post_type = os.getenv("POST_TYPE", "auto").lower()
+        
+        # Implement 75% video / 25% image probability if set to auto
+        if post_type == "auto":
+            post_type = random.choices(["video", "image"], weights=[75, 25], k=1)[0]
+            Messenger.info(f"🎲 Randomly selected content type: {post_type.upper()} (75% video / 25% image probability)")
+        else:
+            Messenger.info(f"🚀 Starting Automated Post (Forced Type: {post_type.upper()})...")
         
         self.cleanup_stuck_ideas()
 
@@ -160,8 +167,11 @@ class DailyAutomator:
             except Exception as e:
                 Messenger.error(f"Error during video task: {e}")
                 sys.exit(1)
-        else:
+        elif post_type == "image":
             self.generate_daily_standard_image()
+        else:
+            Messenger.error(f"❌ Unknown post type: {post_type}")
+            sys.exit(1)
 
 
     def cleanup_stuck_ideas(self):
