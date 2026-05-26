@@ -450,6 +450,12 @@ class Pipeline(BaseModelTool):
                     Messenger.warning(f"One generator failed: {e}")
         self.cost_tracker.add_image_cost(len(tasks))
 
+        Messenger.info(
+            f"═══════════════════════════════════════════════\n"
+            f"  IMAGES: {len(vertex_tasks)} Vertex AI + {len(alt_tasks)} {alt_name} (ratio={vertex_ratio}%)\n"
+            f"═══════════════════════════════════════════════"
+        )
+
         # Update State
         idea_obj.state = State.IMAGES_GENERATED
         self.store.save(idea_obj)
