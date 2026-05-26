@@ -1177,13 +1177,15 @@ class Pipeline(BaseModelTool):
            - "AI IS NOW READING HUMAN DREAMS... AND WHAT IT DECODED WILL TERRIFY YOU."
            - "OCTOPUSES HAVE THREE HEARTS AND NINE BRAINS... BUT THERE IS A 10TH SECRET THAT SCIENTISTS HID."
         
-        2. **post_description**: A deep, detailed, high-retention caption to accompany the image.
-           It must NOT be generic or short. It must be highly detailed and go deep into the science/facts.
+        2. **post_description**: A long, highly engaging, and entertaining educational caption to accompany the image.
+           It must explain the topic in detail but using simple, clear, and easy-to-understand English (suitable for international, non-native audiences).
+           It must NOT be short, generic, or overly brief. It should make the reader go "Wow, that is fascinating!" and understand the science or history behind the topic clearly.
+           Length: Around 150-250 words.
            Structure:
-           - First line: The immediate mind-blowing answer/resolution to the cliffhanger from the image.
-           - Next paragraphs: A deep dive (100-150 words) with 3 rapid-fire evidence points, scientific background, or sensory explanations.
-           - Ending: A paradox question or loop invitation (e.g., "If nature is capable of this, what else are they hiding from us? Let us know in the comments 👇").
-           - Contain exactly 10 viral hashtags, always including: #DidYouKnow #Curiosities #MindBlowing #BlowYourMind
+           - First line: A stunning, hook-like resolution to the image cliffhanger in simple words.
+           - Body: Break it down into 2-3 short, highly engaging paragraphs detailing the exact mystery, how it works scientifically, and 3 mind-blowing facts about it. Use friendly, clear language without overly dense scientific jargon, but with extreme educational detail.
+           - Ending: A fun, conversational call-to-action question inviting users to comment, share their thoughts, or answer a paradox (e.g., "If nature is capable of this, what else is waiting to be discovered? Tell us your thoughts below! 👇").
+           - Contain exactly 10 high-impact hashtags: #DidYouKnow #Curiosities #MindBlowing #BlowYourMind and 6 others relevant to the topic.
         
         3. **image_prompt**: A highly descriptive and detailed prompt in English to generate a premium hyper-realistic image via Vertex AI Imagen 3.
            It must follow these aesthetic parameters based on the topic:
@@ -1196,7 +1198,7 @@ class Pipeline(BaseModelTool):
         Mandatory JSON output format:
         {{
           "card_text": "HOOK IN CAPS",
-          "post_description": "Detailed deep caption text",
+          "post_description": "Detailed deep caption text in simple English",
           "image_prompt": "Prompt for Vertex AI Imagen 3 matching style guidelines"
         }}
         """
@@ -1224,7 +1226,17 @@ class Pipeline(BaseModelTool):
             Messenger.warning(f"Failed to generate custom Did You Know content: {e}. Using fallback.")
             return {
                 "card_text": f"{title.upper()} HAS A SECRET... AND THE SCIENTIFIC REASON WILL BLOW YOUR MIND.",
-                "post_description": f"🤯 Here is the complete story behind {title}.\n\nThis phenomenon has baffled scientists for decades due to its unique nature and characteristics. Recent research shows that the implications are far more profound than we originally thought.\n\nWhat do you think about this? Let us know in the comments below! 👇\n\n#DidYouKnow #Curiosities #MindBlowing #Mysteries #BlowYourMind",
+                "post_description": (
+                    f"🤯 Did you know the incredible truth behind {title}? It is absolutely mind-blowing!\n\n"
+                    f"For a long time, this topic has fascinated people and scientists alike. The reality is that this phenomenon "
+                    f"works in ways that challenge what we normally expect. Specifically, recent discoveries reveal three astonishing facts:\n\n"
+                    f"1️⃣ It operates under unique principles that create highly unusual patterns.\n"
+                    f"2️⃣ The impact it has on its surroundings is far greater than previously thought.\n"
+                    f"3️⃣ It holds secrets that could change how we understand the topic in the future.\n\n"
+                    f"It is a beautiful and mysterious part of our world. What do you think about this fascinating concept? "
+                    f"Does it surprise you? Let us know in the comments below! 👇\n\n"
+                    f"#DidYouKnow #Curiosities #MindBlowing #BlowYourMind #ScienceFacts #NatureLovers #Discoveries #Secrets #LearningIsFun #Fascinating"
+                ),
                 "image_prompt": f"Extreme close-up macro shot representing the mysterious concept of {title}, volumetric lighting, high contrast, cinematic color grading, 8k."
             }
 
