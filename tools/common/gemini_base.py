@@ -24,6 +24,9 @@ class GeminiUsage(BaseModelTool):
 class GeminiBase(BaseModelTool):
     _client: Client = PrivateAttr()
     _location: str = PrivateAttr()
+    _api_key: Optional[str] = PrivateAttr(default=None)
+    _project_id: Optional[str] = PrivateAttr(default=None)
+    _using_vertex: bool = PrivateAttr(default=False)
 
     @property
     def client(self) -> Client:
@@ -35,19 +38,22 @@ class GeminiBase(BaseModelTool):
         project_id = os.getenv("GCP_PROJECT_ID")
         location = os.getenv("GCP_LOCATION", "us-central1")
         self._location = location
-        api_key = os.getenv("GEMINI_API_KEY")
+        self._api_key = os.getenv("GEMINI_API_KEY")
+        self._project_id = project_id
+        self._using_vertex = False
 
-        if api_key:
+        if self._api_key:
             Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
-            self._client = Client(api_key=api_key, http_options=types.HttpOptions(timeout=300000))
-        elif project_id:
-            Messenger.info(f"✨ Using Vertex AI (Enterprise) for Gemini in project: {project_id}...")
+            self._client = Client(api_key=self._api_key, http_options=types.HttpOptions(timeout=300000))
+        elif self._project_id:
+            Messenger.info(f"✨ Using Vertex AI (Enterprise) for Gemini in project: {self._project_id}...")
             self._client = Client(
                 vertexai=True,
-                project=project_id,
+                project=self._project_id,
                 location=location,
                 http_options=types.HttpOptions(timeout=300000)
             )
+            self._using_vertex = True
         else:
             raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
 
@@ -64,9 +70,24 @@ class GeminiBase(BaseModelTool):
     def _execute_with_retry(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """
         Executes a Gemini API call with a 60s retry on ServerError or ClientError (429).
-        Timeout is set to 90s per request to prevent infinite hangs.
+        If API Key limits are exhausted and GCP Project ID is available, falls back to Vertex AI.
         """
-        return func(*args, **kwargs)
+        try:
+            return func(*args, **kwargs)
+        except errors.ClientError as e:
+            error_str = str(e)
+            if ("429" in error_str or "RESOURCE_EXHAUSTED" in error_str) and self._project_id and not self._using_vertex:
+                Messenger.warning("⚠️ Gemini API Key rate limit/quota exhausted (429 RESOURCE_EXHAUSTED). Falling back to Vertex AI...")
+                self._using_vertex = True
+                self._client = Client(
+                    vertexai=True,
+                    project=self._project_id,
+                    location=self._location,
+                    http_options=types.HttpOptions(timeout=300000)
+                )
+                # Re-invoke model call on the newly initialized Vertex AI client
+                return self._client.models.generate_content(*args, **kwargs)
+            raise e
 
     def _extract_usage(self, response: Any, model_name: str) -> GeminiUsage:
         usage_meta = getattr(response, "usage_metadata", None)
