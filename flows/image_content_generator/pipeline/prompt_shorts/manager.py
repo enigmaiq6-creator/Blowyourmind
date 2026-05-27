@@ -70,11 +70,16 @@ class PromptManagerShorts(BasePromptManager):
 
         if mode == "geography":
             focus_areas = [
-                "EXTREME GEOGRAPHICAL BARRIERS: Mountains, deserts, or oceans that block winds, isolate countries, and create otherworldly climates.",
-                "COLOSSAL RIVERS AND BASINS: Hydrological mysteries, subterranean rivers, flying rivers, and the impact of basins like the Amazon.",
-                "RAPID RAINFALL ZONES AND EXTREME CLIMATES: Why it rains so much in the South American Pacific or how the Atacama Desert became bone-dry.",
-                "BIODIVERSITY AND MOUNTAIN RANGES: How the three cordilleras of the Andes divide a single country into isolated ecological worlds.",
-                "BIZARRE HISTORICAL GEOGRAPHY: Absurd borders formed by capricious rivers or impassable mountains."
+                "HIDDEN RIVERS IN THE SKY: Atmospheric rivers, flying rivers from the Amazon, and how invisible water flows shape continents.",
+                "THE RING OF FIRE: Earth's 40,000km seismic belt — how tectonic plates build islands, create volcanoes, and reshape the Pacific.",
+                "GRAVITY ANOMALIES AND EARTH'S SECRETS: Places where gravity is weaker, magnetic poles shift, or Earth's core does something unexpected.",
+                "EXTREME GEOGRAPHICAL BARRIERS: Mountains, deserts, and oceans that block winds, isolate ecosystems, and create otherworldly climates.",
+                "OCEAN MYSTERIES: Underwater mountains, the place where two oceans meet without mixing, rogue waves, and hidden currents.",
+                "WEIRD BORDERS AND BIZARRE GEOGRAPHY: Absurd borders created by rivers and mountains, exclaves, and the strangest maps in the world.",
+                "DESERTS AND ICE: How the Atacama became the driest place, Antarctica's hidden valleys, and the expanding Sahara.",
+                "FORCES THAT SHAPE LIFE: How geography creates biodiversity hotspots, isolated islands evolve unique species, and mountains divide worlds.",
+                "HUMANITY AGAINST GEOGRAPHY: Impossible roads, cities built on water, tunnels through mountains, and how we conquer Earth's obstacles.",
+                "EARTH VS SPACE: How solar winds create auroras, Earth's magnetic shield protects us, and what would happen if it flipped."
             ]
         else:
             focus_areas = [

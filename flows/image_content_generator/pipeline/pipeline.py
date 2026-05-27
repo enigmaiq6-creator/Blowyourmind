@@ -461,21 +461,36 @@ class Pipeline(BaseModelTool):
 
     def step2b_generate_video_clips(self):
         """
-        Step 2b: Pexels API + Dynamic Ken Burns Fallback.
-        Ahorra créditos al no usar generación de video por IA.
+        Step 2b: Render video clips using enhanced Remotion MapRender (3D satellite maps)
+        with GeoJSON country borders, neon glow, AI image scenes, and tile fallback.
+        Falls back to Pexels/Pixabay stock video or Ken Burns image animation.
         """
         idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
         if not idea_obj:
             Messenger.warning("Step 2b skipped: No idea in IMAGES_GENERATED state.")
             return
 
-        Messenger.info(f"\n--- Step 2b started: Fetching Videos for '{idea_obj.title}' ---")
+        Messenger.info(f"\n--- Step 2b started: Rendering clips for '{idea_obj.title}' ---")
         script = self.load_script(idea_obj)
         
         from tools.video_generation.pexels import PexelsTool
         from tools.video_generation.pixabay import PixabayTool
         pexels_tool = PexelsTool()
         pixabay_tool = PixabayTool()
+
+        # Ensure remotion/public/temp_images/ exists for AI image scenes
+        remotion_public_images = Path(self.REMOTION_DIR) / "public" / "temp_images"
+        remotion_public_images.mkdir(parents=True, exist_ok=True)
+
+        def _get_camera_attr(scene, attr, default):
+            """Extract camera attribute from flat field or nested MapCamera."""
+            flat_val = getattr(scene, f"camera_{attr}", None)
+            if flat_val and flat_val != 0.0:
+                return flat_val
+            camera = getattr(scene, "camera", None)
+            if camera:
+                return getattr(camera, attr, default)
+            return default
 
         def process_scene(scene):
             clip_filename = self.SCENE_VIDEO_PATTERN.format(scene.scene_number)
@@ -489,23 +504,24 @@ class Pipeline(BaseModelTool):
 
             visual_type = getattr(scene, "visual_type", "stock_video")
             query = getattr(scene, "pexels_query", "")
+            is_geography_mode = getattr(idea_obj, "category", "") == "geography"
 
-            if visual_type == "map_3d":
-                Messenger.info(f"   🗺️ Scene {scene.scene_number} requested 'map_3d'. Rendering Mapbox GL JS animation via Remotion...")
+            # ── Remotion-enhanced rendering (geography mode) ──
+            if is_geography_mode and visual_type == "map_3d":
+                Messenger.info(f"   🗺️ Scene {scene.scene_number}: Rendering 3D satellite map via Remotion...")
                 
-                # Extract camera settings
-                camera = getattr(scene, "camera", None)
-                lat = camera.latitude if camera else 4.570868
-                lon = camera.longitude if camera else -74.297333
-                zoom = camera.zoom if camera else 5.2
-                pitch = camera.pitch if camera else 45.0
-                bearing = camera.bearing if camera else -10.0
+                lat = _get_camera_attr(scene, "latitude", 4.570868)
+                lon = _get_camera_attr(scene, "longitude", -74.297333)
+                zoom = _get_camera_attr(scene, "zoom", 5.2)
+                pitch = _get_camera_attr(scene, "pitch", 45.0)
+                bearing = _get_camera_attr(scene, "bearing", -10.0)
                 
                 highlight_region = getattr(scene, "highlight_region", "none")
                 arrow_direction = getattr(scene, "arrow_direction", "none")
                 floating_label = getattr(scene, "floating_label", "none")
                 
                 props = {
+                    "visualType": "map_3d",
                     "latitude": lat,
                     "longitude": lon,
                     "zoom": zoom,
@@ -514,8 +530,7 @@ class Pipeline(BaseModelTool):
                     "highlightRegion": highlight_region,
                     "arrowDirection": arrow_direction,
                     "floatingLabel": floating_label,
-                    "durationInFrames": 240, # 8 seconds at 30 fps
-                    "fps": 30
+                    "audioDurationMs": 10000,
                 }
                 
                 try:
@@ -532,22 +547,85 @@ class Pipeline(BaseModelTool):
                     Messenger.error(f"   ❌ Remotion MapRender failed: {remotion_e}")
                     Messenger.warning("   ⚠️ Falling back to stock video search...")
 
+            # ── AI Image scene (rendered via Remotion with 3D card effect) ──
+            if is_geography_mode and visual_type == "ai_image":
+                Messenger.info(f"   🎨 Scene {scene.scene_number}: Generating AI image and rendering via Remotion...")
+                
+                ai_img_filename = f"scene_{scene.scene_number:02d}_ai.jpg"
+                ai_img_dest = remotion_public_images / ai_img_filename
+                
+                if not ai_img_dest.exists():
+                    try:
+                        from tools.image_generation.pollinations import PollinationsImageGenerator
+                        pollinations = PollinationsImageGenerator(aspect_ratio="9:16")
+                        pollinations.generate_image(
+                            prompt=scene.image_prompt,
+                            output_path=ai_img_dest
+                        )
+                    except Exception:
+                        try:
+                            from tools.image_generation.gemini import GeminiImageGenerator
+                            gemini_img = GeminiImageGenerator(
+                                aspect_ratio="9:16",
+                                reference_dir=Path(self.resource_base) / self.REFERENCES_DIR
+                            )
+                            gemini_img.generate_image(
+                                prompt=scene.image_prompt,
+                                output_path=ai_img_dest
+                            )
+                        except Exception as img_e:
+                            Messenger.warning(f"   ⚠️ AI image gen failed: {img_e}. Using existing image.")
+                            if img_path.exists():
+                                import shutil
+                                shutil.copy2(img_path, ai_img_dest)
+                
+                if not ai_img_dest.exists() and img_path.exists():
+                    import shutil
+                    shutil.copy2(img_path, ai_img_dest)
+                
+                props = {
+                    "visualType": "ai_image",
+                    "imageFile": ai_img_filename,
+                    "latitude": 0,
+                    "longitude": 0,
+                    "zoom": 0,
+                    "pitch": 0,
+                    "bearing": 0,
+                    "highlightRegion": "none",
+                    "arrowDirection": "none",
+                    "floatingLabel": "none",
+                    "audioDurationMs": 8000,
+                }
+                
+                try:
+                    remotion_root = Path(self.REMOTION_DIR)
+                    self.remotion.render_composition(
+                        remotion_path=remotion_root,
+                        output_path=clip_path,
+                        composition_id="MapRender",
+                        props=props
+                    )
+                    if clip_path.exists() and clip_path.stat().st_size > 1024:
+                        return True
+                except Exception as remotion_e:
+                    Messenger.error(f"   ❌ Remotion AI image render failed: {remotion_e}")
+                    Messenger.warning("   ⚠️ Falling back to Ken Burns animation...")
+
+            # ── Stock video search (Pexels / Pixabay) ──
             if visual_type != "ai_image":
-                # 1. Intentar Pexels (Prioridad 1)
                 if pexels_tool.fetch_video(query, clip_path):
                     if clip_path.exists() and clip_path.stat().st_size > 1024:
                         return True
 
-                # 2. Intentar Pixabay (Prioridad 2)
                 if pixabay_tool.fetch_video(query, clip_path):
                     if clip_path.exists() and clip_path.stat().st_size > 1024:
                         return True
                 
                 Messenger.warning(f"   ⚠️ APIs failed for query '{query}'. Falling back to AI Image.")
             else:
-                Messenger.info(f"   🎨 Scene {scene.scene_number} explicitly requested 'ai_image'. Skipping stock video search.")
+                Messenger.info(f"   🎨 Scene {scene.scene_number}: 'ai_image' type. Skipping stock video search.")
 
-            # 3. Fallback: Ken Burns sobre imagen (Último recurso o forzado)
+            # ── Fallback: Ken Burns image animation ──
             if not img_path.exists() or img_path.stat().st_size < 1024:
                 Messenger.error(f"   ❌ Scene {scene.scene_number} missing image and stock video APIs failed. CRITICAL.")
                 return False

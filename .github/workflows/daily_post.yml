@@ -7,6 +7,15 @@ on:
         description: '0=Image, 1=Video'
         required: false
         type: string
+      mode:
+        description: 'Content mode: standard, geography, stickman'
+        required: false
+        default: 'geography'
+        type: choice
+        options:
+          - geography
+          - standard
+          - stickman
 
 jobs:
   post-content:
@@ -69,6 +78,8 @@ jobs:
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
           VERTEX_IMAGE_RATIO: "10"
+          # Content mode: standard | geography | stickman
+          MODE: ${{ inputs.mode || 'geography' }}
         run: |
           # Determine post type: if forced by input, use it. Otherwise, use auto (random choice inside python script)
           export POST_TYPE="auto"

@@ -1,67 +1,64 @@
-# Prompt constants for Geography/History Reels
-
 IDEA_PROMPT_GEOGRAPHY = """
-You are the Fully Autonomous Lead Producer for the channel "Sci-Tech Mysteries" focusing on "Geographical and Climatic Curiosities of Latin America".
-Generate a highly viral idea for a short video.
-The topic must be **EXTREMELY AMAZING AND FASCINATING**, explaining how the geography of a place (mountains, coasts, rivers, deserts) defines its climate, life, or history.
+You are the Lead Producer for "BlowYourMind", a channel about Geography + Mind-Blowing Science Facts.
+Generate a HIGH-RETENTION video idea about a "hidden world" phenomenon — something nature does that most people don't know about.
 
-Ideal examples:
-- "Why the Pacific coast of Colombia is one of the wettest places on earth?"
-- "How the Andes Mountain range acts as a giant wall dividing climates and biodiversity?"
-- "The mystery of the flying rivers of the Amazon."
-- "Why Colombia's unique geography makes it a global powerhouse of water and biodiversity?"
+The topic must reveal how geography (mountains, oceans, rivers, atmosphere) creates **secret forces** that shape life, climate, and history in ways that feel almost supernatural.
 
-The video must have a script that explains the entire concept from beginning to end, with a brutal starting hook, high-retention development, and a **CLOSED AND SATISFYING CONCLUSION**.
-It must be designed for a fluid, fast-paced video composed of **6 to 8 short scenes** to ensure the viewer never gets bored.
-The total narration of ALL scenes combined MUST NOT EXCEED 120 WORDS to ensure the video stays under 60 seconds.
+Examples of the vibe:
+- "The Flying Rivers of the Amazon — invisible waterways in the sky that create rainforests thousands of miles away."
+- "The Antarctic Ice Wall — why no one can cross certain ocean coordinates."
+- "The Pacific Ring of Fire — Earth's 40,000km wound that builds and destroys continents."
+- "The Gravity Anomaly of Hudson Bay — where you literally weigh less than anywhere else on Earth."
+- "The Door to Hell — a crater that has been burning for 50 years."
+- "The Place Where Two Oceans Meet But Never Mix."
 
 **MANDATORY OUTPUT FIELDS (ALL IN ENGLISH):**
-- `title`: An SEO-optimized title for the story.
-- `intrigue_header`: The Hook Bar text in ALL CAPS (3-5 words).
-- `hook`: The initial disruption sentence (10-15 words).
-- `caption`: A highly deep, detailed description for social media in English that explains the story in-depth, accompanied by 5 to 8 viral hashtags.
+- `title`: An SEO-optimized, curiosity-driven title for the video.
+- `intrigue_header`: A 3-5 word ALL CAPS hook that persists at the top (e.g., 'THE FLYING RIVERS', 'THE BURNING DOOR', 'THE GRAVITY HOLE').
+- `hook`: The initial scroll-stopping sentence (10-15 words). Must sound like a secret being revealed.
+- `caption`: A deep, educational social media caption explaining the phenomenon. Include 5-8 viral hashtags like #GeographySecrets #MindBlowingFacts #HiddenWorld #HowNatureWorks.
+- `category`: Must be "geography"
 
-**BACKING IMAGE VISUAL STYLE:**
-Apply a highly detailed cinematic style: "{visual_style}"
-
-**CRITICAL: EVERYTHING MUST BE EXCLUSIVELY IN ENGLISH.**
+**CRITICAL: ALL CONTENT MUST BE IN ENGLISH. Topics should be GLOBAL (not limited to Latin America).**
 """
 
 AUDIO_PROMPT_GEOGRAPHY = """
-Use a narrative tone that is formal, professional, extremely intriguing, dramatic, and informative. Like the narrator of a premium, high-budget geography and history documentary (Vox or RealLifeLore style).
+Use a narrative tone that is deeply intriguing, cinematic, and documentary-style — like the narrator of a Netflix nature mystery or a Vox/RealLifeLore video.
+The tone should be calm, authoritative, and slightly dramatic, revealing secrets of the natural world.
 
 TEXT TO NARRATE:
 {audio_text}
 """
 
 SCRIPT_PROMPT_GEOGRAPHY = """
-You are the Fully Autonomous Lead Producer for "Sci-Tech Mysteries."
-Based on the provided geography and history IDEA, write a structured video script for a Reel lasting up to 50 seconds.
-Divide the video into **6 to 8 short scenes** with high visual density and dynamism.
+You are the Video Producer & Geospatial Designer for "BlowYourMind".
+Based on the provided IDEA, write a complete production script for a vertical short video (1080x1920) lasting up to 55 seconds.
 
-For each scene, define:
-1. `scene_number`: Sequential number (1 to N).
-2. `visual_type`: Choose `"map_3d"` (default to show satellite 3D maps, terrains, wind barriers, etc.), or `"stock_video"` (for clips of jungles, beaches, rain, people), or `"ai_image"` (to recreate historical scenes, ancient humans, or specific Earth cross-section diagrams).
-3. `pexels_query`: If `"stock_video"` is chosen, write 1 to 3 keywords in English (e.g., 'amazon jungle drone', 'heavy rain pacific', 'andes mountains'). Leave empty otherwise.
-4. `image_prompt`: A detailed description in ENGLISH of the visual style the backing image must have (always mandatory).
-5. `narration`: Spoken script/narration for this scene. CRITICAL: MUST be written 100% in English. Never use Spanish.
-6. `camera`: 3D satellite map camera configuration (even if visual_type is stock_video, define this to pre-locate the relative geographical position):
-   - `latitude`: Exact latitude of the location (e.g. 4.570868 for Colombia, -15.783333 for Brazil).
-   - `longitude`: Exact longitude of the location (e.g. -74.297333 for Colombia, -47.916667 for Brazil).
-   - `zoom`: Zoom level of the map (decimal values between 3.0 for continent/country view and 12.0 for local spots/mountain ranges).
-   - `pitch`: Camera inclination angle in degrees (values between 30 and 60 degrees to give a 3D/2.5D look).
-   - `bearing`: Camera orientation/rotation angle in degrees (values between -180 and 180 to rotate the map).
-7. `highlight_region`: Name of the region, country, or geographical feature to color and highlight on the map (e.g. 'Colombia', 'Brazil', 'Andes Mountains', 'Pacific Coast', 'Amazon Basin', or 'none').
-8. `arrow_direction`: Briefly describe the flow of an animated arrow on the map if applicable (e.g. 'from: Pacific Ocean, to: Andes Mountains' to show blocked wind, or 'from: Amazon River, to: Atlantic Ocean', or 'none').
-9. `floating_label`: A floating label with impact data or key numbers in ALL CAPS (e.g. '52.32 MILLION', '3 MOUNTAIN RANGES', '8,000 MM OF RAIN', or 'none').
-10. `sfx`: Environmental or impact sound effect for this scene (choose: 'jungle_ambient', 'rain_and_thunder', 'heavy_wind', 'digital_swoosh', 'ocean_waves', 'none').
+The video must be a Geography + Mind-Blowing Facts hybrid:
+- Use the 3D satellite map as the PRIMARY visual with neon glow effects.
+- Each scene should feel like a cinematic reveal of a hidden world force.
+- The viewer should feel like they are flying over Earth discovering its secrets.
 
-CRITICAL RULES:
-1. **STRICT WORD LIMIT:** The total narration across all scenes combined **MUST NOT EXCEED 120 WORDS**. Keep it direct, punchy, and high-impact.
-2. **REALISTIC AND ACCURATE MAP COORDINATES:** Research and define correct geographical coordinates of latitude and longitude corresponding to the actual places mentioned in each scene. Precision cartography is vital!
-3. **COMPLETE SOUND DESIGN:** Choose sound effects (`sfx`) matching the scene content to ensure an immersive audio design.
-4. **INTRIGUING HEADER:** The `intrigue_header` must be a persistent 3 to 5 word title in ALL CAPS at the start (e.g., "THE WALL OF COLOMBIA", "THE WETTEST PLACE", "THE SECRET OF THE ANDES").
-5. **AGRESSIVE CTA:** End the video with an intriguing call to action inviting viewers to leave their opinion or experience in the comments.
+**STRUCTURE (6-8 scenes):**
+1. **Scene 1 - The Hook [0-8s]**: Start with a shocking question or a "most people think X, but nature secretly does Y" statement. Use map_3d with a wide zoom (4.0-5.5) to show the global context.
+2. **Scenes 2-5 - The Mechanism [8-40s]**: Fly the camera over the geographical feature. Show mountains, rivers, ocean currents, wind barriers. Use floating labels to display key data. Use arrows to show forces and flows.
+3. **Scenes 6-7 - The Reveal [40-50s]**: The mind-blowing conclusion. Show the impact data in the floating HUD. Use ai_image if needed to illustrate a concept that can't be mapped.
+4. **Final Scene - The CTA [50-55s]**: End with a paradoxical question that forces re-watching or commenting.
 
-**CRITICAL: ALL NARRATION AND DIALOGUE MUST BE EXCLUSIVELY IN ENGLISH. DO NOT TRANSLATE OR WRITE IN SPANISH UNDER ANY CIRCUMSTANCES.**
+**TECHNICAL RULES FOR REMOTION (STRICT):**
+- Each scene must use `visual_type = "map_3d"` for geographic fly-overs. Use `"ai_image"` ONLY for conceptual illustrations (historical, cross-sections, microscopic, or impossible-to-map visuals).
+- Provide REAL GPS coordinates using `camera_latitude` and `camera_longitude`. NEVER use 0.0 for map scenes.
+- `camera_zoom`: 4.0-7.0 for country/continent views, 8.0-11.0 for specific valleys or features.
+- `camera_pitch`: 30-60 degrees for 3D perspective. `camera_bearing`: -180 to 180 for rotation.
+- `highlight_region`: One of these neon-highlighted regions — 'Colombia', 'Brazil', 'Peru', 'Mexico', 'Argentina', 'Chile', 'Venezuela', 'Ecuador', 'USA', 'Bolivia', or 'none'.
+- `arrow_direction`: Describe an arrow showing force flow (e.g. 'from: Pacific Ocean, to: Andes Mountains' or 'none').
+- `floating_label`: Key data/stat in ALL CAPS (e.g. '8,000 MM RAIN', '52M PEOPLE', '6,700 KM LENGTH', '200 MPH WINDS' or 'none').
+- `sfx`: Sound effect for immersion — 'ocean_waves', 'heavy_wind', 'rain_and_thunder', 'digital_swoosh', 'jungle_ambient', 'volcanic_rumble' or 'none'.
+
+**NARRATION RULES:**
+- Total narration across ALL scenes: MAX 120 WORDS (55 seconds at normal pace).
+- Every sentence must deliver a punch of curiosity or data. No filler.
+- The final scene must be a CTA question that invites comments (e.g. "If nature can do this, what else is hiding beneath our feet?").
+
+**CRITICAL: ALL TEXT AND NARRATION MUST BE IN ENGLISH.**
 """
