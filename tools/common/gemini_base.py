@@ -42,10 +42,7 @@ class GeminiBase(BaseModelTool):
         self._project_id = project_id
         self._using_vertex = False
 
-        if self._api_key:
-            Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
-            self._client = Client(api_key=self._api_key, http_options=types.HttpOptions(timeout=300000))
-        elif self._project_id:
+        if self._project_id:
             Messenger.info(f"✨ Using Vertex AI (Enterprise) for Gemini in project: {self._project_id}...")
             self._client = Client(
                 vertexai=True,
@@ -54,6 +51,9 @@ class GeminiBase(BaseModelTool):
                 http_options=types.HttpOptions(timeout=300000)
             )
             self._using_vertex = True
+        elif self._api_key:
+            Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
+            self._client = Client(api_key=self._api_key, http_options=types.HttpOptions(timeout=300000))
         else:
             raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
 
@@ -62,8 +62,8 @@ class GeminiBase(BaseModelTool):
         stop=stop_after_attempt(8),
         retry=retry_if_exception_type((errors.ServerError, errors.ClientError, httpx.RequestError, httpx.RemoteProtocolError, httpx.HTTPError, httpx.TimeoutException, TimeoutError)),
         before_sleep=lambda retry_state: Messenger.info(
-            f"⏳ Gemini bloqueado (Saturación o Error de Red). Reintentando en 60s... "
-            f"(Intento {retry_state.attempt_number}/5)"
+            f"⏳ Gemini bloqueado (Saturación o Error de Red). Reintentando en 90s... "
+            f"(Intento {retry_state.attempt_number}/8)"
         ),
         reraise=True,
     )
