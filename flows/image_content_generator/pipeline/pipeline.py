@@ -394,7 +394,7 @@ class Pipeline(BaseModelTool):
         tasks: List[ImageTask] = []
         for scene in script.scenes:
             # Revertido a 1 imagen pura y estática por escena
-            action_prompt = scene.image_prompt
+            action_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", f"A cinematic scene about {idea_obj.title}")
             out_name = f"scene_{scene.scene_number:02d}.png"
             out_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, out_name)
             tasks.append(
@@ -556,11 +556,12 @@ class Pipeline(BaseModelTool):
                 ai_img_dest = remotion_public_images / ai_img_filename
                 
                 if not ai_img_dest.exists():
+                    img_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", "A cinematic geography scene")
                     try:
                         from tools.image_generation.pollinations import PollinationsImageGenerator
                         pollinations = PollinationsImageGenerator(aspect_ratio="9:16")
                         pollinations.generate_image(
-                            prompt=scene.image_prompt,
+                            prompt=img_prompt,
                             output_path=ai_img_dest
                         )
                     except Exception:
@@ -571,7 +572,7 @@ class Pipeline(BaseModelTool):
                                 reference_dir=Path(self.resource_base) / self.REFERENCES_DIR
                             )
                             gemini_img.generate_image(
-                                prompt=scene.image_prompt,
+                                prompt=img_prompt,
                                 output_path=ai_img_dest
                             )
                         except Exception as img_e:

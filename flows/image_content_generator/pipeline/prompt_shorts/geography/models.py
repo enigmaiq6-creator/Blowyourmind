@@ -21,7 +21,8 @@ class MapCamera(BaseModel):
 
 class GeographyScene(Scene):
     visual_type: str = Field(default="map_3d", description="Type of scene. Use 'map_3d' for 3D satellite map fly-overs (default), 'ai_image' for AI-generated conceptual illustrations, or 'stock_video' for stock footage.")
-    camera: MapCamera = Field(description="Satellite 3D map camera configuration for this scene.")
+    image_prompt: Optional[str] = Field(default=None, description="Physical description and style in ENGLISH for AI image generation. Only required when visual_type is 'ai_image' or as Ken Burns fallback.")
+    camera: Optional[MapCamera] = Field(default=None, description="Satellite 3D map camera configuration for this scene. Required for 'map_3d' scenes.")
     camera_latitude: float = Field(default=0.0, description="Flat latitude for direct Remotion props. Use camera.latitude instead.")
     camera_longitude: float = Field(default=0.0, description="Flat longitude for direct Remotion props. Use camera.longitude instead.")
     camera_zoom: float = Field(default=0.0, description="Flat zoom for direct Remotion props. Use camera.zoom instead.")
@@ -34,6 +35,7 @@ class GeographyScene(Scene):
 
 
 class GeographyHandler(CategoryHandler):
+    SCRIPT_PROMPT: ClassVar[str] = geo_constants.SCRIPT_PROMPT_GEOGRAPHY
     category: str = "geography"
     idea_variants: ClassVar[List[Type[BaseIdea]]] = [GeographyIdea]
     scenes: List[GeographyScene] = Field(description="List of scenes detailing the geography script")
