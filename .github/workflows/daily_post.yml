@@ -46,7 +46,7 @@ jobs:
       - name: Install Remotion Dependencies
         run: |
           cd flows/image_content_generator/remotion
-          npm ci
+          npm install
 
       - name: Install Linux dependencies
         run: |
