@@ -58,8 +58,8 @@ class GeminiBase(BaseModelTool):
             raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
 
     @retry(
-        wait=wait_fixed(60),
-        stop=stop_after_attempt(5),
+        wait=wait_fixed(90),
+        stop=stop_after_attempt(8),
         retry=retry_if_exception_type((errors.ServerError, errors.ClientError, httpx.RequestError, httpx.RemoteProtocolError, httpx.HTTPError, httpx.TimeoutException, TimeoutError)),
         before_sleep=lambda retry_state: Messenger.info(
             f"⏳ Gemini bloqueado (Saturación o Error de Red). Reintentando en 60s... "
