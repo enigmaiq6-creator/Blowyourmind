@@ -72,8 +72,11 @@ class GeminiBase(BaseModelTool):
         Executes a Gemini API call with a 60s retry on ServerError or ClientError (429).
         If API Key limits are exhausted and GCP Project ID is available, falls back to Vertex AI.
         """
+        # Resolve method from current client to avoid stale bindings after client switch
+        method_name = getattr(func, "__name__", "generate_content")
+        current_method = getattr(self._client.models, method_name, func)
         try:
-            return func(*args, **kwargs)
+            return current_method(*args, **kwargs)
         except errors.ClientError as e:
             error_str = str(e)
             if ("429" in error_str or "RESOURCE_EXHAUSTED" in error_str) and self._project_id and not self._using_vertex:
@@ -85,8 +88,9 @@ class GeminiBase(BaseModelTool):
                     location=self._location,
                     http_options=types.HttpOptions(timeout=300000)
                 )
-                # Re-invoke model call on the newly initialized Vertex AI client
-                return self._client.models.generate_content(*args, **kwargs)
+                # Call with the new Vertex AI client; if this ALSO fails, @retry will
+                # retry and re-resolve current_method from self._client (now Vertex AI)
+                return getattr(self._client.models, method_name)(*args, **kwargs)
             raise e
 
     def _extract_usage(self, response: Any, model_name: str) -> GeminiUsage:
