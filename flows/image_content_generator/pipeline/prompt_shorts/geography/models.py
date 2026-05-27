@@ -20,6 +20,7 @@ class MapCamera(BaseModel):
 
 
 class GeographyScene(Scene):
+    visual_type: str = Field(default="map_3d", description="Type of scene. Use 'map_3d' for 3D satellite map fly-overs (default), 'ai_image' for AI-generated conceptual illustrations, or 'stock_video' for stock footage.")
     camera: MapCamera = Field(description="Satellite 3D map camera configuration for this scene.")
     camera_latitude: float = Field(default=0.0, description="Flat latitude for direct Remotion props. Use camera.latitude instead.")
     camera_longitude: float = Field(default=0.0, description="Flat longitude for direct Remotion props. Use camera.longitude instead.")

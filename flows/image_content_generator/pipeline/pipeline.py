@@ -545,7 +545,8 @@ class Pipeline(BaseModelTool):
                         return True
                 except Exception as remotion_e:
                     Messenger.error(f"   ❌ Remotion MapRender failed: {remotion_e}")
-                    Messenger.warning("   ⚠️ Falling back to stock video search...")
+                    Messenger.warning("   ⚠️ Fallback: trying AI image render via Remotion...")
+                    visual_type = "ai_image"
 
             # ── AI Image scene (rendered via Remotion with 3D card effect) ──
             if is_geography_mode and visual_type == "ai_image":
