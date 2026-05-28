@@ -1,20 +1,19 @@
-import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { useCurrentFrame, useVideoConfig } from 'remotion';
 import React from 'react';
 
 interface Word {
   text: string;
-  start: number; // in ms
-  end: number; // in ms
+  start: number;
+  end: number;
 }
 
 export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ words, topHeadline }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Group words into phrases of 1-2 words for extremely fast pacing
   const phrases: { words: Word[], start: number, end: number }[] = [];
-  for (let i = 0; i < words.length; i += 2) {
-    const chunk = words.slice(i, i + 2);
+  for (let i = 0; i < words.length; i += 3) {
+    const chunk = words.slice(i, i + 3);
     phrases.push({
       words: chunk,
       start: chunk[0].start,
@@ -25,35 +24,35 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
   return (
     <div style={{ flex: 1, backgroundColor: 'transparent', position: 'relative', overflow: 'hidden' }}>
       
-      {/* Top Headline (Curiosity Gap) */}
       {topHeadline && (
         <div style={{
           position: 'absolute',
-          top: 150, // High at the top but below safe zones
+          top: 280,
           left: '50%',
           transform: 'translateX(-50%)',
+          backgroundColor: '#ff0000',
+          padding: '15px 40px',
+          borderRadius: '10px',
           zIndex: 100,
-          width: '90%',
+          boxShadow: '0 8px 20px rgba(0,0,0,0.6)',
+          border: '4px solid #FFFF00',
+          width: '80%',
           textAlign: 'center'
         }}>
           <h1 style={{
-            color: '#FFFFFF',
+            color: '#ffffff',
             fontFamily: 'Impact, sans-serif',
-            fontSize: 75,
-            fontWeight: '900',
+            fontSize: 70,
             textTransform: 'uppercase',
             margin: 0,
             lineHeight: 1.1,
-            // Thick black stroke using webkit text stroke + intense text shadow
-            WebkitTextStroke: '4px #000000',
-            textShadow: '8px 8px 10px rgba(0,0,0,0.8)'
+            textShadow: '3px 3px 0 #000'
           }}>
             {topHeadline}
           </h1>
         </div>
       )}
 
-      {/* Center Subtitles */}
       {phrases.map((phrase, pi) => {
         const startFrame = (phrase.start / 1000) * fps;
         const endFrame = (phrase.end / 1000) * fps;
@@ -68,9 +67,10 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
               display: 'flex', 
               flexDirection: 'column', 
               alignItems: 'center', 
-              justifyContent: 'center', // Centered precisely
+              justifyContent: 'flex-end',
+              paddingBottom: 350
           }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px 30px', maxWidth: '85%' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px 25px', maxWidth: '90%' }}>
               {phrase.words.map((word, wi) => {
                 const wStart = (word.start / 1000) * fps;
                 const wEnd = (word.end / 1000) * fps;
@@ -80,15 +80,14 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
                   <span
                     key={wi}
                     style={{
-                      fontSize: 85, // Large and heavy
+                      fontSize: 70,
                       fontFamily: 'Impact, sans-serif',
-                      fontWeight: '900',
-                      color: isCurrentWord ? '#FFD700' : '#FFFFFF',
+                      fontWeight: 'bold',
+                      color: isCurrentWord ? '#FFFF00' : '#FFFFFF',
                       textTransform: 'uppercase',
                       display: 'inline-block',
                       lineHeight: 1.0,
-                      WebkitTextStroke: '3px #000000', // Thick black stroke
-                      textShadow: '5px 5px 15px rgba(0,0,0,0.9)' // Extra depth
+                      textShadow: '4px 4px 5px rgba(0,0,0,1)'
                     }}
                   >
                     {word.text}
