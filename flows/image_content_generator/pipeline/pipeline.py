@@ -506,6 +506,35 @@ class Pipeline(BaseModelTool):
             query = getattr(scene, "pexels_query", "")
             is_geography_mode = getattr(idea_obj, "category", "") == "geography"
 
+            # Pre-extract pins, vignettes and camera_path for geography scenes
+            map_pins = getattr(scene, "map_pins", []) if is_geography_mode else []
+            vignettes = getattr(scene, "vignettes", []) if is_geography_mode else []
+            camera_path_raw = getattr(scene, "camera_path", []) if is_geography_mode else []
+            pins_data = []
+            for p in map_pins:
+                pins_data.append({
+                    "latitude": p.latitude if hasattr(p, "latitude") else 0,
+                    "longitude": p.longitude if hasattr(p, "longitude") else 0,
+                    "label": p.label if hasattr(p, "label") else "",
+                    "value": p.value if hasattr(p, "value") else "",
+                })
+            vignettes_data = []
+            for v in vignettes:
+                vignettes_data.append({
+                    "icon": v.icon if hasattr(v, "icon") else "📊",
+                    "title": v.title if hasattr(v, "title") else "",
+                    "value": v.value if hasattr(v, "value") else "",
+                })
+            camera_path_data = []
+            for wp in camera_path_raw:
+                camera_path_data.append({
+                    "latitude": wp.latitude if hasattr(wp, "latitude") else 0,
+                    "longitude": wp.longitude if hasattr(wp, "longitude") else 0,
+                    "zoom": wp.zoom if hasattr(wp, "zoom") else 5,
+                    "pitch": wp.pitch if hasattr(wp, "pitch") else 40,
+                    "bearing": wp.bearing if hasattr(wp, "bearing") else 0,
+                })
+
             # ── Remotion-enhanced rendering (geography mode) ──
             if is_geography_mode and visual_type == "map_3d":
                 Messenger.info(f"   🗺️ Scene {scene.scene_number}: Rendering 3D satellite map via Remotion...")
@@ -530,6 +559,9 @@ class Pipeline(BaseModelTool):
                     "highlightRegion": highlight_region,
                     "arrowDirection": arrow_direction,
                     "floatingLabel": floating_label,
+                    "pins": pins_data,
+                    "vignettes": vignettes_data,
+                    "cameraPath": camera_path_data,
                     "audioDurationMs": 10000,
                 }
                 
@@ -596,6 +628,8 @@ class Pipeline(BaseModelTool):
                     "highlightRegion": "none",
                     "arrowDirection": "none",
                     "floatingLabel": "none",
+                    "pins": [],
+                    "vignettes": vignettes_data if vignettes_data else [],
                     "audioDurationMs": 8000,
                 }
                 
@@ -715,7 +749,7 @@ class Pipeline(BaseModelTool):
                 if isinstance(self.audio_gen, VertexAIAudioGenerator):
                     self.audio_gen.text_to_speech(chunk_text, chunk_audio_path)
                 else:
-                    formatted_audio = self.prompt_manager.get_audio_prompt(chunk_text)
+                    formatted_audio = self.prompt_manager.get_audio_prompt(chunk_text, mode=self.mode)
                     self.audio_gen.text_to_speech(formatted_audio, chunk_audio_path)
                 
                 self.cost_tracker.add_audio_cost(len(chunk_text))

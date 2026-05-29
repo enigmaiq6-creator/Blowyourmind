@@ -22,6 +22,9 @@ models
 # jimeng proxy (cloned repo)
 jimeng-proxy/
 
+# build artifacts
+**/build/
+
 # future versions
 **/video_content_generator
 gcp_credentials.json

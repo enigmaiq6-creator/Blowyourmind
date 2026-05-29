@@ -140,29 +140,49 @@ class DailyAutomator:
     def run_daily_mix(self):
         """
         Main entry point for GitHub Actions.
-        Determines type based on POST_TYPE env var.
-        Supports 'auto' for high-probability video vs image choice (75% video, 25% image).
+        Cycles through content types and modes for variety.
+        - 70% video (cycling through standard/geography), 30% image
+        - Tracks last mode via .last_mode file
         """
         post_type = os.getenv("POST_TYPE", "auto").lower()
         
-        # Implement 75% video / 25% image probability if set to auto
-        if post_type == "auto":
-            post_type = random.choices(["video", "image"], weights=[90, 10], k=1)[0]
-            Messenger.info(f"🎲 Randomly selected content type: {post_type.upper()} (90% video / 10% image probability)")
+        # Track last mode for cycling
+        mode_file = Path("flows/image_content_generator/out_short/.last_mode")
+        last_mode = ""
+        if mode_file.exists():
+            last_mode = mode_file.read_text().strip()
+        
+        available_modes = ["standard", "geography"]
+        if last_mode in available_modes:
+            # Cycle to the next mode
+            idx = (available_modes.index(last_mode) + 1) % len(available_modes)
+            mode = available_modes[idx]
         else:
-            Messenger.info(f"🚀 Starting Automated Post (Forced Type: {post_type.upper()})...")
+            mode = random.choice(available_modes)
+        
+        # Implement probability if set to auto
+        if post_type == "auto":
+            post_type = random.choices(["video", "image"], weights=[70, 30], k=1)[0]
+            Messenger.info(f"🎲 Randomly selected: {post_type.upper()} | Mode: {mode.upper()}")
+        else:
+            Messenger.info(f"🚀 Starting Automated Post (Forced: {post_type.upper()}, Mode: {mode.upper()})...")
         
         self.cleanup_stuck_ideas()
 
         if post_type == "video":
-            mode = os.getenv("MODE", "standard")
-            Messenger.info(f"🎬 GENERATING NEW CURIOSITY REEL (Full Pipeline | Mode: {mode.upper()})...")
+            env_mode = os.getenv("MODE", "").lower()
+            if env_mode and env_mode in available_modes:
+                mode = env_mode  # Override if explicitly set via env
+            Messenger.info(f"🎬 GENERATING NEW GEOGRAPHY REEL (Full Pipeline | Mode: {mode.upper()})...")
             avoid_msg = self.get_recent_topics()
             try:
                 cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", mode]
                 subprocess.run(cmd, check=True)
-                Messenger.success(f"✅ Curiosity Reel ({mode.upper()}) completed!")
-                self.log_post("video", f"Curiosity Reel ({mode})")
+                Messenger.success(f"✅ Geography Reel ({mode.upper()}) completed!")
+                self.log_post("video", f"Geography Reel ({mode})")
+                # Save current mode for cycling
+                mode_file.parent.mkdir(parents=True, exist_ok=True)
+                mode_file.write_text(mode)
                 self.sync_to_github()
             except Exception as e:
                 Messenger.error(f"Error during video task: {e}")
