@@ -44,6 +44,14 @@ interface CameraWaypointData {
   bearing: number;
 }
 
+interface NarrationCue {
+  word: string;
+  startMs: number;
+  endMs: number;
+  eventType?: 'pin_drop' | 'label_flash' | 'vignette_slide' | 'arrow_animate' | 'camera_zoom';
+  target?: string;
+}
+
 interface MapProps {
   visualType?: string;
   narration?: string;
@@ -60,6 +68,8 @@ interface MapProps {
   pins?: MapPinData[];
   vignettes?: MapVignetteData[];
   cameraPath?: CameraWaypointData[];
+  narrationCues?: NarrationCue[];
+  sceneStartMs?: number;
 }
 
 function latRad(lat: number) {
@@ -212,6 +222,8 @@ export const MapRender: React.FC<MapProps> = ({
   pins = [],
   vignettes = [],
   cameraPath = [],
+  narrationCues = [],
+  sceneStartMs = 0,
 }) => {
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
@@ -280,7 +292,38 @@ export const MapRender: React.FC<MapProps> = ({
   const camPitch = interpWaypoint('pitch', pitch);
   const camBearing = interpWaypoint('bearing', bearing);
 
-  const animatedZoom    = hasPath ? camZoom : interpolate(progress, [0, 0.15, 0.85, 1], [zoom, zoom + 0.1, zoom + 0.6, zoom + 0.4], { easing: easeFn, extrapolateRight: 'clamp' });
+  const currentMs = sceneStartMs + (frame / fps) * 1000;
+
+  const activeCue = useMemo(() => {
+    if (!narrationCues.length) return null;
+    const now = currentMs;
+    for (const cue of narrationCues) {
+      if (now >= cue.startMs && now <= cue.endMs) {
+        return cue;
+      }
+    }
+    return null;
+  }, [currentMs, narrationCues]);
+
+  const cueFlashIntensity = activeCue && (activeCue.eventType === 'label_flash' || activeCue.eventType === 'pin_drop')
+    ? interpolate(
+        Math.min((currentMs - activeCue.startMs) / 200, 1),
+        [0, 0.5, 1],
+        [0, 1, 0.6],
+        { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      )
+    : 1;
+
+  const cueZoomBoost = activeCue?.eventType === 'camera_zoom'
+    ? interpolate(
+        Math.min((currentMs - activeCue.startMs) / 300, 1),
+        [0, 0.3, 1],
+        [0, 2.5, 0],
+        { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      )
+    : 0;
+
+  const animatedZoom    = (hasPath ? camZoom : interpolate(progress, [0, 0.15, 0.85, 1], [zoom, zoom + 0.1, zoom + 0.6, zoom + 0.4], { easing: easeFn, extrapolateRight: 'clamp' })) + cueZoomBoost;
   const animatedBearing = hasPath ? camBearing : interpolate(progress, [0, 0.5, 1], [bearing, bearing + 4, bearing + 6], { easing: easeFn, extrapolateRight: 'clamp' });
   const animatedPitch   = hasPath ? camPitch : interpolate(progress, [0, 0.3, 1], [pitch, pitch - 3, Math.max(pitch - 6, 0)], { easing: easeFn, extrapolateRight: 'clamp' });
 
@@ -622,9 +665,10 @@ export const MapRender: React.FC<MapProps> = ({
             </span>
             <span style={{
               color: '#fff', fontSize: 52, fontWeight: 900,
-              textShadow: `0 0 20px ${colors.stroke}, 0 0 60px ${colors.stroke}44`,
+              textShadow: `0 0 ${20 * cueFlashIntensity}px ${colors.stroke}, 0 0 ${60 * cueFlashIntensity}px ${colors.stroke}44`,
               lineHeight: 1.1, letterSpacing: '0.02em',
               fontFamily: '"Arial Black", Inter, sans-serif',
+              opacity: 0.6 + 0.4 * cueFlashIntensity,
             }}>
               {floatingLabel}
             </span>

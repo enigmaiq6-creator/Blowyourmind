@@ -80,6 +80,61 @@ class FFmpegTool(BaseModelTool):
             ]
             self._run(cmd)
 
+    def concat_with_crossfade(
+        self,
+        video_list: List[Path],
+        out_path: Path,
+        transition_duration: float = 0.5,
+    ) -> None:
+        """
+        Concatenates videos with crossfade transitions between scenes.
+        Uses FFmpeg xfade for video. Audio is copied from first input
+        since master audio is overlaid later in the pipeline.
+        """
+        if len(video_list) == 0:
+            raise RuntimeError("No videos to concatenate.")
+        if len(video_list) == 1:
+            self._run(["ffmpeg", "-y", "-i", str(video_list[0]), "-c", "copy", str(out_path)])
+            return
+
+        inputs = []
+        durations = []
+
+        for v in video_list:
+            dur = self.get_video_duration(v)
+            durations.append(dur)
+            inputs.extend(["-i", str(v)])
+
+        total_duration = durations[0]
+
+        filter_parts = []
+        for i in range(1, len(video_list)):
+            offset = total_duration - transition_duration
+            if i == 1:
+                filter_parts.append(
+                    f"[0:v][1:v]xfade=transition=fade:duration={transition_duration}:offset={offset}[v{i}]"
+                )
+            else:
+                filter_parts.append(
+                    f"[v{i-1}][{i}:v]xfade=transition=fade:duration={transition_duration}:offset={offset}[v{i}]"
+                )
+            total_duration = offset + durations[i]
+
+        filter_complex = ";".join(filter_parts)
+        last_idx = len(video_list) - 1
+
+        cmd = [
+            "ffmpeg", "-y",
+            *inputs,
+            "-filter_complex", filter_complex,
+            "-map", f"[v{last_idx}]",
+            "-an",
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            str(out_path)
+        ]
+        self._run(cmd)
+
     def get_audio_duration(self, audio_path: Path) -> float:
         """
         Retrieves the duration of an audio file using ffprobe.

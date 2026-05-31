@@ -43,7 +43,7 @@ class CameraWaypoint(BaseModel):
 
 
 class GeographyScene(Scene):
-    visual_type: str = Field(default="map_3d", description="Type of scene. Use 'map_3d' for 3D satellite map fly-overs (default), 'ai_image' for AI-generated conceptual illustrations, or 'stock_video' for stock footage.")
+    visual_type: str = Field(default="map_3d", description="Type of scene. Use 'map_3d' for 3D satellite map fly-overs (default), 'ai_image' for AI-generated conceptual illustrations, 'data_viz' for animated data charts/numbers, 'split_map' for side-by-side comparison maps, or 'stock_video' for stock footage.")
     image_prompt: Optional[str] = Field(default=None, description="Physical description and style in ENGLISH for AI image generation. Only required when visual_type is 'ai_image' or as Ken Burns fallback.")
     camera: Optional[MapCamera] = Field(default=None, description="Satellite 3D map camera configuration for this scene. Required for 'map_3d' scenes.")
     camera_latitude: float = Field(default=0.0, description="Flat latitude for direct Remotion props. Use camera.latitude instead.")

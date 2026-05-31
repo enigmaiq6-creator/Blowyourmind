@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class State(str, Enum):
@@ -31,6 +31,14 @@ class SceneAlignment(BaseModel):
 
 class AudioAlignment(BaseModel):
     alignments: List[SceneAlignment]
+
+
+class NarrationCue(BaseModel):
+    word: str = Field(description="The word that triggers the visual event")
+    start_ms: float = Field(description="Start timestamp in ms")
+    end_ms: float = Field(description="End timestamp in ms")
+    event_type: str = Field(default="pin_drop", description="Type of visual event: pin_drop, label_flash, vignette_slide, arrow_animate, camera_zoom")
+    target: str = Field(default="", description="Target visual element name (e.g., pin label, vignette title)")
 
 
 class IdeaRaw(BaseModel):

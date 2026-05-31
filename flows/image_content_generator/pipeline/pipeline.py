@@ -459,20 +459,91 @@ class Pipeline(BaseModelTool):
         self.store.save(idea_obj)
         Messenger.success(f"Step 2 ready: {State.IMAGES_GENERATED} finalized.\n")
 
+    def _generate_narration_cues(self, idea_id: int, scene) -> list:
+        """
+        Generates narration cues by matching scene visual elements (floating_label,
+        map_pins, vignettes) against Whisper word-level timestamps.
+        Returns a list of NarrationCue dicts for Remotion.
+        """
+        from flows.image_content_generator.pipeline.schemas import NarrationCue
+        import json
+
+        cues = []
+        scene_num = scene.scene_number
+
+        # Load Whisper transcription for this scene's audio
+        audio_seg = self.get_idea_asset_path(
+            idea_id, self.AUDIOS_DIR,
+            self.SCENE_AUDIO_PATTERN.format(scene_num)
+        )
+        whisper_json = audio_seg.with_name(audio_seg.name + ".json")
+        if not whisper_json.exists():
+            return cues
+
+        try:
+            with open(whisper_json, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            return cues
+
+        word_timestamps = []
+        for seg in data.get("transcription", []):
+            for token in seg.get("tokens", []):
+                word_timestamps.append({
+                    "word": token.get("text", "").strip().lower(),
+                    "start_ms": token.get("offsets", {}).get("from", 0),
+                    "end_ms": token.get("offsets", {}).get("to", 0),
+                })
+
+        # Match floating_label keywords to words in narration
+        floating_label = getattr(scene, "floating_label", "") or ""
+        if floating_label and floating_label != "none":
+            label_words = set(w.lower() for w in floating_label.replace(",", "").split())
+            for wt in word_timestamps:
+                if wt["word"] in label_words:
+                    cues.append(NarrationCue(
+                        word=wt["word"],
+                        start_ms=wt["start_ms"],
+                        end_ms=wt["end_ms"],
+                        event_type="label_flash",
+                        target=floating_label,
+                    ).model_dump())
+                    break
+
+        # Match pin labels
+        map_pins = getattr(scene, "map_pins", []) or []
+        for pin in map_pins:
+            pin_label = getattr(pin, "label", "") or ""
+            if pin_label:
+                pin_words = pin_label.lower().split()
+                for wt in word_timestamps:
+                    if any(pw == wt["word"] for pw in pin_words):
+                        cues.append(NarrationCue(
+                            word=wt["word"],
+                            start_ms=wt["start_ms"],
+                            end_ms=wt["end_ms"],
+                            event_type="pin_drop",
+                            target=pin_label,
+                        ).model_dump())
+                        break
+
+        return cues
+
     def step2b_generate_video_clips(self):
         """
         Step 2b: Render video clips using enhanced Remotion MapRender (3D satellite maps)
         with GeoJSON country borders, neon glow, AI image scenes, and tile fallback.
         Falls back to Pexels/Pixabay stock video or Ken Burns image animation.
+        Runs AFTER audio generation so we know exact scene durations.
         """
-        idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.AUDIO_GENERATED)
         if not idea_obj:
-            Messenger.warning("Step 2b skipped: No idea in IMAGES_GENERATED state.")
+            Messenger.warning("Step 2b skipped: No idea in AUDIO_GENERATED state.")
             return
 
         Messenger.info(f"\n--- Step 2b started: Rendering clips for '{idea_obj.title}' ---")
         script = self.load_script(idea_obj)
-        
+
         from tools.video_generation.pexels import PexelsTool
         from tools.video_generation.pixabay import PixabayTool
         pexels_tool = PexelsTool()
@@ -492,6 +563,18 @@ class Pipeline(BaseModelTool):
                 return getattr(camera, attr, default)
             return default
 
+        def get_scene_audio_duration(scene):
+            """Get the actual audio duration for a scene in milliseconds."""
+            audio_seg = self.get_idea_asset_path(
+                idea_obj.id, self.AUDIOS_DIR,
+                self.SCENE_AUDIO_PATTERN.format(scene.scene_number)
+            )
+            if audio_seg.exists():
+                dur = self.ffmpeg.get_audio_duration(audio_seg)
+                if dur > 0:
+                    return int(dur * 1000)
+            return 10000  # fallback default
+
         def process_scene(scene):
             clip_filename = self.SCENE_VIDEO_PATTERN.format(scene.scene_number)
             clip_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, clip_filename)
@@ -505,6 +588,9 @@ class Pipeline(BaseModelTool):
             visual_type = getattr(scene, "visual_type", "stock_video")
             query = getattr(scene, "pexels_query", "")
             is_geography_mode = getattr(idea_obj, "category", "") == "geography"
+
+            # Get REAL audio duration for this scene
+            audio_duration_ms = get_scene_audio_duration(scene)
 
             # Pre-extract pins, vignettes and camera_path for geography scenes
             map_pins = getattr(scene, "map_pins", []) if is_geography_mode else []
@@ -535,6 +621,111 @@ class Pipeline(BaseModelTool):
                     "bearing": wp.bearing if hasattr(wp, "bearing") else 0,
                 })
 
+            # ── Data Visualization scene ──
+            if is_geography_mode and visual_type in ("data_viz", "data_visualization"):
+                Messenger.info(f"   📊 Scene {scene.scene_number}: Rendering data visualization via Remotion...")
+                floating_label = getattr(scene, "floating_label", "none")
+                highlight_region = getattr(scene, "highlight_region", "none")
+                map_pins = getattr(scene, "map_pins", [])
+                vignettes = getattr(scene, "vignettes", [])
+
+                data_points = []
+                for pin in map_pins:
+                    data_points.append({
+                        "label": getattr(pin, "label", ""),
+                        "value": float(getattr(pin, "value", "0").replace(",", "").replace("%", "")) / 100 if getattr(pin, "value", "") else 50,
+                    })
+                if not data_points:
+                    for v in vignettes:
+                        val_str = getattr(v, "value", "0").replace(",", "").replace("%", "")
+                        try:
+                            val = float(val_str) / 100
+                        except ValueError:
+                            val = 50
+                        data_points.append({
+                            "label": getattr(v, "title", ""),
+                            "value": val,
+                        })
+
+                props = {
+                    "chartType": "bar",
+                    "title": highlight_region if highlight_region != "none" else "",
+                    "mainValue": floating_label if floating_label != "none" else "",
+                    "mainLabel": "",
+                    "dataPoints": data_points or [
+                        {"label": "DATA A", "value": 75},
+                        {"label": "DATA B", "value": 50},
+                        {"label": "DATA C", "value": 90},
+                    ],
+                    "subtitle": "",
+                    "audioDurationMs": audio_duration_ms,
+                }
+                try:
+                    remotion_root = Path(self.REMOTION_DIR)
+                    self.remotion.render_composition(
+                        remotion_path=remotion_root,
+                        output_path=clip_path,
+                        composition_id="DataVisualization",
+                        props=props
+                    )
+                    if clip_path.exists() and clip_path.stat().st_size > 1024:
+                        return True
+                except Exception as e:
+                    Messenger.error(f"   ❌ DataViz render failed: {e}")
+                    Messenger.warning("   ⚠️ Falling back to map_3d...")
+
+            # ── Split Map scene ──
+            if is_geography_mode and visual_type == "split_map":
+                Messenger.info(f"   🗺️ Scene {scene.scene_number}: Rendering split map via Remotion...")
+                camera_path_raw = getattr(scene, "camera_path", [])
+                pins_data = []
+                for p in getattr(scene, "map_pins", []):
+                    pins_data.append({
+                        "latitude": p.latitude if hasattr(p, "latitude") else 0,
+                        "longitude": p.longitude if hasattr(p, "longitude") else 0,
+                        "label": p.label if hasattr(p, "label") else "",
+                        "value": p.value if hasattr(p, "value") else "",
+                    })
+
+                left_cam = {
+                    "latitude": _get_camera_attr(scene, "latitude", 4.570868),
+                    "longitude": _get_camera_attr(scene, "longitude", -74.297333),
+                    "zoom": _get_camera_attr(scene, "zoom", 5.2),
+                    "label": getattr(scene, "highlight_region", "LOCATION A"),
+                }
+                right_cam = {
+                    "latitude": _get_camera_attr(scene, "latitude", 40.7128) + 5,
+                    "longitude": _get_camera_attr(scene, "longitude", -74.006) + 10,
+                    "zoom": _get_camera_attr(scene, "zoom", 5.2),
+                    "label": getattr(scene, "floating_label", "LOCATION B"),
+                }
+                if pins_data and len(pins_data) >= 2:
+                    right_cam["latitude"] = pins_data[1]["latitude"]
+                    right_cam["longitude"] = pins_data[1]["longitude"]
+                    right_cam["label"] = pins_data[1]["label"]
+
+                props = {
+                    "leftCamera": left_cam,
+                    "rightCamera": right_cam,
+                    "leftTitle": "THEN",
+                    "rightTitle": "NOW",
+                    "comparisonLabel": getattr(scene, "floating_label", ""),
+                    "audioDurationMs": audio_duration_ms,
+                }
+                try:
+                    remotion_root = Path(self.REMOTION_DIR)
+                    self.remotion.render_composition(
+                        remotion_path=remotion_root,
+                        output_path=clip_path,
+                        composition_id="SplitMap",
+                        props=props
+                    )
+                    if clip_path.exists() and clip_path.stat().st_size > 1024:
+                        return True
+                except Exception as e:
+                    Messenger.error(f"   ❌ SplitMap render failed: {e}")
+                    Messenger.warning("   ⚠️ Falling back to map_3d...")
+
             # ── Remotion-enhanced rendering (geography mode) ──
             if is_geography_mode and visual_type == "map_3d":
                 Messenger.info(f"   🗺️ Scene {scene.scene_number}: Rendering 3D satellite map via Remotion...")
@@ -549,6 +740,8 @@ class Pipeline(BaseModelTool):
                 arrow_direction = getattr(scene, "arrow_direction", "none")
                 floating_label = getattr(scene, "floating_label", "none")
                 
+                narration_cues = self._generate_narration_cues(idea_obj.id, scene)
+
                 props = {
                     "visualType": "map_3d",
                     "latitude": lat,
@@ -562,7 +755,8 @@ class Pipeline(BaseModelTool):
                     "pins": pins_data,
                     "vignettes": vignettes_data,
                     "cameraPath": camera_path_data,
-                    "audioDurationMs": 10000,
+                    "audioDurationMs": audio_duration_ms,
+                    "narrationCues": narration_cues,
                 }
                 
                 try:
@@ -617,6 +811,8 @@ class Pipeline(BaseModelTool):
                     import shutil
                     shutil.copy2(img_path, ai_img_dest)
                 
+                narration_cues = self._generate_narration_cues(idea_obj.id, scene)
+
                 props = {
                     "visualType": "ai_image",
                     "imageFile": ai_img_filename,
@@ -630,7 +826,8 @@ class Pipeline(BaseModelTool):
                     "floatingLabel": "none",
                     "pins": [],
                     "vignettes": vignettes_data if vignettes_data else [],
-                    "audioDurationMs": 8000,
+                    "audioDurationMs": audio_duration_ms,
+                    "narrationCues": narration_cues,
                 }
                 
                 try:
@@ -667,12 +864,14 @@ class Pipeline(BaseModelTool):
                 return False
                 
             Messenger.info(f"   🎬 Generating Ken Burns fallback for Scene {scene.scene_number}...")
+            dur_secs = audio_duration_ms / 1000.0
+            zoompan_frames = int(audio_duration_ms / 1000 * 25)
             try:
                 subprocess.run(
                     [
                         "ffmpeg", "-loop", "1", "-i", str(img_path),
-                        "-vf", "zoompan=z='min(zoom+0.0005,1.1)':d=150:s=1080x1920",
-                        "-c:v", "libx264", "-t", "6", "-pix_fmt", "yuv420p", "-y", str(clip_path)
+                        "-vf", f"zoompan=z='min(zoom+0.0005,1.1)':d={zoompan_frames}:s=1080x1920",
+                        "-c:v", "libx264", "-t", str(dur_secs), "-pix_fmt", "yuv420p", "-y", str(clip_path)
                     ],
                     check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
@@ -692,14 +891,86 @@ class Pipeline(BaseModelTool):
         self.store.save(idea_obj)
         Messenger.success(f"Step 2b ready: {State.CLIPS_GENERATED} finalized.\n")
 
+    def _resegment_by_audio_pauses(self, idea_id: int, script):
+        """
+        Re-segments scenes based on natural pauses detected in the master audio.
+        Uses Whisper to find gaps >= 0.6s and splits scenes at those boundaries.
+        """
+        import json, shutil
+
+        master_audio = self.get_idea_asset_path(idea_id, self.EDITIONS_DIR, "master_narration.wav")
+        if not master_audio.exists():
+            Messenger.warning("No master audio found for pause-based segmentation.")
+            return script
+
+        try:
+            segments = self.whisper.get_transcription_segments(master_audio)
+        except Exception as e:
+            Messenger.warning(f"Whisper failed for pause detection: {e}")
+            return script
+
+        if len(segments) <= 1:
+            return script
+
+        # Detect gaps between segments
+        gap_threshold = 0.6
+        boundaries = [0]
+        for i in range(1, len(segments)):
+            gap = segments[i].start - segments[i-1].end
+            if gap >= gap_threshold:
+                boundaries.append(i)
+
+        if len(boundaries) <= 1:
+            return script
+
+        # Group segments into scenes based on boundaries
+        new_scenes = []
+        for b_idx in range(len(boundaries)):
+            start = boundaries[b_idx]
+            end = boundaries[b_idx + 1] if b_idx + 1 < len(boundaries) else len(segments)
+            chunk_segs = segments[start:end]
+
+            combined_text = " ".join(s.text.strip() for s in chunk_segs)
+            if not combined_text:
+                continue
+
+            # Find the closest original scene to inherit visual type/props
+            orig_scene_idx = min(b_idx, len(script.scenes) - 1)
+            orig_scene = script.scenes[orig_scene_idx]
+
+            new_scene = orig_scene.__class__(
+                scene_number=b_idx + 1,
+                visual_type=getattr(orig_scene, "visual_type", "map_3d"),
+                narration=combined_text,
+                image_prompt=getattr(orig_scene, "image_prompt", None),
+                pexels_query=getattr(orig_scene, "pexels_query", ""),
+                camera=getattr(orig_scene, "camera", None),
+                camera_path=getattr(orig_scene, "camera_path", []),
+                highlight_region=getattr(orig_scene, "highlight_region", "none"),
+                arrow_direction=getattr(orig_scene, "arrow_direction", "none"),
+                floating_label=getattr(orig_scene, "floating_label", "none"),
+                map_pins=getattr(orig_scene, "map_pins", []),
+                vignettes=getattr(orig_scene, "vignettes", []),
+                sfx=getattr(orig_scene, "sfx", "none"),
+            )
+            new_scenes.append(new_scene)
+
+        if len(new_scenes) >= 2:
+            Messenger.info(f"   Audio-driven resegmentation: {len(script.scenes)} -> {len(new_scenes)} scenes")
+            script.scenes = new_scenes
+            self.save_json(idea_id, self.SCRIPT_JSON, script)
+
+        return script
+
     @retry(max_attempts=3)
     def step3_generate_audios(self):
         """
         Generate Audio: Batched AI-Guided Batching (Whisper + Gemini).
         Processes scenes in groups of 10 for maximum stability and alignment precision.
+        Runs BEFORE step2b so video clips can use real audio duration.
+        After generating audios, optionally re-segments scenes based on natural pauses.
         """
-        # Ambos modos (Stickman y Curiosidades) pasan ahora por step2b
-        target_state = State.CLIPS_GENERATED
+        target_state = State.IMAGES_GENERATED  # Audio now comes before video clips
         idea_obj = self.store.get_first_by_state(target_state)
         if not idea_obj:
             Messenger.error(f"No ideas ready for audio generation (target: {target_state}).")
@@ -828,14 +1099,22 @@ class Pipeline(BaseModelTool):
         self.store.save(idea_obj)
         Messenger.success(f"Step 3 ready: {State.AUDIO_GENERATED} finalized.\n")
 
+        # Re-segment scenes based on natural audio pauses (for better visual sync)
+        try:
+            script_data = self.load_script(idea_obj)
+            self._resegment_by_audio_pauses(idea_obj.id, script_data)
+        except Exception as e:
+            Messenger.warning(f"Audio resegmentation skipped: {e}")
+
     def step4_generate_videos(self):
         """
         Video Generation: Creates clips for each scene and merges them.
+        Now with crossfade transitions between scenes.
         """
         # 1. Retrieves state
-        idea_obj = self.store.get_first_by_state(State.AUDIO_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.CLIPS_GENERATED)
         if not idea_obj:
-            Messenger.error("No audio ready for video generation.")
+            Messenger.error("No clips ready for video generation.")
             return
 
         Messenger.info("\n--- Generating videos for the script ---")
@@ -946,14 +1225,35 @@ class Pipeline(BaseModelTool):
             Messenger.error("No scene videos generated.")
             return
 
-        # 5. Final video concatenation + Master Audio re-sync
+        # 5. Final video concatenation with crossfade transitions + Master Audio re-sync
         raw_video = self.get_idea_asset_path(idea_obj.id, self.EDITIONS_DIR, self.RAW_VIDEO)
         temp_video = self.get_idea_asset_path(idea_obj.id, self.VIDEOS_DIR, "temp_concat.mp4")
-        self.ffmpeg.concat_videos(scene_videos, temp_video)
+        if len(scene_videos) > 1:
+            self.ffmpeg.concat_with_crossfade(scene_videos, temp_video, transition_duration=0.4)
+        else:
+            self.ffmpeg.concat_videos(scene_videos, temp_video)
         
         # Merge concatenated video with the Master Audio
+        # Pad the video if shorter than audio so no sentence gets cut off
+        video_dur = self.ffmpeg.get_video_duration(temp_video)
+        audio_dur = self.ffmpeg.get_audio_duration(master_audio)
+        if video_dur > 0 and audio_dur > video_dur:
+            pad_dur = audio_dur - video_dur
+            Messenger.info(f"   ⏱️  Padding video by {pad_dur:.2f}s to match audio duration (crossfade compensation)...")
+            padded_video = self.get_idea_asset_path(idea_obj.id, self.VIDEOS_DIR, "temp_padded.mp4")
+            cmd_pad = [
+                "ffmpeg", "-y", "-i", str(temp_video),
+                "-vf", f"tpad=stop_mode=clone:stop_duration={pad_dur}",
+                "-c:a", "copy", "-shortest",
+                str(padded_video)
+            ]
+            subprocess.run(cmd_pad, check=True)
+            merge_input = padded_video
+        else:
+            merge_input = temp_video
+
         cmd_merge = [
-            "ffmpeg", "-y", "-i", str(temp_video), "-i", str(master_audio),
+            "ffmpeg", "-y", "-i", str(merge_input), "-i", str(master_audio),
             "-c:v", "copy", "-c:a", "aac", "-map", "0:v:0", "-map", "1:a:0", "-shortest",
             str(raw_video)
         ]

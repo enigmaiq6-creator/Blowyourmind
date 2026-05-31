@@ -67,7 +67,7 @@ def main():
         pipeline.step1_generate_story(extra_avoid=args.avoid)
         # We run PRO subtitles instead of standard if step is ALL
         steps_to_run = [
-            PipelineStep.STEP2, PipelineStep.STEP2B, PipelineStep.STEP3, PipelineStep.STEP4,
+            PipelineStep.STEP2, PipelineStep.STEP3, PipelineStep.STEP2B, PipelineStep.STEP4,
             PipelineStep.STEP5_PRO, PipelineStep.STEP6, PipelineStep.STEP7, PipelineStep.STEP8
         ]
         for step in steps_to_run:

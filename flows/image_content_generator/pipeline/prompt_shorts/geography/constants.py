@@ -51,6 +51,10 @@ The video must be a Geography + Mind-Blowing Facts hybrid:
 
 **TECHNICAL RULES FOR REMOTION (STRICT):**
 - Each scene must use `visual_type = "map_3d"` for geographic fly-overs. Use `"ai_image"` ONLY for conceptual illustrations (historical, cross-sections, microscopic, or impossible-to-map visuals).
+- **NEW VISUAL TYPES AVAILABLE:**
+  - `"data_viz"`: Animated data visualization (bar charts, number counters, globe stats). Use this when presenting comparisons or key statistics. MUST include `floating_label` with the main data value.
+  - `"split_map"`: Side-by-side map comparison (e.g., then vs now, two different locations). Use this to show contrasts or changes over time. The `highlight_region` field will be used as the comparison label.
+  - `"timeline"`: Not yet available — use `"map_3d"` or `"data_viz"` instead.
 - Provide REAL GPS coordinates using `camera_latitude` and `camera_longitude`. NEVER use 0.0 for map scenes.
 - `camera_zoom`: 4.0-7.0 for country/continent views, 8.0-11.0 for specific valleys or features.
 - `camera_pitch`: 30-60 degrees for 3D perspective. `camera_bearing`: -180 to 180 for rotation.

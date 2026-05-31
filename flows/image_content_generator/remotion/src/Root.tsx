@@ -1,6 +1,9 @@
 import { Composition } from 'remotion';
 import { Subtitles } from './Subtitles';
 import { MapRender } from './MapRender';
+import { MultiSceneVideo } from './MultiSceneVideo';
+import { DataVisualization } from './DataVisualization';
+import { SplitMap } from './SplitMap';
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -18,6 +21,12 @@ export const RemotionRoot: React.FC = () => {
             { text: "Mind", start: 1000, end: 2000 },
             { text: "Blowing", start: 2000, end: 3000 }
           ]
+        }}
+        calculateMetadata={({ props }) => {
+          const words = (props as any).words || [];
+          const lastMs = words.length > 0 ? words[words.length - 1].end : 3000;
+          const frames = Math.ceil((lastMs / 1000) * 25) + 25;
+          return { durationInFrames: Math.max(frames, 30) };
         }}
       />
 
@@ -87,6 +96,95 @@ export const RemotionRoot: React.FC = () => {
           const audioMs = (props as any).audioDurationMs || 15000;
           const frames = Math.ceil((audioMs / 1000) * 30);
           return { durationInFrames: Math.max(frames, 30) };
+        }}
+      />
+
+      <Composition
+        id="MultiSceneVideo"
+        component={MultiSceneVideo}
+        durationInFrames={1500}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          scenes: [
+            {
+              audioDurationMs: 8000,
+              latitude: 4.570868,
+              longitude: -74.297333,
+              zoom: 5.2,
+              pitch: 45,
+              bearing: -10,
+              highlightRegion: 'Colombia',
+              floatingLabel: '52.32M',
+            },
+            {
+              audioDurationMs: 8000,
+              latitude: 40.7128,
+              longitude: -74.006,
+              zoom: 11.5,
+              pitch: 60,
+              bearing: -15,
+              highlightRegion: 'USA',
+              floatingLabel: '8.4M PEOPLE',
+            },
+          ],
+          transitionFrames: 12,
+        }}
+        calculateMetadata={({ props }) => {
+          const p = props as any;
+          const scenes = p.scenes || [];
+          const totalFrames = scenes.reduce(
+            (sum: number, s: any) => sum + Math.ceil(((s.audioDurationMs || 8000) / 1000) * 30),
+            0
+          );
+          return { durationInFrames: Math.max(totalFrames, 30) };
+        }}
+      />
+
+      <Composition
+        id="DataVisualization"
+        component={DataVisualization}
+        durationInFrames={180}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          chartType: 'bar',
+          title: 'ANNUAL RAINFALL',
+          dataPoints: [
+            { label: 'AMAZON', value: 80, color: '#00D25A' },
+            { label: 'ANDES', value: 60, color: '#C864FF' },
+            { label: 'SAHARA', value: 5, color: '#FFE000' },
+            { label: 'ALPS', value: 45, color: '#00DCFF' },
+          ],
+          subtitle: 'Millimeters per year comparison',
+        }}
+        calculateMetadata={({ props }) => {
+          const p = props as any;
+          const durMs = p.audioDurationMs || 6000;
+          return { durationInFrames: Math.max(Math.ceil((durMs / 1000) * 30), 30) };
+        }}
+      />
+
+      <Composition
+        id="SplitMap"
+        component={SplitMap}
+        durationInFrames={240}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          leftCamera: { latitude: 4.570868, longitude: -74.297333, zoom: 6, label: 'Bogota Basin' },
+          rightCamera: { latitude: 40.7128, longitude: -74.006, zoom: 6, label: 'New York Coast' },
+          leftTitle: 'THEN',
+          rightTitle: 'NOW',
+          comparisonLabel: 'COASTLINE CHANGE OVER 50 YEARS',
+        }}
+        calculateMetadata={({ props }) => {
+          const p = props as any;
+          const durMs = p.audioDurationMs || 8000;
+          return { durationInFrames: Math.max(Math.ceil((durMs / 1000) * 30), 30) };
         }}
       />
     </>
