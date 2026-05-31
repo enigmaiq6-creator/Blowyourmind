@@ -77,7 +77,7 @@ class Pipeline(BaseModelTool):
     SCRIPT_JSON: ClassVar[str] = "script.json"
     RAW_VIDEO: ClassVar[str] = "raw_video.mp4"
     SUBTITLED_VIDEO: ClassVar[str] = "subtitled_video.mp4"
-    REMOTION_VIDEO: ClassVar[str] = "remotion_frames"
+    REMOTION_VIDEO: ClassVar[str] = "remotion_overlay.mp4"
     PRO_SUBTITLED_VIDEO: ClassVar[str] = "pro_subtitled_video.mp4"
     FINAL_AUDIO: ClassVar[str] = "final_audio.wav"
     FINAL_SUBS: ClassVar[str] = "final_subs.srt"
@@ -1378,21 +1378,20 @@ class Pipeline(BaseModelTool):
 
         # 4. Multi-layer Composition with filter_complex
         import subprocess
-        remotion_pattern = remotion_overlay / "%d.png"
         duration = self.ffmpeg.get_video_duration(raw_video)
         
         fc = (
             f"[0:v]noise=alls=5:allf=t+u[v_grain];"
             f"[v_grain]drawbox=y=0:w=iw:h=25:color=black@0.5:t=fill[v_bar_bg];"
             f"[v_bar_bg]drawbox=y=0:w=iw*t/{duration}:h=25:color=#FFFF00@1.0:t=fill[v_composed];"
-            f"[v_composed][1:v]overlay=shortest=1[out]"
+            f"[1:v]colorkey=0x00FF00:0.3:0.0[subs_alpha];"
+            f"[v_composed][subs_alpha]overlay=shortest=1[out]"
         )
         
         cmd = [
             "ffmpeg", "-y",
             "-i", str(raw_video),
-            "-framerate", "25",
-            "-i", str(remotion_pattern),
+            "-i", str(remotion_overlay),
             "-filter_complex", fc,
             "-map", "[out]", "-map", "0:a",
             "-c:v", "libx264", "-c:a", "copy", "-pix_fmt", "yuv420p",

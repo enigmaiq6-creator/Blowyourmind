@@ -24,7 +24,7 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
   const nowMs = (frame / fps) * 1000;
 
   return (
-    <div style={{ flex: 1, backgroundColor: 'transparent', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ flex: 1, backgroundColor: '#00FF00', position: 'relative', overflow: 'hidden' }}>
       
       {topHeadline && (
         <div style={{
