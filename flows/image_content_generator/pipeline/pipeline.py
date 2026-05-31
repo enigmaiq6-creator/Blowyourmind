@@ -1378,7 +1378,7 @@ class Pipeline(BaseModelTool):
 
         # 4. Multi-layer Composition with filter_complex
         import subprocess
-        remotion_pattern = remotion_overlay / "%04d.png"
+        remotion_pattern = remotion_overlay / "%d.png"
         duration = self.ffmpeg.get_video_duration(raw_video)
         
         fc = (
