@@ -4,10 +4,62 @@ import { MapRender } from './MapRender';
 import { MultiSceneVideo } from './MultiSceneVideo';
 import { DataVisualization } from './DataVisualization';
 import { SplitMap } from './SplitMap';
+import { TriviaQuiz } from './TriviaQuiz';
+import { SpellingTriviaQuiz } from './SpellingTriviaQuiz';
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      <Composition
+        id="TriviaQuiz"
+        component={TriviaQuiz}
+        durationInFrames={300}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          question: "What does the word 'INERT' mean?",
+          option_a: "Moving extremely fast",
+          option_b: "Lacking the ability to move",
+          option_c: "Extremely sharp or pointed",
+          correct_option: "B",
+          explanation: "Inert means lacking the strength or ability to move.",
+          trivia_step: "question",
+          question_number: 1,
+          audioDurationMs: 8000,
+        }}
+        calculateMetadata={({ props }) => {
+          const p = props as any;
+          const durMs = p.audioDurationMs || 8000;
+          return { durationInFrames: Math.max(Math.ceil((durMs / 1000) * 30), 30) };
+        }}
+      />
+
+      <Composition
+        id="SpellingTriviaQuiz"
+        component={SpellingTriviaQuiz}
+        durationInFrames={600}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          question: "Which word is SPELLED CORRECTLY?",
+          option_a: "Accomodate",
+          option_b: "Accommodate",
+          option_c: "Acomodate",
+          correct_option: "B",
+          trivia_step: "question",
+          question_number: 1,
+          total_questions: 3,
+          audioDurationMs: 4000,
+        }}
+        calculateMetadata={({ props }) => {
+          const p = props as any;
+          const durMs = p.audioDurationMs || 4000;
+          return { durationInFrames: Math.max(Math.ceil((durMs / 1000) * 30), 30) };
+        }}
+      />
+
       <Composition
         id="Subtitles"
         component={Subtitles}

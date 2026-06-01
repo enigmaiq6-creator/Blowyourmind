@@ -24,6 +24,16 @@ except ImportError:
     geo_constants = None
     HAS_GEOGRAPHY = False
 
+try:
+    from flows.image_content_generator.pipeline.prompt_shorts.trivia.models import TriviaHandler, TriviaIdea
+    from flows.image_content_generator.pipeline.prompt_shorts.trivia import constants as trivia_constants
+    HAS_TRIVIA = True
+except ImportError:
+    TriviaHandler = None
+    TriviaIdea = None
+    trivia_constants = None
+    HAS_TRIVIA = False
+
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
 
@@ -34,7 +44,7 @@ class PromptManagerShorts(BasePromptManager):
     AUDIO_PROMPT: str = story_constants.AUDIO_PROMPT # Defaulting to story audio
     GEOGRAPHY_AUDIO_PROMPT: str = geo_constants.AUDIO_PROMPT_GEOGRAPHY if geo_constants else story_constants.AUDIO_PROMPT
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [StoryHandler] + ([GeographyHandler] if (HAS_GEOGRAPHY and GeographyHandler) else [])
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [StoryHandler] + ([GeographyHandler] if (HAS_GEOGRAPHY and GeographyHandler) else []) + ([TriviaHandler] if (HAS_TRIVIA and TriviaHandler) else [])
 
     def get_audio_prompt(self, audio_text: str, mode: str = "standard") -> str:
         if mode == "geography":
@@ -45,7 +55,7 @@ class PromptManagerShorts(BasePromptManager):
         self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = "", mode: str = "standard"
     ) -> Tuple[BaseIdea, VideoScript, str]:
         """
-        Executes the viral generation loop for Story/Geography Reels.
+        Executes the viral generation loop for Story/Geography/Trivia Reels.
         """
         if mode == "geography":
             if not HAS_GEOGRAPHY or geo_constants is None or GeographyIdea is None:
@@ -55,7 +65,16 @@ class PromptManagerShorts(BasePromptManager):
             idea_prompt = geo_constants.IDEA_PROMPT_GEOGRAPHY
             script_prompt = geo_constants.SCRIPT_PROMPT_GEOGRAPHY
             series_name = "BlowYourMind Geography"
+        elif mode == "trivia":
+            if not HAS_TRIVIA or trivia_constants is None or TriviaIdea is None:
+                raise ValueError("Trivia mode is not available in this environment.")
+            category = "trivia"
+            idea_model = TriviaIdea
+            idea_prompt = trivia_constants.IDEA_PROMPT_TRIVIA
+            script_prompt = trivia_constants.SCRIPT_PROMPT_TRIVIA
+            series_name = "BlowYourMind Trivia"
         else:
+            category = "stories"
             category = "stories"
             idea_model = StoryIdea
             idea_prompt = story_constants.IDEA_PROMPT_STORY
@@ -91,6 +110,15 @@ class PromptManagerShorts(BasePromptManager):
                 "THE UNDERGROUND WORLD: Cities of microbes miles beneath YOUR feet, the deepest hole humans ever dug, and geological forces brewing under YOUR house.",
                 "VANISHING GEOGRAPHY: Islands sinking into the ocean, the fastest-eroding coastline near YOU, and lakes that disappear overnight — what's left when the map changes.",
                 "CLIMATE TIME BOMBS: Methane reserves under YOUR permafrost, freshwater glaciers that feed YOUR cities, and ocean currents that keep YOUR country warm — how they're all connected.",
+            ]
+        elif mode == "trivia":
+            focus_areas = [
+                "ANCIENT HISTORY TRIVIA: Fascinating questions about the Pyramids, Roman Emperors, Greek Myths, or Mayan calendars.",
+                "SPACE AND ASTRONOMY QUIZ: Mind-blowing questions about black holes, solar systems, extreme planets, and galaxies.",
+                "ADVANCED ENGLISH VOCABULARY: Spelling and definition questions of commonly confused or highly sophisticated words (e.g. 'inert', 'supercilious', 'anomaly').",
+                "SCIENCE AND BIOLOGY TRIVIA: Fascinating secrets of human anatomy, animal superpowers, microbiology, or weird chemical elements.",
+                "GEOGRAPHY AND MAPS CHALLENGE: Capital cities, strangest borders, deepest oceans, and extreme points on earth.",
+                "POP CULTURE AND cinema TRIVIA: Famous quotes, movie records, legendary soundtracks, and iconic cultural phenomena."
             ]
         else:
             focus_areas = [
@@ -169,19 +197,28 @@ class PromptManagerShorts(BasePromptManager):
             personal_impact = getattr(idea_data, "personal_impact", "This phenomenon affects you more than you realize.")
             key_data = getattr(idea_data, "key_data_stat", "")
             full_script_prompt = (
-                script_prompt + 
+                script_prompt +
                 f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
                 f"**RECOMMENDED VISUAL STYLES FOR IMAGES/MAPS:** {selected_style}\n"
                 f"**KEY DATA STAT FOR HUD (MANDATORY - use this in a floating_label):** {key_data}\n"
                 f"**PERSONAL IMPACT (MANDATORY - use this for the final CTA):** {personal_impact}\n"
             )
+            script = content_gen.generate_text(full_script_prompt, GeographyHandler)
+        elif mode == "trivia":
+            full_script_prompt = (
+                script_prompt +
+                f"\n\nTOPIC TO DEVELOP: {idea_data.title}\n"
+                f"**TOPIC FOCUS:** {getattr(idea_data, 'topic', idea_data.title)}\n"
+                f"**RECOMMENDED VISUAL STYLE FOR BACKGROUNDS:** {selected_style}\n"
+            )
+            script = content_gen.generate_text(full_script_prompt, TriviaHandler)
         else:
             full_script_prompt = (
-                script_prompt + 
+                script_prompt +
                 f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
                 f"**RECOMMENDED VISUAL STYLES FOR IMAGES/MAPS:** {selected_style}\n"
             )
-        script = content_gen.generate_text(full_script_prompt, GeographyHandler if mode == "geography" else VideoScript)
+            script = content_gen.generate_text(full_script_prompt, VideoScript)
 
         # --- BAN SHIELD: Append transparency footer to caption/hook ---
         transparency_footer = (

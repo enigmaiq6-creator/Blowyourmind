@@ -251,6 +251,9 @@ class Pipeline(BaseModelTool):
         if getattr(idea_obj, "category", "") == "geography":
             from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler
             return self.load_json(idea_obj.id, self.SCRIPT_JSON, GeographyHandler)
+        elif getattr(idea_obj, "category", "") == "trivia":
+            from flows.image_content_generator.pipeline.prompt_shorts.trivia.models import TriviaHandler
+            return self.load_json(idea_obj.id, self.SCRIPT_JSON, TriviaHandler)
         return self.load_json(idea_obj.id, self.SCRIPT_JSON, VideoScript)
 
     def save_json(self, idea_id: int, filename: str, data: BaseModel):
@@ -591,6 +594,67 @@ class Pipeline(BaseModelTool):
 
             # Get REAL audio duration for this scene
             audio_duration_ms = get_scene_audio_duration(scene)
+
+            is_trivia_mode = getattr(idea_obj, "category", "") == "trivia"
+
+            # ── Trivia Quiz scene ──
+            if is_trivia_mode:
+                Messenger.info(f"   🧠 Scene {scene.scene_number}: Rendering trivia quiz via Remotion...")
+                bg_img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}.png")
+                bg_vid_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, f"scene_{scene.scene_number:02d}_bg.mp4")
+                
+                trivia_visual_type = getattr(scene, "visual_type", "stock_video")
+                background_video_url = ""
+                background_image_url = ""
+                
+                if trivia_visual_type == "stock_video":
+                    query = getattr(scene, "pexels_query", "space stars")
+                    if not bg_vid_path.exists() or bg_vid_path.stat().st_size < 1024:
+                        if not pexels_tool.fetch_video(query, bg_vid_path):
+                            pixabay_tool.fetch_video(query, bg_vid_path)
+                    
+                    if bg_vid_path.exists():
+                        remotion_vid_name = f"scene_{scene.scene_number:02d}_bg.mp4"
+                        remotion_vid_dest = remotion_public_images / remotion_vid_name
+                        import shutil
+                        shutil.copy2(bg_vid_path, remotion_vid_dest)
+                        background_video_url = f"http://localhost:3000/temp_images/{remotion_vid_name}"
+                else:
+                    if bg_img_path.exists():
+                        remotion_img_name = f"scene_{scene.scene_number:02d}_bg.png"
+                        remotion_img_dest = remotion_public_images / remotion_img_name
+                        import shutil
+                        shutil.copy2(bg_img_path, remotion_img_dest)
+                        background_image_url = f"http://localhost:3000/temp_images/{remotion_img_name}"
+                
+                props = {
+                    "question": getattr(scene, "question", ""),
+                    "option_a": getattr(scene, "option_a", ""),
+                    "option_b": getattr(scene, "option_b", ""),
+                    "option_c": getattr(scene, "option_c", ""),
+                    "correct_option": getattr(scene, "correct_option", "A"),
+                    "explanation": getattr(scene, "explanation", ""),
+                    "trivia_step": getattr(scene, "trivia_step", "question"),
+                    "question_number": getattr(scene, "question_number", 1),
+                    "audioDurationMs": audio_duration_ms,
+                }
+                if background_video_url:
+                    props["videoUrl"] = background_video_url
+                if background_image_url:
+                    props["backgroundImageUrl"] = background_image_url
+                
+                try:
+                    remotion_root = Path(self.REMOTION_DIR)
+                    self.remotion.render_composition(
+                        remotion_path=remotion_root,
+                        output_path=clip_path,
+                        composition_id="TriviaQuiz",
+                        props=props
+                    )
+                    if clip_path.exists() and clip_path.stat().st_size > 1024:
+                        return True
+                except Exception as e:
+                    Messenger.error(f"   ❌ TriviaQuiz render failed: {e}")
 
             # Pre-extract pins, vignettes and camera_path for geography scenes
             map_pins = getattr(scene, "map_pins", []) if is_geography_mode else []
@@ -970,10 +1034,19 @@ class Pipeline(BaseModelTool):
         Runs BEFORE step2b so video clips can use real audio duration.
         After generating audios, optionally re-segments scenes based on natural pauses.
         """
-        target_state = State.IMAGES_GENERATED  # Audio now comes before video clips
-        idea_obj = self.store.get_first_by_state(target_state)
+        # Trivia mode skips step2 (image generation) and goes straight from
+        # SCRIPT_GENERATED → audio. All other modes require IMAGES_GENERATED.
+        idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
         if not idea_obj:
-            Messenger.error(f"No ideas ready for audio generation (target: {target_state}).")
+            # Fallback: check for trivia ideas in SCRIPT_GENERATED state
+            candidate = self.store.get_first_by_state(State.SCRIPT_GENERATED)
+            if candidate and getattr(candidate, "category", "") == "trivia":
+                idea_obj = candidate
+                # Advance state so pipeline can continue
+                self.store.update_state(idea_obj.id, State.IMAGES_GENERATED)
+                idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
+        if not idea_obj:
+            Messenger.error(f"No ideas ready for audio generation (target: State.IMAGES_GENERATED).")
             return
 
         Messenger.info("\n--- Generating batched audio for the script ---")
