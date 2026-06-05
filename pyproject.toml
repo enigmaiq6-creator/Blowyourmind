@@ -3,7 +3,7 @@ name = "video-automation"
 version = "0.1.0"
 description = "Video Automation Project"
 authors = ["Hans <hans.acha.brand@gmail.com>"]
-readme = "README.md"
+
 packages = [{ include = "flows" }]
 
 [tool.poetry.dependencies]
