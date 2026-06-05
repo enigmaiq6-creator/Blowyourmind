@@ -1,0 +1,153 @@
+# BlowYourMind Content Engine — Geography Reels
+
+## Proyecto
+```
+C:\Users\Vanes\.gemini\antigravity\scratch\BlowYourMind-Content-Engine
+```
+
+Este proyecto genera exclusivamente **Geography / Mind-Blowing Science Reels** (9:16 vertical, 1080x1920).
+
+## Para correr (full pipeline)
+```powershell
+cd C:\Users\Vanes\.gemini\antigravity\scratch\BlowYourMind-Content-Engine
+poetry run python -m flows.image_content_generator.pipeline.daily_automated_content
+```
+
+## Pipeline steps
+1. `prompt_shorts/geography/` — Gemini genera script con datos geográficos, map pins, camera paths
+2. `step2_generate_images` — Genera imágenes de escena vía Gemini/Vertex AI
+3. `step3_generate_audios` — TTS (Vertex AI o Gemini) + Whisper alignment
+4. `step2b_generate_video_clips` — Remotion render (MapRender 3D, SplitMap, DataVisualization, AI images, stock video)
+5. `step4-7` — Ensamblaje, subtítulos PRO, música, renombrado
+6. `step8` — Subida a Facebook
+
+## Remotion debug
+```powershell
+cd flows/image_content_generator/remotion && npm start
+```
+
+## Output
+```
+flows/image_content_generator/out_short/ideas/idea_{id}/
+```
+
+---
+
+# ═══════════════════════════════════════════
+# SESIÓN: 3 JUN 2026 — RESUMEN COMPLETO
+# ═══════════════════════════════════════════
+
+## Bug fijo: Subtitles colorkey
+- `Subtitles.tsx` tenía `backgroundColor: '#000000'` (negro) en lugar de `'#00FF00'` (verde) → colorkey en step5_pro no removía nada, overlay negro cubría el video entero → output 1.3 MB.
+- **Fix**: Cambiar `backgroundColor` a `'#00FF00'` en `remotion/src/Subtitles.tsx:27`.
+
+## Logro principal
+Video **"Earth's Invisible Walls"** (Idea 2) regenerado exitosamente con **mapas satelitales 3D**, países iluminados, pins, rutas, word-pill subtitles, y música de fondo. Archivo: `out_short/ideas/idea_000002/earths_invisible_walls_how_one_mountain_range_separates_worlds_and_creates_unseen_life.mp4` (72.8 MB, 1:04, 1080×1920).
+
+## Problema detectado y fix
+- **Bug MAP_STYLES**: `MapRender.tsx` referenciaba `MAP_STYLES` antes de la declaración → todas las escenas fallaban a `ai_image` (solo imágenes, sin mapas).
+- **Fix**: Movido `const MAP_STYLES = {...}` a nivel de módulo, antes de cualquier función que lo use.
+
+## Optimización de velocidad (~5× más rápido)
+
+### Antes (por escena):
+- 8 llamadas separadas a `npx.cmd remotion render` (una por escena)
+- Cada una arrancaba Node.js, cargaba imports, renderizaba, salía
+- Tiempo: ~5-8 minutos
+
+### Ahora (batch):
+- **1 sola llamada** a `MultiSceneVideo` que renderiza TODAS las escenas juntas
+- ffmpeg corta el video único en clips individuales por escena
+- Tiempo: ~1-2 minutos
+
+### Archivos modificados:
+1. **`remotion/src/MultiSceneVideo.tsx`** — Mejorado para pasar TODAS las props a MapRender:
+   - `subtitleWords`, `hexIcons`, `routes`, `regions`, `mapStyle`, `scanEffect`, `lowerThirdData`
+   - Ya no solo `latitude/longitude/zoom/pitch/bearing`
+2. **`pipeline/pipeline.py`** — Nuevo método `_build_scene_props()` (DRY). Step2b detecta si todas las escenas usan MapRender y las renderiza en lote con `MultiSceneVideo`. Si alguna escena necesita otro compositor (DataViz, SplitMap, HexDataGrid, stock), cae al sistema anterior por escena.
+
+## Estado de las ideas
+| ID | Título | Estado |
+|----|--------|--------|
+| 1 | Earth's Invisible Walls [Hook B] | `COMPLETED` |
+| 2 | Earth's Invisible Walls | `COMPLETED` ✅ (recién regenerado) |
+| 3 | The Silent Thaw [Hook B] | `SCRIPT_GENERATED` |
+| 4 | The Silent Thaw | `SCRIPT_GENERATED` |
+
+## Tareas pendientes / mejoras futuras
+- [ ] **Ideas 3-4**: Correr pipeline completo para "The Silent Thaw" (glaciares, cambio climático)
+- [ ] **SFX**: Descargar efectos de sonido a `resource/sfx/` (whoosh, impactos, transiciones) — los intentos desde Mixkit dieron 403
+- [ ] **Más pistas bg-music**: Solo hay 4 tracks (echoes, feedback_dreams, selpan, tapis)
+- [ ] **Verificar calidad de mapas**: Confirmar que los tiles satelitales de ArcGIS se renderizan bien y no hay rate limiting
+- [ ] **Step8 Facebook upload**: Probar subida automática
+- [ ] **Optimización adicional**: El split con ffmpeg re-codifica cada clip (lento). Se podría usar `-c copy -avoid_negative_ts make_zero` si los keyframes alinean
+- [ ] **Estados mezclados**: Idea 1 (Hook B) comparte script con Idea 2. Al resetear Idea 2 a AUDIO_GENERATED, Hook B también estaba COMPLETED
+
+## Nuevo video generado
+- **Idea 7**: "The Disappearing Edges: When Coasts Vanish 20 Meters Annually [Hook B]" — `out_short/ideas/idea_000007/the_disappearing_edges_when_coasts_vanish_20_meters_annually_hook_b.mp4` (47.8 MB, 46s, 1080×1920). Contenido sobre erosión costera.
+
+## Outputs disponibles
+```
+idea_000002/
+├── clips/          ← clips individuales (step2b)
+├── videos/         ← clips con audio (step4 assembly)
+├── editions/
+│   ├── raw_video.mp4          ← video ensamblado sin subtítulos
+│   ├── remotion_overlay.mp4   ← overlay de subtítulos (green screen)
+│   ├── pro_subtitled_video.mp4← video con word-pill subtitles
+│   └── final_video.mp4        ← con música de fondo
+├── images/         ← imágenes base (step2)
+├── audios/         ← TTS por escena (step3)
+├── earths_invisible_walls_....mp4  ← PRODUCTO FINAL (72.8 MB)
+├── script.json
+└── idea.json
+```
+
+## ═══════════════════════════════════════════
+# SESIÓN: 4 JUN 2026 — TEXT OVERLAY FIX
+# ═══════════════════════════════════════════
+
+## Problema raíz: Text overlap
+Los componentes de overlay (SceneOverlay, floating label, vignettes, LowerThird, subtítulos)
+usaban posiciones fijas (coordenadas estáticas como `top: '25%'`, `bottom: 240`).
+Cuando un texto era largo o habían múltiples elementos, se solapaban entre sí.
+
+## Solución: Dynamic Layout Stack
+
+### Nuevo archivo: `remotion/src/LayoutStack.tsx`
+- **`LayoutStack`**: Componente de stacking vertical que reemplaza coordenadas fijas
+  - Props: `items` (array de {key, render, height}), `zone` ('top' | 'middle' | 'bottom'), `align`
+  - `zone='top'` → posiciona desde `top: 60` hacia abajo con gap de 16px
+  - `zone='middle'` → centra verticalmente
+  - `zone='bottom'` → posiciona desde `bottom: 180` hacia arriba
+  - Sin coordenadas fijas — flexbox column con gap automático
+- **`MeasuredText`**: Texto con auto-scale dinámico según longitud
+  - `autoScaleFontSize()` recibe texto, maxWidth, maxFontSize → calcula fontSize exacto
+  - Previene overflow horizontal
+- **`PADDING = 20`, `MIN_MARGIN = 16`**: Márgenes de seguridad obligatorios
+
+### Refactor: `remotion/src/SceneOverlay.tsx`
+- **Eliminadas todas las coordenadas fijas** (`top: '25%'`, `top: '30%'`, `bottom: 120`)
+- Cada `type` (title, nightmare, takeover, trade, etc.) define su contenido como array de `StackItem`
+- Todo se renderiza dentro de `<LayoutStack zone="top">` → los elementos fluyen verticalmente
+- `BigNumber` ahora usa `MeasuredText` con auto-scale de fontSize (80→28 según longitud)
+- Añadido `wordBreak: 'break-word'` y `maxWidth: '100%'` en todos los textos
+
+### Ajustes: `remotion/src/MapRender.tsx`
+- **Floating label**: movido de `top: '30%'` a `top: '40%'` — debajo de SceneOverlay
+- **Vignettes**: movidos de `top: 400` a `top: '42%'` — debajo de SceneOverlay
+
+### Ajustes: `remotion/src/LowerThird.tsx`
+- **Posición**: cambiada de `bottom: 240` a `bottom: 320` — más espacio de subtítulos (bottom: 160)
+
+## Stress testing
+- Texto corto: "6mm" → fontSize 80 (máximo) — ok
+- Texto largo: "THE CANAL THAT CHANGED THE WORLD" (30 chars) → fontSize ~42 (auto-scalado)
+- Múltiples elementos (year + label + BigNumber + detail) → todos fluyen verticalmente con gap 16px
+
+## Relevant Files
+- `remotion/src/LayoutStack.tsx` — **NUEVO**: sistema de stacking dinámico + auto-scale
+- `remotion/src/SceneOverlay.tsx` — **REFACTOR**: sin coordenadas fijas, usa LayoutStack
+- `remotion/src/MapRender.tsx` — floating label top:30%→40%, vignettes top:400→42%
+- `remotion/src/LowerThird.tsx` — bottom:240→320
+```

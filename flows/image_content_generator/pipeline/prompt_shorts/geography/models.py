@@ -42,8 +42,45 @@ class CameraWaypoint(BaseModel):
     bearing: float = Field(ge=-180, le=180, default=0, description="Rotation/heading in degrees.")
 
 
+class HexIconData(BaseModel):
+    latitude: float = Field(description="GPS latitude for the hex icon marker location on the map.")
+    longitude: float = Field(description="GPS longitude for the hex icon marker location on the map.")
+    icon: str = Field(default="📍", description="Emoji icon displayed inside the hexagon. Use relevant emojis like 🌿 for crops, 💀 for danger, 🪖 for military, ⛺ for camps, 💰 for money, 🚢 for shipping, 🛩️ for air routes.")
+    label: str = Field(default="", description="Short label text shown below the hex icon on the map.")
+    value: str = Field(default="", description="Optional data value displayed inside or below the hex (e.g. '340T', '$2.1B').")
+    color: str = Field(default="#FF0078", description="Accent hex color for the hex border and glow effect (e.g. '#FF0078', '#00D25A', '#FFE000').")
+
+
+class RouteData(BaseModel):
+    waypoints: List[CameraWaypoint] = Field(description="List of 2+ waypoints forming the route path on the map. The first and last waypoints define the route endpoints; intermediate waypoints shape the path.")
+    color: str = Field(default="#FF0078", description="Color of the animated route line and dots (e.g. '#FF0078', '#00DCFF', '#FFE000').")
+    label: str = Field(default="", description="Optional label for the entire route displayed as a floating tag (e.g. 'COCAINE ROUTE', 'AMAZON FLOW').")
+    dot_labels: List[str] = Field(default=[], description="Optional labels displayed at each waypoint dot. Must be same length as waypoints. E.g. ['Bogota', 'Medellin', 'Cartagena'].")
+
+
+class RegionData(BaseModel):
+    name: str = Field(description="Internal name for the region (e.g. 'Costa del Pacifico'). Used for reference, not displayed.")
+    center_latitude: float = Field(description="GPS latitude of the region center where the colored overlay and label appear.")
+    center_longitude: float = Field(description="GPS longitude of the region center where the colored overlay and label appear.")
+    color: str = Field(description="Color hex code for the region fill overlay (e.g. '#FF0078', '#00D25A', '#C864FF', '#FFE000', '#00DCFF'). Use different colors for different regions so they are visually distinct.")
+    label: str = Field(default="", description="Display label shown on the region in ALL CAPS (e.g. 'COSTA DEL PACÍFICO', 'CORDILLERA ANDINA').")
+    radius_km: float = Field(default=200, description="Approximate radius in kilometers for the colored circular overlay on the map.")
+
+
+class HexGridItem(BaseModel):
+    icon: str = Field(description="Emoji icon displayed in the hex grid cell. Use impactful emojis like 💀 (death), 🎯 (trafficking), 🧪 (chemicals), 💰 (money), 🌿 (drugs), 🪖 (military), ⛺ (camps), 📦 (shipments), 👥 (people), ⚔️ (conflict), 📊 (statistics).")
+    label: str = Field(default="", description="Short label text shown below the icon in the hex cell, in ALL CAPS (e.g. 'HOMICIDES', 'TRAFFICKING', 'VALUE').")
+    value: str = Field(default="", description="Data value displayed prominently in the hex cell (e.g. '234/YR', '340T', '$2.1B', '87%').")
+    color: str = Field(default="#FF0078", description="Accent hex color for this cell's glow and border (e.g. '#FF0078', '#00D25A', '#FFE000', '#00DCFF', '#C864FF').")
+
+
+class HexGridData(BaseModel):
+    title: str = Field(default="", description="Title text displayed above the hex grid in ALL CAPS (e.g. 'ORGANIZED CRIME LANDSCAPE', 'ILLICIT ECONOMY', 'REGIONAL IMPACT').")
+    items: List[HexGridItem] = Field(description="List of 4-8 hex grid items to display in the grid layout. Fewer items (4-5) for a cleaner look, more (6-8) for dense data.")
+
+
 class GeographyScene(Scene):
-    visual_type: str = Field(default="map_3d", description="Type of scene. Use 'map_3d' for 3D satellite map fly-overs (default), 'ai_image' for AI-generated conceptual illustrations, 'data_viz' for animated data charts/numbers, 'split_map' for side-by-side comparison maps, or 'stock_video' for stock footage.")
+    visual_type: str = Field(default="map_3d", description="Type of scene. Use 'map_3d' for 3D satellite map fly-overs (default), 'ai_image' for AI-generated conceptual illustrations, 'data_viz' for animated data charts/numbers, 'split_map' for side-by-side comparison maps, 'hex_grid' for full-screen hex data grid with icons (crime/economic data), or 'stock_video' for stock footage. Use 'hex_grid' for impactful data summary scenes showing crime stats, economic impact, or demographic data.")
     image_prompt: Optional[str] = Field(default=None, description="Physical description and style in ENGLISH for AI image generation. Only required when visual_type is 'ai_image' or as Ken Burns fallback.")
     camera: Optional[MapCamera] = Field(default=None, description="Satellite 3D map camera configuration for this scene. Required for 'map_3d' scenes.")
     camera_latitude: float = Field(default=0.0, description="Flat latitude for direct Remotion props. Use camera.latitude instead.")
@@ -58,6 +95,10 @@ class GeographyScene(Scene):
     map_pins: List[MapPin] = Field(default=[], description="List of 2-4 animated map pins highlighting specific locations on the map. Each pin has coordinates and a label. These appear as pulsing markers.")
     vignettes: List[MapVignette] = Field(default=[], description="List of 2-4 information vignettes/bullet points that appear sequentially on the right side of the screen. Each shows an icon, title, and big data value.")
     sfx: str = Field(default="none", description="Environmental or impact sound effect for this scene ('jungle_ambient', 'rain_and_thunder', 'heavy_wind', 'digital_swoosh', 'ocean_waves', 'volcanic_rumble' or 'none').")
+    hex_icons: List[HexIconData] = Field(default=[], description="NEW: Hexagonal icon markers positioned on the map showing data like drug crops, military bases, cartel presence, or key locations. Each appears as a glowing hexagon with an emoji icon. Use 2-4 per relevant scene.")
+    routes: List[RouteData] = Field(default=[], description="NEW: Animated route lines connecting waypoints on the map, showing paths of drug trafficking, river flows, migration routes, trade winds, or ocean currents. The line animates with moving dots along the path. Use 1-2 routes per scene.")
+    regions: List[RegionData] = Field(default=[], description="NEW: Colored region overlays on the map showing geographical or administrative divisions like climate zones, mountain ranges, cultural regions, or drug cultivation areas. Each appears as a translucent colored circle on the map with a bold label. Use 3-6 regions per scene for a breakdown view.")
+    hex_grid: Optional[HexGridData] = Field(default=None, description="NEW: Full-screen hex data grid overlay with emoji icons, labels, and data values. Use for impactful data summary scenes showing crime statistics, economic impact, demographic data, or any multi-metric breakdown. ONLY set when visual_type='hex_grid'. Set to null for other visual types.")
 
 
 class GeographyHandler(CategoryHandler):

@@ -1,21 +1,7 @@
-name: Daily Content Automation (3 Reels + 3 Images)
+name: Daily Geography Reel
 
 on:
   workflow_dispatch:
-    inputs:
-      force_type:
-        description: '0=Image, 1=Video'
-        required: false
-        type: string
-      mode:
-        description: 'Content mode: standard, geography, stickman'
-        required: false
-        default: 'geography'
-        type: choice
-        options:
-          - geography
-          - standard
-          - stickman
 
 concurrency:
   group: daily-post
@@ -82,19 +68,9 @@ jobs:
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
           VERTEX_IMAGE_RATIO: "10"
-          # Content mode: standard | geography | stickman
-          MODE: ${{ inputs.mode || 'geography' }}
+          MODE: "geography"
         run: |
-          # Determine post type: if forced by input, use it. Otherwise, use auto (random choice inside python script)
-          export POST_TYPE="auto"
-          
-          if [[ "${{ github.event.inputs.force_type }}" == "0" ]]; then
-            export POST_TYPE="image"
-          elif [[ "${{ github.event.inputs.force_type }}" == "1" ]]; then
-            export POST_TYPE="video"
-          fi
-          
-          echo "🚀 Executing automated post with type: $POST_TYPE"
+          echo "🚀 Generating Geography Reel..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)

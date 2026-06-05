@@ -47,7 +47,7 @@ class FFmpegTool(BaseModelTool):
         seconds: int = 4
     ) -> None:
         offset = max(0, seconds - 1)
-        xfade_filter = f"[0:v][1:v]xfade=transition=fade:duration=1:offset={offset},format=yuv420p"
+        xfade_filter = f"[0:v][1:v]xfade=transition=slideright:duration=0.6:offset={offset},format=yuv420p"
         cmd = [
             "ffmpeg", "-y",
             "-loop", "1", "-t", str(seconds), "-i", str(img_a),
@@ -107,16 +107,18 @@ class FFmpegTool(BaseModelTool):
 
         total_duration = durations[0]
 
+        transitions = ['fade', 'slideleft', 'slideright', 'fade']
         filter_parts = []
         for i in range(1, len(video_list)):
             offset = total_duration - transition_duration
+            xfade_type = transitions[(i - 1) % len(transitions)]
             if i == 1:
                 filter_parts.append(
-                    f"[0:v][1:v]xfade=transition=fade:duration={transition_duration}:offset={offset}[v{i}]"
+                    f"[0:v][1:v]xfade=transition={xfade_type}:duration={transition_duration}:offset={offset}[v{i}]"
                 )
             else:
                 filter_parts.append(
-                    f"[v{i-1}][{i}:v]xfade=transition=fade:duration={transition_duration}:offset={offset}[v{i}]"
+                    f"[v{i-1}][{i}:v]xfade=transition={xfade_type}:duration={transition_duration}:offset={offset}[v{i}]"
                 )
             total_duration = offset + durations[i]
 
@@ -130,6 +132,7 @@ class FFmpegTool(BaseModelTool):
             "-map", f"[v{last_idx}]",
             "-an",
             "-c:v", "libx264",
+            "-crf", "18",
             "-pix_fmt", "yuv420p",
             str(out_path)
         ]
@@ -199,7 +202,7 @@ class FFmpegTool(BaseModelTool):
             "-i", str(audio_in),
             "-filter_complex", f"[0:v]setpts={scale:.6f}*PTS[v]",
             "-map", "[v]", "-map", "1:a",
-            "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-crf", "18", "-c:a", "aac", "-pix_fmt", "yuv420p",
             "-v", "error", str(video_out)
         ]
         self._run(cmd)
@@ -225,6 +228,7 @@ class FFmpegTool(BaseModelTool):
             "-i", image_sequence_pattern,
             "-i", str(audio_in),
             "-c:v", "libx264",
+            "-crf", "18",
             "-c:a", "aac",
             "-b:a", "192k",
             "-pix_fmt", "yuv420p",
@@ -285,24 +289,25 @@ class FFmpegTool(BaseModelTool):
 
         if is_video:
             # Scale to fill screen and crop excess (No black bars)
-            vf_fill = "scale='max(1080,iw*1920/ih)':'max(1920,ih*1080/iw)',crop=1080:1920"
+            vf_fill = "scale='max(1080,iw*1920/ih)':'max(1920,ih*1080/iw)':flags=lanczos,crop=1080:1920"
             cmd = [
                 "ffmpeg", "-y", "-stream_loop", "-1",
                 "-i", str(source_path),
                 "-i", str(audio_path),
                 "-t", str(duration),
                 "-vf", f"{vf_fill},format=yuv420p{glitch_filter}",
+                "-sws_flags", "lanczos",
                 "-r", "30",
                 "-fps_mode", "cfr",
                 "-video_track_timescale", "30000",
                 "-map", "0:v:0", "-map", "1:a:0",
-                "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-crf", "18", "-c:a", "aac", "-pix_fmt", "yuv420p",
                 "-v", "error", str(out_path)
             ]
         else:
             # Scale to fill screen, crop excess, then apply Ken Burns (Increased Speed)
-            vf_fill = "scale='max(1080,iw*1920/ih)':'max(1920,ih*1080/iw)',crop=1080:1920"
-            z_expr = "1.0 + 0.001*on" # Faster zoom for more energy
+            vf_fill = "scale='max(1080,iw*1920/ih)':'max(1920,ih*1080/iw)':flags=lanczos,crop=1080:1920"
+            z_expr = "1.0 + 0.0008*on" # Slower, smoother zoom
             pos_filter = "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
             
             # Pro Vignette Effect
@@ -319,7 +324,7 @@ class FFmpegTool(BaseModelTool):
                 "-fps_mode", "cfr",
                 "-video_track_timescale", "30000",
                 "-t", str(duration),
-                "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-crf", "18", "-c:a", "aac", "-pix_fmt", "yuv420p",
                 "-v", "error", str(out_path)
             ]
         

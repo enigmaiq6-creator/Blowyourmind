@@ -1,5 +1,6 @@
 import React from 'react';
 import { interpolate, useCurrentFrame, useVideoConfig, Easing } from 'remotion';
+import { THEME, GRADIENTS } from './VisualIdentity';
 
 interface DataPoint {
   label: string;
@@ -38,7 +39,7 @@ export const DataVisualization: React.FC<DataVizProps> = ({
         background: 'linear-gradient(135deg, #0a0b10 0%, #1a0a2e 100%)',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: 80, fontFamily: 'Inter, sans-serif',
+        padding: 80, fontFamily: THEME.fontFamily,
       }}>
         {title && (
           <div style={{
@@ -129,7 +130,7 @@ export const DataVisualization: React.FC<DataVizProps> = ({
       background: 'radial-gradient(ellipse at center, #0a0b10 0%, #050508 100%)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Inter, sans-serif', position: 'relative',
+      fontFamily: THEME.fontFamily, position: 'relative',
       overflow: 'hidden',
     }}>
       <div style={{

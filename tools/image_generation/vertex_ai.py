@@ -6,9 +6,18 @@ from typing import Any, List, Optional
 from google import genai
 from google.genai import types
 
+from pathlib import Path
+from typing import List
+from pydantic import BaseModel
+
 from tools.common.messenger import Messenger
-from tools.image_generation.midjourney import ImageTask
 from tools.utils.time import retry
+
+
+class ImageTask(BaseModel):
+    prompt: str
+    output_path: Path
+    is_video: bool = False
 
 
 class VertexAIImageGenerator:

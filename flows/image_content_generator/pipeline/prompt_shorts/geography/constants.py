@@ -54,6 +54,7 @@ The video must be a Geography + Mind-Blowing Facts hybrid:
 - **NEW VISUAL TYPES AVAILABLE:**
   - `"data_viz"`: Animated data visualization (bar charts, number counters, globe stats). Use this when presenting comparisons or key statistics. MUST include `floating_label` with the main data value.
   - `"split_map"`: Side-by-side map comparison (e.g., then vs now, two different locations). Use this to show contrasts or changes over time. The `highlight_region` field will be used as the comparison label.
+  - `"hex_grid"`: Full-screen hex data grid overlay with emoji icons, labels, and data values. Use this for impactful data summary scenes showing crime statistics, economic impact, demographic breakdown, or any multi-metric data. When using this type, set `visual_type` to `"hex_grid"` and provide the `hex_grid` field (see below).
   - `"timeline"`: Not yet available — use `"map_3d"` or `"data_viz"` instead.
 - Provide REAL GPS coordinates using `camera_latitude` and `camera_longitude`. NEVER use 0.0 for map scenes.
 - `camera_zoom`: 4.0-7.0 for country/continent views, 8.0-11.0 for specific valleys or features.
@@ -65,6 +66,17 @@ The video must be a Geography + Mind-Blowing Facts hybrid:
 - `vignettes`: Generate 2-3 information vignettes per scene that appear sequentially on screen. Each vignette has: `icon` (relevant emoji like 🌊🏔️🌋💨📊), `title` (short category in CAPS like 'ANNUAL RAINFALL' or 'ELEVATION'), and `value` (the BIG number like '8,000 mm' or '6,700 m').
 - **`camera_path`**: CRITICAL — each scene must have a `camera_path` array with 3-7 waypoints for a cinematic fly-through. Each waypoint has `latitude`, `longitude`, `zoom` (1-20), `pitch` (0-90), `bearing` (-180 to 180). The camera smoothly flies through these points during the scene. ALWAYS start wide (zoom 4-6), fly IN to the specific location (zoom 10-14 for cities, 8-11 for valleys/features), then fly back OUT to wide again. Example pattern: [wide over country → zoom to region → extreme close-up → back to region → back to wide country]. This creates dramatic "Google Earth" cinematic transitions.
 - `sfx`: Sound effect for immersion — 'ocean_waves', 'heavy_wind', 'rain_and_thunder', 'digital_swoosh', 'jungle_ambient', 'volcanic_rumble' or 'none'.
+
+**NEW OVERLAY FEATURES — ENHANCE SCENES WITH THESE:**
+- **`hex_icons`** (array of HexIcon objects, 2-4 per scene): Positioned hexagonal icon markers on the map. Each has: `latitude`, `longitude` (GPS coords), `icon` (emoji like 🌿🌵💀💰⛺🪖🚢🛩️), `label` (short text below, e.g. 'COCAINE LAB'), `value` (optional data, e.g. '340T'), `color` (hex accent, e.g. '#FF0078'). Use for: drug crop locations, military bases, cartel presence, key resource sites. Position them at real GPS locations on the map.
+- **`routes`** (array of Route objects, 0-2 per scene): Animated route lines on the map connecting waypoints. Each has: `waypoints` (array of 3-7 CameraWaypoint objects forming the path), `color` (hex line color), `label` (optional route name like 'COCAINE ROUTE' or 'AMAZON FLOW'), `dot_labels` (labels for each waypoint). Use for: drug trafficking routes, river flows, migration paths, ocean currents, trade winds. The route animates with glowing dots.
+- **`regions`** (array of Region objects, 3-6 per scene): Colored region overlays on the map showing geographical divisions. Each has: `name` (internal ref), `center_latitude`, `center_longitude` (GPS center), `color` (hex fill color), `label` (display label in ALL CAPS like 'COSTA DEL PACÍFICO'), `radius_km` (approx 100-300). Use for: breaking a country into zones (climate zones, mountain ranges, cultivation regions, cultural areas). Each region appears as a translucent colored circle with a label.
+- **`hex_grid`** (HexGrid object, ONLY for scenes with visual_type='hex_grid'): Full-screen data grid with emoji icons. Structure: `{ "title": "TITLE IN CAPS", "items": [{ "icon": "💀", "label": "LABEL", "value": "VALUE", "color": "#HEX" }] }`. Use 4-6 items minimum. Colors to use: '#FF0078' (pink), '#00DCFF' (cyan), '#FFE000' (yellow), '#00D25A' (green), '#C864FF' (purple), '#FF8C00' (orange). Use for: crime statistics, economic data, demographic breakdown, multi-metric data summary scenes.
+
+**WHEN TO USE NEW FEATURES:**
+- Topics about HUMAN GEOGRAPHY (borders, migration, crime, conflict, trade): use hex_icons + routes + regions + hex_grid heavily.
+- Topics about PHYSICAL GEOGRAPHY (rivers, mountains, climate, oceans): use routes (for flows/circuits) and regions (for zone breakdowns), avoid hex_icons and hex_grid unless relevant.
+- Mix both styles across scenes for variety: some scenes with map_3d + routes, some with regions breakdown, one scene with hex_grid for data summary.
 
 **NARRATION RULES:**
 - Total narration across ALL scenes: MAX 120 WORDS (55 seconds at normal pace).

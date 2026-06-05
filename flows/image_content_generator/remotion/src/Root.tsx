@@ -1,70 +1,32 @@
-import { Composition } from 'remotion';
+import { Composition, continueRender, delayRender, staticFile } from 'remotion';
+import { useEffect, useState } from 'react';
 import { Subtitles } from './Subtitles';
 import { MapRender } from './MapRender';
 import { MultiSceneVideo } from './MultiSceneVideo';
 import { DataVisualization } from './DataVisualization';
 import { SplitMap } from './SplitMap';
-import { TriviaQuiz } from './TriviaQuiz';
-import { SpellingTriviaQuiz } from './SpellingTriviaQuiz';
+import { HexDataGrid } from './HexDataGrid';
 
 export const RemotionRoot: React.FC = () => {
+  const [fontHandle] = useState(() => delayRender('Montserrat font'));
+  useEffect(() => {
+    const font = new FontFace(
+      'Montserrat Black',
+      `url(${staticFile('fonts/Montserrat-Black.ttf')}) format('truetype')`
+    );
+    font.load().then(() => {
+      document.fonts.add(font);
+      continueRender(fontHandle);
+    }).catch(() => continueRender(fontHandle));
+  }, [fontHandle]);
+
   return (
     <>
-      <Composition
-        id="TriviaQuiz"
-        component={TriviaQuiz}
-        durationInFrames={300}
-        fps={30}
-        width={1080}
-        height={1920}
-        defaultProps={{
-          question: "What does the word 'INERT' mean?",
-          option_a: "Moving extremely fast",
-          option_b: "Lacking the ability to move",
-          option_c: "Extremely sharp or pointed",
-          correct_option: "B",
-          explanation: "Inert means lacking the strength or ability to move.",
-          trivia_step: "question",
-          question_number: 1,
-          audioDurationMs: 8000,
-        }}
-        calculateMetadata={({ props }) => {
-          const p = props as any;
-          const durMs = p.audioDurationMs || 8000;
-          return { durationInFrames: Math.max(Math.ceil((durMs / 1000) * 30), 30) };
-        }}
-      />
-
-      <Composition
-        id="SpellingTriviaQuiz"
-        component={SpellingTriviaQuiz}
-        durationInFrames={600}
-        fps={30}
-        width={1080}
-        height={1920}
-        defaultProps={{
-          question: "Which word is SPELLED CORRECTLY?",
-          option_a: "Accomodate",
-          option_b: "Accommodate",
-          option_c: "Acomodate",
-          correct_option: "B",
-          trivia_step: "question",
-          question_number: 1,
-          total_questions: 3,
-          audioDurationMs: 4000,
-        }}
-        calculateMetadata={({ props }) => {
-          const p = props as any;
-          const durMs = p.audioDurationMs || 4000;
-          return { durationInFrames: Math.max(Math.ceil((durMs / 1000) * 30), 30) };
-        }}
-      />
-
       <Composition
         id="Subtitles"
         component={Subtitles}
         durationInFrames={1500}
-        fps={25}
+        fps={30}
         width={1080}
         height={1920}
         defaultProps={{
@@ -77,7 +39,7 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => {
           const words = (props as any).words || [];
           const lastMs = words.length > 0 ? words[words.length - 1].end : 3000;
-          const frames = Math.ceil((lastMs / 1000) * 25) + 25;
+          const frames = Math.ceil((lastMs / 1000) * 30) + 30;
           return { durationInFrames: Math.max(frames, 30) };
         }}
       />
@@ -232,6 +194,31 @@ export const RemotionRoot: React.FC = () => {
           leftTitle: 'THEN',
           rightTitle: 'NOW',
           comparisonLabel: 'COASTLINE CHANGE OVER 50 YEARS',
+        }}
+        calculateMetadata={({ props }) => {
+          const p = props as any;
+          const durMs = p.audioDurationMs || 8000;
+          return { durationInFrames: Math.max(Math.ceil((durMs / 1000) * 30), 30) };
+        }}
+      />
+
+      <Composition
+        id="HexDataGrid"
+        component={HexDataGrid}
+        durationInFrames={240}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          title: 'ORGANIZED CRIME LANDSCAPE',
+          items: [
+            { icon: '💀', label: 'HOMICIDES', value: '234/YR', color: '#FF0078' },
+            { icon: '🎯', label: 'TRAFFICKING', value: '340T', color: '#FFE000' },
+            { icon: '💰', label: 'VALUE', value: '$2.1B', color: '#00D25A' },
+            { icon: '🧪', label: 'CHEMICALS', value: '87%', color: '#00DCFF' },
+            { icon: '🌿', label: 'CULTIVATION', value: '45K HA', color: '#C864FF' },
+            { icon: '⛺', label: 'CAMPS', value: '1,200', color: '#FF8C00' },
+          ],
         }}
         calculateMetadata={({ props }) => {
           const p = props as any;

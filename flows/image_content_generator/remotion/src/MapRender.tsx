@@ -8,12 +8,16 @@ import {
   staticFile,
   Easing,
 } from 'remotion';
+import { HexIconMarker, RouteLine, RegionOverlay, generateHexGlowFilters } from './MapOverlays';
+import type { HexIconData, RouteData, RegionData } from './MapOverlays';
+import { CountryScan } from './CountryScan';
+import { LowerThird, type LowerThirdItem } from './LowerThird';
+import { GeopoliticalOverlay, type GeopoliticalData } from './GeopoliticalOverlay';
+import { SceneOverlay } from './SceneOverlay';
+import { THEME } from './VisualIdentity';
+import { feature } from 'topojson-client';
 
-interface SubWord {
-  word: string;
-  start: number;
-  duration?: number;
-}
+const tileBlobCache = new Map<string, string>();
 
 interface SubtitleItem {
   text?: string;
@@ -69,7 +73,16 @@ interface MapProps {
   vignettes?: MapVignetteData[];
   cameraPath?: CameraWaypointData[];
   narrationCues?: NarrationCue[];
+  subtitleWords?: { word: string; startMs: number; endMs: number }[];
   sceneStartMs?: number;
+  hexIcons?: HexIconData[];
+  routes?: RouteData[];
+  regions?: RegionData[];
+  mapStyle?: 'dark' | 'satellite';
+  scanEffect?: boolean;
+  lowerThirdData?: LowerThirdItem[];
+  geopolitical?: GeopoliticalData;
+  sceneOverlay?: any;
 }
 
 function latRad(lat: number) {
@@ -137,6 +150,12 @@ const COUNTRY_COLORS: Record<string, { fill: string; stroke: string }> = {
   DEFAULT: { fill: 'rgba(255,0,120,0.20)', stroke: '#FF0078' },
 };
 
+const MAP_STYLES = {
+  dark: { urlTemplate: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png' },
+  satellite: { urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
+  hillshade: { urlTemplate: 'https://a.tile.openstreetmap.de/hillshading/{z}/{x}/{y}.png' },
+};
+
 function normalizeCountry(name: string): string {
   return name.toLowerCase().trim()
     .normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -161,32 +180,45 @@ function geometryToPath(geometry: any, projectFn: (lat: number, lon: number) => 
   return paths.join(' ');
 }
 
-const MapTile: React.FC<{
+const MapTile = React.memo<{
   tileX: number; tileY: number; baseZoom: number;
   posX: number; posY: number; mapW: number; TILE_SIZE: number;
   onTileLoad: () => void; onTileError: (key: string) => void; tileKey: string;
-}> = ({ tileX, tileY, baseZoom, posX, posY, mapW, TILE_SIZE, onTileLoad, onTileError, tileKey }) => {
-  const [src, setSrc] = useState(
-    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${baseZoom}/${tileY}/${tileX}`
-  );
+  mapStyle: string; opacity?: number;
+}>(({ tileX, tileY, baseZoom, posX, posY, mapW, TILE_SIZE, onTileLoad, onTileError, tileKey, mapStyle, opacity = 1 }) => {
+  const styleDef = MAP_STYLES[mapStyle as keyof typeof MAP_STYLES] ?? MAP_STYLES.dark;
+  const tileUrl = styleDef.urlTemplate
+    .replace('{z}', String(baseZoom))
+    .replace('{x}', String(tileX))
+    .replace('{y}', String(tileY));
+
+  const cachedSrc = tileBlobCache.get(tileKey);
+  const [src, setSrc] = useState(cachedSrc || tileUrl);
   const [isFailed, setIsFailed] = useState(false);
   const loadedRef = useRef(false);
 
-  const handleLoad = () => {
+  const handleLoad = useCallback(() => {
     if (!loadedRef.current) {
       loadedRef.current = true;
+      if (!tileBlobCache.has(tileKey)) {
+        tileBlobCache.set(tileKey, src);
+      }
       onTileLoad();
     }
-  };
+  }, [onTileLoad, tileKey, src]);
 
-  const handleError = () => {
-    if (src.includes('arcgisonline')) {
-      setSrc(`https://tile.openstreetmap.org/${baseZoom}/${tileX}/${tileY}.png`);
+  const handleError = useCallback(() => {
+    if (src === tileUrl && mapStyle !== 'satellite') {
+      const fallbackUrl = MAP_STYLES.dark.urlTemplate
+        .replace('{z}', String(baseZoom))
+        .replace('{x}', String(tileX))
+        .replace('{y}', String(tileY));
+      setSrc(fallbackUrl);
     } else if (!loadedRef.current) {
       setIsFailed(true);
       onTileError(tileKey);
     }
-  };
+  }, [src, tileUrl, mapStyle, baseZoom, tileX, tileY, onTileError, tileKey]);
 
   if (isFailed) return null;
 
@@ -200,11 +232,12 @@ const MapTile: React.FC<{
         left: posX + mapW / 2, top: posY + mapW / 2,
         width: TILE_SIZE, height: TILE_SIZE,
         display: 'block',
+        opacity,
       }}
       alt=""
     />
   );
-};
+});
 
 export const MapRender: React.FC<MapProps> = ({
   visualType = 'map_3d',
@@ -223,7 +256,16 @@ export const MapRender: React.FC<MapProps> = ({
   vignettes = [],
   cameraPath = [],
   narrationCues = [],
+  subtitleWords = [],
   sceneStartMs = 0,
+  hexIcons = [],
+  routes = [],
+  regions = [],
+  mapStyle = 'dark',
+  scanEffect = false,
+  lowerThirdData = [],
+  geopolitical = undefined,
+  sceneOverlay = undefined,
 }) => {
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
@@ -233,8 +275,8 @@ export const MapRender: React.FC<MapProps> = ({
   const [countryGeo, setCountryGeo]   = useState<any>(null);
   const [geoFetchDone, setGeoFetchDone] = useState(false);
 
-  const TILE_SIZE = 256;
-  const numTiles  = 5;
+  const TILE_SIZE = 512;
+  const numTiles  = 3;
   const TOTAL_TILES = numTiles * numTiles;
 
   const countryKey = normalizeCountry(highlightRegion);
@@ -254,12 +296,17 @@ export const MapRender: React.FC<MapProps> = ({
       setGeoFetchDone(true);
       return;
     }
-    const url = `https://raw.githubusercontent.com/johan/world.geo.json/master/countries/${countryCode}.geo.json`;
+    const url = `https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json`;
     fetch(url)
       .then(r => r.json())
-      .then(data => {
-        const feat = data.features?.[0];
-        setCountryGeo(feat?.geometry ?? null);
+      .then(topology => {
+        try {
+          const feat = feature(topology, topology.objects.countries);
+          const matched = (feat as any).features.find((f: any) => f.id === countryCode);
+          setCountryGeo(matched?.geometry ?? null);
+        } catch {
+          // fallback
+        }
         setGeoFetchDone(true);
       })
       .catch(() => setGeoFetchDone(true));
@@ -271,14 +318,16 @@ export const MapRender: React.FC<MapProps> = ({
   }, []);
 
   const progress = frame / durationInFrames;
-  const easeFn = (t: number) => Easing.inOut(Easing.ease)(t);
+  const easeFn = (t: number) => Easing.bezier(0.6, 0.0, 0.3, 1.0)(Math.min(Math.max(t, 0), 1));
+  const pathEase = (t: number) => Easing.bezier(0.85, 0.0, 0.15, 1.0)(Math.min(Math.max(t, 0), 1));
   const isMapScene = visualType === 'map_3d';
 
   const hasPath = cameraPath.length >= 2;
   const interpWaypoint = (key: keyof CameraWaypointData, defaultVal: number): number => {
     if (!hasPath) return defaultVal;
     const segs = cameraPath.length - 1;
-    const raw = progress * segs;
+    const easedProgress = pathEase(progress);
+    const raw = easedProgress * segs;
     const idx = Math.min(Math.floor(raw), segs - 1);
     const local = raw - idx;
     const from = cameraPath[idx][key] as number;
@@ -344,10 +393,10 @@ export const MapRender: React.FC<MapProps> = ({
   const startTileY  = centerTileY - Math.floor(numTiles / 2);
   const mapW        = numTiles * TILE_SIZE;
 
-  const project = (lat: number, lon: number) => ({
+  const project = useCallback((lat: number, lon: number) => ({
     x: (getTileX(lon, tileZoomBase) - targetX) * TILE_SIZE + mapW / 2,
     y: (getTileY(lat, tileZoomBase) - targetY) * TILE_SIZE + mapW / 2,
-  });
+  }), [tileZoomBase, targetX, targetY, TILE_SIZE, mapW]);
 
   const scaleF = Math.pow(2, animatedZoom - tileZoomBase);
 
@@ -365,91 +414,6 @@ export const MapRender: React.FC<MapProps> = ({
   const arrowA = showArrow ? project(latitude - 1.2, longitude - 2.5) : null;
   const arrowB = showArrow ? project(latitude, longitude) : null;
 
-  const normalizeSubs = (items: SubtitleItem[]): SubWord[] => {
-    return items.map(item => {
-      if (item.word) {
-        return { word: item.word, start: item.start, duration: item.duration ?? 500 };
-      }
-      if (item.text) {
-        const dur = item.end ? item.end - item.start : 500;
-        return { word: item.text, start: item.start, duration: dur };
-      }
-      return { word: '', start: item.start, duration: 500 };
-    });
-  };
-
-  const renderSubtitles = () => {
-    const normalized = normalizeSubs(subs);
-    if (normalized.length === 0) return null;
-
-    const chunks: SubWord[][] = [];
-    for (let i = 0; i < normalized.length; i += 4) chunks.push(normalized.slice(i, i + 4));
-
-    const nowMs = (frame / fps) * 1000;
-    let idx = -1;
-    for (let i = 0; i < chunks.length; i++) {
-      const start = chunks[i][0].start;
-      const nextStart = chunks[i + 1]?.[0].start ?? Infinity;
-      if (nowMs >= start && nowMs < nextStart) { idx = i; break; }
-    }
-    if (idx === -1) return null;
-
-    const chunk = chunks[idx];
-
-    const subtitleEnter = interpolate(
-      Math.min((nowMs - chunk[0].start) / 150, 1),
-      [0, 1],
-      [12, 0],
-      { easing: Easing.out(Easing.ease) }
-    );
-
-    return (
-      <div style={{
-        position: 'absolute', left: 0, right: 0,
-        top: '46%', transform: `translateY(calc(-50% + ${subtitleEnter}px))`,
-        display: 'flex', justifyContent: 'center', zIndex: 300,
-        pointerEvents: 'none',
-      }}>
-        <div style={{
-          display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'center',
-          alignItems: 'center', gap: 8, padding: '24px 40px',
-          background: 'rgba(0,0,0,0.55)',
-          borderRadius: 16,
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          maxWidth: '88%',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-        }}>
-          {chunk.map((sub, i) => {
-            const active = nowMs >= sub.start && nowMs <= sub.start + sub.duration + 200;
-            const wordScale = active ? interpolate(Math.min((nowMs - sub.start) / 120, 1), [0, 1], [0.88, 1], { easing: Easing.out(Easing.back) }) : 1;
-            return (
-              <span key={`${idx}-${i}`} style={{
-                display: 'inline-block',
-                color: active ? '#FFEA00' : 'rgba(255,255,255,0.75)',
-                fontSize: 56,
-                fontWeight: 900,
-                fontFamily: '"Montserrat Black", Inter, Arial Black, sans-serif',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                textShadow: active
-                  ? '0 0 30px rgba(255,234,0,0.6), 0 2px 8px rgba(0,0,0,0.9)'
-                  : '0 2px 8px rgba(0,0,0,0.9)',
-                WebkitTextStroke: active ? '1.5px rgba(0,0,0,0.5)' : '1px rgba(0,0,0,0.3)',
-                opacity: active ? 1 : 0.45,
-                lineHeight: 1.15,
-                transform: `scale(${wordScale})`,
-                transition: 'color 0.05s ease',
-              }}>
-                {sub.word}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   if (visualType !== 'map_3d') {
     const resolvedUrl = imageFile ? staticFile(`temp_images/${imageFile}`) : '';
     const floatT = (frame % 150) / 150;
@@ -463,7 +427,8 @@ export const MapRender: React.FC<MapProps> = ({
       <div style={{
         width: 1080, height: 1920, position: 'relative', backgroundColor: '#050505',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'Inter, sans-serif', perspective: '1500px', overflow: 'hidden',
+        fontFamily: '"Montserrat Black", "Arial Black", Inter, sans-serif',
+        perspective: '1500px', overflow: 'hidden',
       }}>
         {resolvedUrl && (
           <div style={{
@@ -476,26 +441,31 @@ export const MapRender: React.FC<MapProps> = ({
         )}
         {resolvedUrl ? (
           <div style={{
-            width: 860, height: 1420, borderRadius: 40,
-            transformStyle: 'preserve-3d',
+            position: 'absolute', inset: 0,
             transform: `translateY(${floatY}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`,
-            boxShadow: '0 60px 120px rgba(0,0,0,0.9), 0 0 80px rgba(255,255,255,0.08)',
-            overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)',
+            overflow: 'hidden',
           }}>
-            <img src={resolvedUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${kenBurnsScale})` }} alt="" />
+            <img src={resolvedUrl} style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover',
+              transform: `scale(${kenBurnsScale})`,
+            }} alt="" />
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.4) 100%)',
+              pointerEvents: 'none',
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse at center, transparent 40%, rgba(5,5,5,0.3) 100%)',
               pointerEvents: 'none',
             }} />
           </div>
         ) : (
           <div style={{
-            width: 860, height: 1420, borderRadius: 40,
+            width: 1080, height: 1920,
             background: 'linear-gradient(135deg, #0a0a1a 0%, #150a2e 50%, #0a0a1a 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '2px solid rgba(255,255,255,0.1)',
-            boxShadow: '0 60px 120px rgba(0,0,0,0.9)',
           }}>
             <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 40, textAlign: 'center', padding: 40 }}>
               🌍
@@ -503,16 +473,10 @@ export const MapRender: React.FC<MapProps> = ({
           </div>
         )}
         <div style={{
-          position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse at center, transparent 28%, rgba(5,5,5,0.7) 100%)',
-          pointerEvents: 'none',
+          position: 'absolute', left: 0, right: 0, bottom: 0, height: 200,
+          background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
+          pointerEvents: 'none', zIndex: 200,
         }}/>
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px)`,
-          pointerEvents: 'none', opacity: 0.3,
-        }}/>
-        {renderSubtitles()}
       </div>
     );
   }
@@ -537,6 +501,18 @@ export const MapRender: React.FC<MapProps> = ({
             onTileLoad={onTileLoad}
             onTileError={onTileError}
             tileKey={key}
+            mapStyle={mapStyle}
+          />
+        );
+        ts.push(
+          <MapTile key={`hill-${key}`}
+            tileX={tileX} tileY={tileY} baseZoom={tileZoomBase}
+            posX={posX} posY={posY} mapW={mapW} TILE_SIZE={TILE_SIZE}
+            onTileLoad={onTileLoad}
+            onTileError={onTileError}
+            tileKey={`hill-${key}`}
+            mapStyle="hillshade"
+            opacity={0.3}
           />
         );
       }
@@ -547,7 +523,7 @@ export const MapRender: React.FC<MapProps> = ({
   return (
     <div style={{
       width: 1080, height: 1920, position: 'relative',
-      backgroundColor: '#0a0b10', overflow: 'hidden', fontFamily: 'Inter, sans-serif',
+      backgroundColor: '#0a0b10', overflow: 'hidden', fontFamily: '"Montserrat Black", "Arial Black", Inter, sans-serif',
     }}>
       <div style={{
         position: 'absolute',
@@ -566,9 +542,27 @@ export const MapRender: React.FC<MapProps> = ({
           overflow: 'visible', pointerEvents: 'none', zIndex: 10,
         }}>
           <defs>
-            <filter id="country-glow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="8" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            <filter id="country-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="blur1"/>
+              <feGaussianBlur stdDeviation="8" result="blur2"/>
+              <feGaussianBlur stdDeviation="18" result="blur3"/>
+              <feMerge>
+                <feMergeNode in="blur3"/>
+                <feMergeNode in="blur2"/>
+                <feMergeNode in="blur1"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <filter id="country-glow-intense" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur1"/>
+              <feGaussianBlur stdDeviation="12" result="blur2"/>
+              <feGaussianBlur stdDeviation="28" result="blur3"/>
+              <feMerge>
+                <feMergeNode in="blur3"/>
+                <feMergeNode in="blur2"/>
+                <feMergeNode in="blur1"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
             </filter>
             <filter id="arrow-glow">
               <feGaussianBlur stdDeviation="4" result="blur"/>
@@ -577,18 +571,39 @@ export const MapRender: React.FC<MapProps> = ({
             <marker id="arrow-head" markerWidth="10" markerHeight="7" refX="6" refY="3.5" orient="auto">
               <polygon points="0 0, 10 3.5, 0 7" fill="#FF0078"/>
             </marker>
+            {generateHexGlowFilters(Math.max(hexIcons.length, 1))}
           </defs>
 
           {countryPath && (
-            <path
-              d={countryPath}
-              fill={colors.fill}
-              stroke={colors.stroke}
-              strokeWidth={4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={glowPulse}
-              filter="url(#country-glow)"
+            <>
+              <path
+                d={countryPath}
+                fill={colors.fill}
+                stroke={colors.stroke}
+                strokeWidth={8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={glowPulse}
+                filter="url(#country-glow-intense)"
+              />
+              <path
+                d={countryPath}
+                fill="none"
+                stroke={colors.stroke}
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.9}
+              />
+            </>
+          )}
+
+          {scanEffect && countryCode && (
+            <CountryScan
+              project={project}
+              countryPath={countryPath}
+              frame={frame}
+              durationInFrames={durationInFrames}
             />
           )}
 
@@ -634,50 +649,70 @@ export const MapRender: React.FC<MapProps> = ({
             );
           })}
 
-          <circle cx={mapW / 2} cy={mapW / 2} r={14 * pulseScale} fill="none" stroke="#FFF" strokeWidth={2.5} opacity={pulseOpacity}/>
-          <circle cx={mapW / 2} cy={mapW / 2} r={6} fill="#FFF"/>
+          {hexIcons.map((hx, i) => (
+            <HexIconMarker key={`hx-${i}`} data={hx} project={project} frame={frame} sceneStartMs={sceneStartMs} index={i} />
+          ))}
+
+          {routes.map((rt, i) => (
+            <RouteLine key={`rt-${i}`} data={rt} project={project} frame={frame} durationInFrames={durationInFrames} index={i} />
+          ))}
+
+          {regions.map((rg, i) => (
+            <RegionOverlay key={`rg-${i}`} data={rg} project={project} frame={frame} index={i} />
+          ))}
         </svg>
       </div>
 
       {floatingLabel && floatingLabel !== 'none' && (() => {
-        const labelSlideIn = interpolate(progress, [0, 0.2], [-80, 0], { easing: Easing.out(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-        const labelOpacity = interpolate(progress, [0, 0.15], [0, 1], { easing: Easing.out(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+        const autoFade = interpolate(
+          currentMs, [0, 300, 3500, 4200],
+          [0, 1, 1, 0],
+          { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+        );
+        const cueShow = activeCue?.eventType === 'label_flash' || activeCue?.eventType === 'pin_drop'
+          ? interpolate(
+              Math.min((currentMs - activeCue.startMs) / 200, 1),
+              [0, 0.5, 1],
+              [0, 1, 0.6],
+              { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+            )
+          : 0;
+        const finalOpacity = Math.max(autoFade, cueShow);
+        if (finalOpacity < 0.01) return null;
+
+        const slideUp = interpolate(
+          currentMs, [0, 400, 3500, 4200],
+          [24, 0, 0, -12],
+          { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+        );
+
         return (
         <div style={{
-          position: 'absolute', top: '32%', left: '50%',
-          transform: `translate(-50%, calc(-50% + ${labelSlideIn}px))`, zIndex: 100,
-          opacity: labelOpacity,
+          position: 'absolute', top: '40%', left: 0, right: 0,
+          textAlign: 'center', zIndex: 100,
+          opacity: finalOpacity,
+          transform: `translateY(${slideUp}px)`,
+          pointerEvents: 'none',
         }}>
           <div style={{
-            background: 'rgba(10,11,16,0.85)', backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: `2px solid ${colors.stroke}`,
-            borderLeft: `4px solid ${colors.stroke}`,
-            borderRadius: 18, padding: '18px 36px',
-            boxShadow: `0 8px 40px rgba(0,0,0,0.6), 0 0 30px ${colors.stroke}44`,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 260,
+            fontSize: 13, fontWeight: 700, letterSpacing: 4,
+            color: colors.stroke, textTransform: 'uppercase',
+            marginBottom: 2, fontFamily: THEME.fontFamily,
           }}>
-            <span style={{
-              color: '#8f9cae', fontSize: 16, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: 3, marginBottom: 6,
-            }}>
-              {countryCode ? highlightRegion.toUpperCase() : 'KEY METRIC'}
-            </span>
-            <span style={{
-              color: '#fff', fontSize: 52, fontWeight: 900,
-              textShadow: `0 0 ${20 * cueFlashIntensity}px ${colors.stroke}, 0 0 ${60 * cueFlashIntensity}px ${colors.stroke}44`,
-              lineHeight: 1.1, letterSpacing: '0.02em',
-              fontFamily: '"Arial Black", Inter, sans-serif',
-              opacity: 0.6 + 0.4 * cueFlashIntensity,
-            }}>
-              {floatingLabel}
-            </span>
+            {countryCode ? highlightRegion.toUpperCase() : 'KEY METRIC'}
           </div>
           <div style={{
-            width: 3, height: 80,
-            background: `linear-gradient(to bottom, ${colors.stroke}, transparent)`,
-            margin: '0 auto', opacity: 0.7,
+            width: 40, height: 2, background: colors.stroke,
+            margin: '0 auto 6px', opacity: 0.5,
           }}/>
+          <div style={{
+            fontSize: 52, fontWeight: 900, color: '#fff',
+            textShadow: `0 0 30px ${colors.stroke}88, 0 2px 4px rgba(0,0,0,0.8)`,
+            lineHeight: 1.1, letterSpacing: '0.02em',
+            fontFamily: THEME.fontFamily,
+          }}>
+            {floatingLabel}
+          </div>
         </div>);
       })()}
 
@@ -700,51 +735,57 @@ export const MapRender: React.FC<MapProps> = ({
       }}/>
 
       {vignettes.length > 0 && (() => {
-        const cardGap = 76;
-        const cardStartY = 460;
         return (
           <div style={{
-            position: 'absolute', right: 36, top: cardStartY, zIndex: 80,
-            display: 'flex', flexDirection: 'column', gap: cardGap,
+            position: 'absolute', right: 36, top: '42%', zIndex: 80,
+            display: 'flex', flexDirection: 'column', gap: 20,
             pointerEvents: 'none',
           }}>
             {vignettes.map((v, i) => {
               const delay = i * 12;
               if (frame < delay) return null;
+              const elapsed = Math.max(frame - delay, 0);
               const slideX = interpolate(
-                Math.max(frame - delay, 0), [0, 14], [60, 0],
+                elapsed, [0, 8], [40, 0],
                 { easing: Easing.out(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
               );
-              const op = interpolate(
-                Math.max(frame - delay, 0), [0, 10], [0, 1],
+              const fadeIn = interpolate(
+                elapsed, [0, 6], [0, 1],
                 { easing: Easing.out(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
               );
+              const fadeOut = interpolate(
+                elapsed, [80, 95], [1, 0],
+                { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+              );
+              const opacity = fadeIn * fadeOut;
+              if (opacity < 0.01) return null;
               return (
                 <div key={`vg-${i}`} style={{
-                  opacity: op, transform: `translateX(${slideX}px)`,
-                  background: 'rgba(10,11,16,0.78)', backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  borderRadius: 16, padding: '14px 20px',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderLeft: `3px solid ${colors.stroke}`,
-                  minWidth: 220,
-                  boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 20px ${colors.stroke}22`,
-                  display: 'flex', flexDirection: 'column', gap: 2,
+                  opacity, transform: `translateX(${slideX}px)`,
+                  display: 'flex', alignItems: 'center', gap: 12,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                    <span style={{ fontSize: 18 }}>{v.icon}</span>
-                    <span style={{ color: '#8f9cae', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>
-                      {v.title}
+                  <div style={{
+                    width: 3, height: 36,
+                    background: colors.stroke, borderRadius: 2, opacity: 0.5,
+                  }} />
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: 1,
+                  }}>
+                    <span style={{
+                      color: THEME.textSecondary, fontSize: 10, fontWeight: 700,
+                      letterSpacing: 2, textTransform: 'uppercase',
+                    }}>
+                      {v.icon} {v.title}
+                    </span>
+                    <span style={{
+                      color: '#fff', fontSize: 28, fontWeight: 900,
+                      fontFamily: THEME.fontFamily,
+                      textShadow: `0 0 20px ${colors.stroke}44, 0 2px 4px rgba(0,0,0,0.8)`,
+                      lineHeight: 1.15,
+                    }}>
+                      {v.value}
                     </span>
                   </div>
-                  <span style={{
-                    color: '#fff', fontSize: 30, fontWeight: 900,
-                    fontFamily: '"Arial Black", Inter, sans-serif',
-                    textShadow: `0 0 20px ${colors.stroke}44`,
-                    lineHeight: 1.15,
-                  }}>
-                    {v.value}
-                  </span>
                 </div>
               );
             })}
@@ -752,7 +793,23 @@ export const MapRender: React.FC<MapProps> = ({
         );
       })()}
 
-      {renderSubtitles()}
+      {lowerThirdData.length > 0 && (
+        <LowerThird
+          items={lowerThirdData}
+          frame={frame}
+          progress={progress}
+        />
+      )}
+
+      {geopolitical && (
+        <GeopoliticalOverlay
+          geopolitical={geopolitical}
+          currentMs={currentMs}
+        />
+      )}
+
+      <SceneOverlay data={sceneOverlay} currentMs={currentMs} />
+
     </div>
   );
 };

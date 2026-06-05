@@ -17,44 +17,6 @@ class BaseIdea(BaseModel):
     IDEA_PROMPT: ClassVar[str] = ""
 
 
-class StickmanNoirIdea(BaseIdea):
-    selected_theme: str = Field(description="El eje temático de psicología conductual elegido")
-    selected_symbol: str = Field(description="El símbolo visual noir elegido")
-    category: str = "stickman_noir"
-
-    @classmethod
-    def get_json_format_instructions(cls) -> str:
-        """
-        Generates the mandatory JSON output schema instructions based on the
-        Pydantic model fields.
-        """
-        # Dynamic JSON schema extraction from Pydantic model fields
-        fields = cls.model_fields
-        schema_lines: list[str] = []
-        for name, field in fields.items():
-            # Use docstring/description if available, or fallback to the field name
-            desc: str = str(field.description) if field.description else name
-            schema_lines.append(f'  "{name}": "{desc}"')
-
-        json_format = ",\n".join(schema_lines)
-        schema_block = (
-            "\n**Formato de Salida Obligatorio (JSON):**\n"
-            "```json\n"
-            f"{{\n{json_format}\n}}\n"
-            "```\n"
-        )
-        return schema_block
-
-    @classmethod
-    def get_idea_prompt(cls) -> str:
-        """
-        Formats an idea prompt by appending the mandatory JSON schema
-        derived from the idea_model fields.
-        """
-        selected_idea_template = cls.IDEA_PROMPT
-        return selected_idea_template.strip() + "\n" + cls.get_json_format_instructions()
-
-
 class Subject(BaseModel):
     description: str = Field(description="Physical description in ENGLISH. Include clothing, key features, and expression. IMPORTANT: This MUST align with the global 'style' (e.g., if stickman, keep outlines thick and features stylized).")  # noqa: E501
     action: str = Field(description="Specific action, pose, or interaction with other subjects in ENGLISH")  # noqa: E501

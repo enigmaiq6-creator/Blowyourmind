@@ -7,6 +7,9 @@ interface Word {
   end: number;
 }
 
+const ACCENT = '#FFB800';
+const TEXT_SHADOW = '0 2px 12px rgba(0,0,0,0.7), 0 4px 24px rgba(0,0,0,0.3)';
+
 export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ words, topHeadline }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -28,31 +31,21 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
       
       {topHeadline && (
         <div style={{
-          position: 'absolute',
-          top: 180,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(200,20,20,0.92)',
-          padding: '14px 36px',
-          borderRadius: 12,
-          zIndex: 100,
-          boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
-          border: '3px solid #FFD700',
-          width: '82%',
-          textAlign: 'center'
+          position: 'absolute', top: 180, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 100, textAlign: 'center', width: '86%',
         }}>
           <span style={{
-            color: '#ffffff',
+            color: '#ffffff', fontSize: 52, fontWeight: 900,
             fontFamily: '"Montserrat Black", Inter, Arial Black, sans-serif',
-            fontSize: 64,
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            lineHeight: 1.1,
-            textShadow: '3px 3px 0 rgba(0,0,0,0.8)',
-            letterSpacing: '0.02em',
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+            textShadow: '0 4px 20px rgba(0,0,0,0.6), 0 2px 4px rgba(0,0,0,0.8)',
           }}>
             {topHeadline}
           </span>
+          <div style={{
+            width: 80, height: 3, margin: '12px auto 0',
+            background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)`,
+          }}/>
         </div>
       )}
 
@@ -63,58 +56,76 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
         if (!active) return null;
 
         const phraseEnter = interpolate(
-          Math.min((nowMs - startMs) / 120, 1),
+          Math.min((nowMs - startMs) / 150, 1),
           [0, 1],
-          [14, 0],
+          [20, 0],
+          { easing: Easing.out(Easing.ease) }
+        );
+
+        const phraseOpacity = interpolate(
+          Math.min((nowMs - startMs) / 150, 1),
+          [0, 1],
+          [0, 1],
           { easing: Easing.out(Easing.ease) }
         );
 
         return (
           <div key={pi} style={{ 
-            position: 'absolute', left: 0, right: 0, top: '46%',
-            transform: `translateY(calc(-50% + ${phraseEnter}px))`,
+            position: 'absolute', left: 0, right: 0, bottom: 160,
+            transform: `translateY(${phraseEnter}px)`,
+            opacity: phraseOpacity,
             display: 'flex', justifyContent: 'center', zIndex: 100,
             pointerEvents: 'none',
           }}>
             <div style={{
               display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'center',
-              alignItems: 'center', gap: 8, padding: '24px 40px',
-              background: 'rgba(0,0,0,0.6)',
-              borderRadius: 16,
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              maxWidth: '88%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+              alignItems: 'baseline', gap: 6, padding: '8px 16px',
+              maxWidth: '90%',
             }}>
               {phrase.words.map((word, wi) => {
                 const wStart = word.start;
                 const wEnd = word.end;
                 const isCurrentWord = nowMs >= wStart && nowMs < wEnd;
-                const wordScale = isCurrentWord
-                  ? interpolate(Math.min((nowMs - wStart) / 120, 1), [0, 1], [0.88, 1], { easing: Easing.out(Easing.back) })
-                  : 1;
+
+                const wordFadeIn = interpolate(
+                  Math.min(Math.max((nowMs - wStart) / 100, 0), 1),
+                  [0, 1],
+                  [0, 1],
+                  { easing: Easing.out(Easing.ease) }
+                );
+
+                const wordSlideUp = interpolate(
+                  Math.min(Math.max((nowMs - wStart) / 100, 0), 1),
+                  [0, 1],
+                  [12, 0],
+                  { easing: Easing.out(Easing.ease) }
+                );
 
                 return (
-                  <span
-                    key={wi}
-                    style={{
-                      fontSize: 56,
-                      fontFamily: '"Montserrat Black", Inter, Arial Black, sans-serif',
-                      fontWeight: 900,
-                      color: isCurrentWord ? '#FFEA00' : 'rgba(255,255,255,0.7)',
-                      textTransform: 'uppercase',
-                      display: 'inline-block',
-                      lineHeight: 1.15,
-                      letterSpacing: '0.04em',
-                      textShadow: isCurrentWord
-                        ? '0 0 30px rgba(255,234,0,0.5), 0 2px 8px rgba(0,0,0,0.9)'
-                        : '0 2px 8px rgba(0,0,0,0.9)',
-                      WebkitTextStroke: isCurrentWord ? '1.5px rgba(0,0,0,0.4)' : '1px rgba(0,0,0,0.25)',
-                      opacity: isCurrentWord ? 1 : 0.4,
-                      transform: `scale(${wordScale})`,
-                    }}
-                  >
+                  <span key={wi} style={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    fontSize: isCurrentWord ? 48 : 42,
+                    fontFamily: '"Montserrat Bold", Inter, Arial, sans-serif',
+                    fontWeight: 700,
+                    color: isCurrentWord ? '#ffffff' : 'rgba(255,255,255,0.5)',
+                    textShadow: isCurrentWord ? TEXT_SHADOW : '0 1px 6px rgba(0,0,0,0.5)',
+                    lineHeight: 1.3,
+                    letterSpacing: '0.02em',
+                    transform: `translateY(${wordSlideUp}px)`,
+                    opacity: wordFadeIn,
+                    transition: 'color 0.08s ease',
+                  }}>
                     {word.text}
+                    {isCurrentWord && (
+                      <div style={{
+                        position: 'absolute', bottom: -2, left: '5%', right: '5%',
+                        height: 2.5,
+                        background: ACCENT,
+                        borderRadius: 1,
+                        boxShadow: `0 0 8px ${ACCENT}66`,
+                      }}/>
+                    )}
                   </span>
                 );
               })}

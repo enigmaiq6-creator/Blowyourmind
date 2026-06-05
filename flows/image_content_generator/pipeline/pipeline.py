@@ -8,9 +8,7 @@ import subprocess
 from pydantic import BaseModel, PrivateAttr
 
 from flows.image_content_generator.pipeline.prompt_base.models import VideoScript
-from flows.image_content_generator.pipeline.prompt_longs.manager import PromptManagerLongs
 from flows.image_content_generator.pipeline.prompt_shorts.manager import PromptManagerShorts
-from flows.image_content_generator.pipeline.prompt_shorts.stories.stickman_manager import StickmanNoirManager
 from flows.image_content_generator.pipeline.schemas import AudioAlignment, State, VideoOrientation
 from flows.image_content_generator.pipeline.storage_csv import CsvStore
 from tools.audio_generation.audio_tool import AudioTool
@@ -19,10 +17,7 @@ from tools.audio_generation.vertex_ai_tts import VertexAIAudioGenerator
 from tools.common.base_model import BaseModelTool
 from tools.common.messenger import Messenger
 from tools.image_generation.gemini import GeminiImageGenerator
-from tools.image_generation.jimeng import JimengImageGenerator
-from tools.image_generation.pollinations import PollinationsImageGenerator
 from tools.image_generation.vertex_ai import VertexAIImageGenerator
-from tools.image_generation.midjourney import ImageTask
 from tools.text_generation.gemini import GeminiTextGenerator
 from tools.utils.text import slugify
 from tools.utils.time import retry
@@ -34,7 +29,7 @@ from tools.video_editing.remotion import RemotionTool
 from tools.common.cost_tracker import CostTracker
 
 T = TypeVar("T", bound=BaseModel)
-PromptManager = Union[PromptManagerShorts, PromptManagerLongs]
+PromptManager = PromptManagerShorts
 
 
 class Pipeline(BaseModelTool):
@@ -49,13 +44,10 @@ class Pipeline(BaseModelTool):
 
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
     _image_gen: Optional[Union[GeminiImageGenerator, VertexAIImageGenerator]] = PrivateAttr(default=None)
-    _jimeng_gen: Optional[JimengImageGenerator] = PrivateAttr(default=None)
-    _pollinations_gen: Optional[PollinationsImageGenerator] = PrivateAttr(default=None)
     _audio_gen: Optional[Union[GeminiAudioGenerator, VertexAIAudioGenerator]] = PrivateAttr(default=None)
     _ffmpeg: Optional[FFmpegTool] = PrivateAttr(default=None)
     _whisper: Optional[WhisperTool] = PrivateAttr(default=None)
     _prompt_manager: Optional[PromptManager] = PrivateAttr(default=None)
-    _stickman_manager: Optional[StickmanNoirManager] = PrivateAttr(default=None)
     _audio_tool: Optional[AudioTool] = PrivateAttr(default=None)
     _store: Optional[CsvStore] = PrivateAttr(default=None)
     _facebook: Optional[FacebookTool] = PrivateAttr(default=None)
@@ -91,6 +83,7 @@ class Pipeline(BaseModelTool):
 
     # Standard Resource Directories
     BG_MUSIC_DIR: ClassVar[str] = "bg-music"
+    SFX_DIR: ClassVar[str] = "sfx"
     REFERENCES_DIR: ClassVar[str] = "reference"
 
     # Standard Tracking Files
@@ -162,31 +155,10 @@ class Pipeline(BaseModelTool):
         return self._video_gen
 
     @property
-    def jimeng_gen(self) -> JimengImageGenerator:
-        if self._jimeng_gen is None:
-            import os
-            ar_value = "9:16" if self.orientation == VideoOrientation.SHORT else "16:9"
-            self._jimeng_gen = JimengImageGenerator(aspect_ratio=ar_value)
-        return self._jimeng_gen
-
-    @property
-    def pollinations_gen(self) -> PollinationsImageGenerator:
-        if self._pollinations_gen is None:
-            ar_value = "9:16" if self.orientation == VideoOrientation.SHORT else "16:9"
-            self._pollinations_gen = PollinationsImageGenerator(aspect_ratio=ar_value)
-        return self._pollinations_gen
-
-    @property
     def cost_tracker(self) -> CostTracker:
         if self._cost_tracker is None:
             self._cost_tracker = CostTracker()
         return self._cost_tracker
-
-    @property
-    def stickman_manager(self) -> StickmanNoirManager:
-        if self._stickman_manager is None:
-            self._stickman_manager = StickmanNoirManager()
-        return self._stickman_manager
 
     @property
     def whisper(self) -> WhisperTool:
@@ -204,12 +176,7 @@ class Pipeline(BaseModelTool):
     @property
     def prompt_manager(self) -> PromptManager:
         if self._prompt_manager is None:
-            if self.orientation == VideoOrientation.SHORT:
-                self._prompt_manager = PromptManagerShorts()
-            elif self.orientation == VideoOrientation.LONG:
-                self._prompt_manager = PromptManagerLongs()
-            else:
-                raise ValueError(f"Orientation {self.orientation} not supported.")
+            self._prompt_manager = PromptManagerShorts()
         return self._prompt_manager
 
     @property
@@ -244,16 +211,9 @@ class Pipeline(BaseModelTool):
         return model_class.model_validate_json(path.read_text(encoding="utf-8"))
 
     def load_script(self, idea_obj) -> VideoScript:
-        """
-        Dynamically loads the script JSON using the correct Pydantic model
-        based on the idea's category.
-        """
         if getattr(idea_obj, "category", "") == "geography":
             from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler
             return self.load_json(idea_obj.id, self.SCRIPT_JSON, GeographyHandler)
-        elif getattr(idea_obj, "category", "") == "trivia":
-            from flows.image_content_generator.pipeline.prompt_shorts.trivia.models import TriviaHandler
-            return self.load_json(idea_obj.id, self.SCRIPT_JSON, TriviaHandler)
         return self.load_json(idea_obj.id, self.SCRIPT_JSON, VideoScript)
 
     def save_json(self, idea_id: int, filename: str, data: BaseModel):
@@ -319,50 +279,42 @@ class Pipeline(BaseModelTool):
         titles = self.store.get_all_titles()
 
         # 1. Selection of Manager based on mode
-        if self.mode == "stickman":
-            idea_data, script = self.stickman_manager.generate_full_story(
-                self.text_gen, titles_to_avoid=titles, extra_avoid=extra_avoid
-            )
-            category = "stickman_noir"
-        else:
-            idea_data, script, category = self.prompt_manager.generate_full_story(
-                self.text_gen, titles_to_avoid=titles, extra_avoid=extra_avoid, mode=self.mode
-            )
+        idea_data, script, category = self.prompt_manager.generate_full_story(
+            self.text_gen, titles_to_avoid=titles, extra_avoid=extra_avoid, mode=self.mode
+        )
 
         # Cost tracking (approx 2000 tokens)
         self.cost_tracker.add_text_cost(2000)
 
         # --- FASE 3: A/B TESTING (Generar Gancho B) ---
-        # Skip A/B testing for stickman for now to keep it simple and focused on quality
-        if self.mode != "stickman":
-            Messenger.info("   Generating alternative Hook B...")
-            prompt_b = f"""
-            You have the following video script:
-            Title: {idea_data.title}
-            Hook A (Original): {script.scenes[0].narration}
+        Messenger.info("   Generating alternative Hook B...")
+        prompt_b = f"""
+    You have the following video script:
+    Title: {idea_data.title}
+    Hook A (Original): {script.scenes[0].narration}
 
-            Write a COMPLETELY DIFFERENT new Hook (Scene 1).
-            If the original was aggressive/direct, make this one curious/mysterious (or vice versa).
-            Must last maximum 3 seconds (15 words). Must be in English.
-            Respond ONLY with the narrative text of the new hook, no quotes or extra text.
-            """
-            hook_b = self.text_gen.generate(prompt_b)
-            self.cost_tracker.add_text_cost(200)
+    Write a COMPLETELY DIFFERENT new Hook (Scene 1).
+    If the original was aggressive/direct, make this one curious/mysterious (or vice versa).
+    Must last maximum 3 seconds (15 words). Must be in English.
+    Respond ONLY with the narrative text of the new hook, no quotes or extra text.
+    """
+        hook_b = self.text_gen.generate(prompt_b)
+        self.cost_tracker.add_text_cost(200)
 
-            # Create alternative version B
-            import copy
-            script_b = copy.deepcopy(script)
-            script_b.scenes[0].narration = hook_b
+        # Create alternative version B
+        import copy
+        script_b = copy.deepcopy(script)
+        script_b.scenes[0].narration = hook_b
 
-            idea_b = copy.deepcopy(idea_data)
-            idea_b.title = f"{idea_data.title} [Hook B]"
+        idea_b = copy.deepcopy(idea_data)
+        idea_b.title = f"{idea_data.title} [Hook B]"
 
-            # Save Idea B
-            idea_obj_b = self.store.add_new_idea(idea_b.title, category)
-            self.save_json(idea_obj_b.id, self.IDEA_JSON, idea_b)
-            self.save_json(idea_obj_b.id, self.SCRIPT_JSON, script_b)
-            self.store.update_state(idea_obj_b.id, State.SCRIPT_GENERATED)
-            Messenger.info(f"   Hook B generated and queued as Idea {idea_obj_b.id}.")
+        # Save Idea B
+        idea_obj_b = self.store.add_new_idea(idea_b.title, category)
+        self.save_json(idea_obj_b.id, self.IDEA_JSON, idea_b)
+        self.save_json(idea_obj_b.id, self.SCRIPT_JSON, script_b)
+        self.store.update_state(idea_obj_b.id, State.SCRIPT_GENERATED)
+        Messenger.info(f"   Hook B generated and queued as Idea {idea_obj_b.id}.")
 
         # Save Idea A (or the only one if stickman)
         idea_obj_a = self.store.add_new_idea(idea_data.title, category)
@@ -387,75 +339,29 @@ class Pipeline(BaseModelTool):
         script = self.load_script(idea_obj)
         Messenger.info(f"   Script loaded. Scenes: {len(script.scenes)}")
 
-        # Determine if we are in Riddle mode or Video mode
-        is_riddle = idea_obj.title.lower().startswith("acertijo") or "interaction" in str(type(idea_obj)).lower()
-        
-        # 5 Frames per scene for high-quality "Flipbook" animation (Videos only)
-        # 1 Frame per scene for Riddles/Interaction Images
-        frames_per_scene = 1 if is_riddle else 5
-        
-        tasks: List[ImageTask] = []
         for scene in script.scenes:
-            # Revertido a 1 imagen pura y estática por escena
             action_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", f"A cinematic scene about {idea_obj.title}")
             out_name = f"scene_{scene.scene_number:02d}.png"
             out_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, out_name)
-            tasks.append(
-                ImageTask(
+            if not out_path.exists():
+                self.image_gen.generate_image(
                     prompt=action_prompt,
                     output_path=out_path
                 )
-            )
+            try:
+                from PIL import Image
+                img = Image.open(out_path)
+                w, h = img.size
+                target_short = 1080 if h >= w else 1920
+                target_long = 1920 if h >= w else 1080
+                if w < target_short or h < target_long:
+                    Messenger.info(f"   Upscaling {out_name} from {w}x{h} to target...")
+                    img = img.resize((max(w, target_short), max(h, target_long)), Image.LANCZOS)
+                    img.save(out_path, quality=95)
+            except Exception:
+                pass
 
-        # Ensure directory exists
-        if tasks:
-            tasks[0].output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Distribute load: Vertex AI vs free alternative (Pollinations/Jimeng)
-        # VERTEX_IMAGE_RATIO = percentage of images to send to Vertex AI (default 20%)
-        # Set to 0 to use only the free alternative, 100 for only Vertex AI
-        jimeng_key = os.getenv("JIMENG_API_KEY")
-        use_jimeng = bool(jimeng_key)
-        alt_name = "Jimeng" if use_jimeng else "Pollinations"
-        alt_gen = self.jimeng_gen if use_jimeng else self.pollinations_gen
-
-        vertex_ratio = int(os.getenv("VERTEX_IMAGE_RATIO", "20"))
-        vertex_ratio = max(0, min(100, vertex_ratio))
-
-        if vertex_ratio >= 100:
-            vertex_tasks = list(tasks)
-            alt_tasks = []
-            Messenger.info(f"All {len(tasks)} images to Vertex AI (ratio=100%)")
-        elif vertex_ratio <= 0:
-            vertex_tasks = []
-            alt_tasks = list(tasks)
-            Messenger.info(f"All {len(tasks)} images to {alt_name} (ratio=0%)")
-        elif len(tasks) > 1:
-            split_idx = max(1, len(tasks) * vertex_ratio // 100)
-            vertex_tasks = tasks[:split_idx]
-            alt_tasks = tasks[split_idx:]
-            Messenger.info(f"Load balancing: {len(vertex_tasks)} to Vertex AI ({vertex_ratio}%), {len(alt_tasks)} to {alt_name}")
-        else:
-            vertex_tasks = list(tasks)
-            alt_tasks = []
-
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            futures = []
-            if vertex_tasks:
-                futures.append(executor.submit(self.image_gen.generate_images, vertex_tasks))
-            if alt_tasks:
-                futures.append(executor.submit(alt_gen.generate_images, alt_tasks))
-            for f in concurrent.futures.as_completed(futures):
-                try:
-                    f.result()
-                except Exception as e:
-                    Messenger.warning(f"One generator failed: {e}")
-        self.cost_tracker.add_image_cost(len(tasks))
-
-        Messenger.step_success(
-            f"📸 IMAGES: {len(vertex_tasks)} Vertex AI + {len(alt_tasks)} {alt_name} (ratio={vertex_ratio}%)"
-        )
+        self.cost_tracker.add_image_cost(len(script.scenes))
 
         # Update State
         idea_obj.state = State.IMAGES_GENERATED
@@ -532,6 +438,207 @@ class Pipeline(BaseModelTool):
 
         return cues
 
+    def _build_scene_props(self, idea_obj, scene, audio_duration_ms, remotion_public_images):
+        """Build MapRender props dict for a single scene (map_3d or ai_image)."""
+        is_geography_mode = getattr(idea_obj, "category", "") == "geography"
+
+        def _get_camera_attr(s, attr, default):
+            flat_val = getattr(s, f"camera_{attr}", None)
+            if flat_val and flat_val != 0.0:
+                return flat_val
+            camera = getattr(s, "camera", None)
+            if camera:
+                return getattr(camera, attr, default)
+            return default
+
+        lat = _get_camera_attr(scene, "latitude", 4.570868)
+        lon = _get_camera_attr(scene, "longitude", -74.297333)
+        zoom = _get_camera_attr(scene, "zoom", 5.2)
+        pitch = _get_camera_attr(scene, "pitch", 45.0)
+        bearing = _get_camera_attr(scene, "bearing", -10.0)
+
+        visual_type = getattr(scene, "visual_type", "map_3d")
+
+        # Build pins/vignettes/camera_path
+        pins_data = []
+        for p in getattr(scene, "map_pins", []):
+            pins_data.append({
+                "latitude": p.latitude if hasattr(p, "latitude") else 0,
+                "longitude": p.longitude if hasattr(p, "longitude") else 0,
+                "label": p.label if hasattr(p, "label") else "",
+                "value": p.value if hasattr(p, "value") else "",
+            })
+        vignettes_data = []
+        for v in getattr(scene, "vignettes", []):
+            vignettes_data.append({
+                "icon": v.icon if hasattr(v, "icon") else "📊",
+                "title": v.title if hasattr(v, "title") else "",
+                "value": v.value if hasattr(v, "value") else "",
+            })
+        camera_path_data = []
+        for wp in getattr(scene, "camera_path", []):
+            camera_path_data.append({
+                "latitude": wp.latitude if hasattr(wp, "latitude") else 0,
+                "longitude": wp.longitude if hasattr(wp, "longitude") else 0,
+                "zoom": wp.zoom if hasattr(wp, "zoom") else 5,
+                "pitch": wp.pitch if hasattr(wp, "pitch") else 40,
+                "bearing": wp.bearing if hasattr(wp, "bearing") else 0,
+            })
+        hex_icons_data = []
+        for hx in getattr(scene, "hex_icons", []):
+            hex_icons_data.append({
+                "latitude": hx.latitude if hasattr(hx, "latitude") else 0,
+                "longitude": hx.longitude if hasattr(hx, "longitude") else 0,
+                "icon": hx.icon if hasattr(hx, "icon") else "📍",
+                "label": hx.label if hasattr(hx, "label") else "",
+                "value": hx.value if hasattr(hx, "value") else "",
+                "color": hx.color if hasattr(hx, "color") else "#FF0078",
+            })
+        routes_data = []
+        for rt in getattr(scene, "routes", []):
+            wps = []
+            for wp in getattr(rt, "waypoints", []):
+                wps.append({
+                    "latitude": wp.latitude if hasattr(wp, "latitude") else 0,
+                    "longitude": wp.longitude if hasattr(wp, "longitude") else 0,
+                    "zoom": wp.zoom if hasattr(wp, "zoom") else 5,
+                    "pitch": wp.pitch if hasattr(wp, "pitch") else 40,
+                    "bearing": wp.bearing if hasattr(wp, "bearing") else 0,
+                })
+            routes_data.append({
+                "waypoints": wps,
+                "color": rt.color if hasattr(rt, "color") else "#FF0078",
+                "label": rt.label if hasattr(rt, "label") else "",
+                "dot_labels": list(getattr(rt, "dot_labels", [])),
+            })
+        regions_data = []
+        for rg in getattr(scene, "regions", []):
+            regions_data.append({
+                "name": rg.name if hasattr(rg, "name") else "",
+                "center_latitude": rg.center_latitude if hasattr(rg, "center_latitude") else 0,
+                "center_longitude": rg.center_longitude if hasattr(rg, "center_longitude") else 0,
+                "color": rg.color if hasattr(rg, "color") else "#FF0078",
+                "label": rg.label if hasattr(rg, "label") else "",
+                "radius_km": rg.radius_km if hasattr(rg, "radius_km") else 200,
+            })
+
+        narration_cues = self._generate_narration_cues(idea_obj.id, scene)
+
+        subtitle_words = []
+        try:
+            narration_text = getattr(scene, "narration", "") or ""
+            raw_words = narration_text.split()
+            if raw_words and audio_duration_ms > 0:
+                word_duration = audio_duration_ms / len(raw_words)
+                for i, w in enumerate(raw_words):
+                    start_ms = i * word_duration
+                    end_ms = (i + 1) * word_duration
+                    _w_json = Path(self.get_idea_asset_path(idea_obj.id, self.AUDIOS_DIR, self.SCENE_AUDIO_PATTERN.format(scene.scene_number))).with_name(f"scene_{scene.scene_number}.wav.json")
+                    if _w_json.exists():
+                        import json as _json
+                        with open(_w_json, 'r', encoding='utf-8') as _f:
+                            _data = _json.load(_f)
+                        _seg_ms = 0
+                        _ti = 0
+                        for _seg in _data.get("transcription", []):
+                            for _tok in _seg.get("tokens", []):
+                                _txt = _tok.get("text", "").strip()
+                                if _txt and _ti < len(raw_words):
+                                    subtitle_words.append({
+                                        "word": raw_words[_ti],
+                                        "startMs": _tok.get("offsets", {}).get("from", _seg_ms),
+                                        "endMs": _tok.get("offsets", {}).get("to", _seg_ms + 200),
+                                    })
+                                    _ti += 1
+                                _seg_ms = _seg.get("offsets", {}).get("to_ms", _seg_ms)
+                            _seg_ms = _seg.get("offsets", {}).get("to_ms", _seg_ms)
+                        break
+                    else:
+                        subtitle_words.append({
+                            "word": w,
+                            "startMs": round(start_ms),
+                            "endMs": round(end_ms),
+                        })
+        except Exception:
+            pass
+
+        highlight_region = getattr(scene, "highlight_region", "none")
+        floating_label = getattr(scene, "floating_label", "none")
+        arrow_direction = getattr(scene, "arrow_direction", "none")
+
+        if visual_type == "ai_image":
+            ai_img_filename = f"scene_{scene.scene_number:02d}_ai.jpg"
+            ai_img_dest = remotion_public_images / ai_img_filename
+            if not ai_img_dest.exists():
+                img_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", "A cinematic geography scene")
+                img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}.png")
+                try:
+                    from tools.image_generation.gemini import GeminiImageGenerator
+                    gemini_img = GeminiImageGenerator(
+                        aspect_ratio="9:16",
+                        reference_dir=Path(self.resource_base) / self.REFERENCES_DIR
+                    )
+                    gemini_img.generate_image(prompt=img_prompt, output_path=ai_img_dest)
+                except Exception:
+                    if img_path.exists():
+                        import shutil
+                        shutil.copy2(img_path, ai_img_dest)
+            return {
+                "visualType": "ai_image",
+                "imageFile": ai_img_filename,
+                "latitude": 0, "longitude": 0, "zoom": 0, "pitch": 0, "bearing": 0,
+                "highlightRegion": "none", "arrowDirection": "none", "floatingLabel": "none",
+                "pins": [], "vignettes": vignettes_data, "cameraPath": [],
+                "audioDurationMs": audio_duration_ms,
+                "narrationCues": narration_cues, "subtitleWords": subtitle_words,
+                "hexIcons": [], "routes": [], "regions": [],
+                "mapStyle": "satellite", "scanEffect": False, "lowerThirdData": [],
+            }
+
+        geopolitical_data = {}
+        try:
+            narration_text = getattr(scene, "narration", "") or ""
+            if narration_text:
+                from flows.image_content_generator.pipeline.geopolitical_analyzer import analyze_narration
+                geopolitical_data = analyze_narration(narration_text)
+        except Exception:
+            pass
+
+        scene_overlay = {}
+        try:
+            import json as _json
+            _raw_path = self.get_idea_path(idea_obj.id) / self.SCRIPT_JSON
+            if _raw_path.exists():
+                _raw = _json.loads(_raw_path.read_text(encoding='utf-8'))
+                _scn_num = getattr(scene, 'scene_number', 0)
+                for _rs in _raw.get('scenes', []):
+                    if _rs.get('scene_number') == _scn_num:
+                        scene_overlay = _rs.get('sceneOverlay', {})
+                        break
+        except Exception:
+            pass
+
+        return {
+            "visualType": "map_3d",
+            "imageFile": "",
+            "latitude": lat, "longitude": lon, "zoom": zoom, "pitch": pitch, "bearing": bearing,
+            "highlightRegion": highlight_region,
+            "arrowDirection": arrow_direction,
+            "floatingLabel": floating_label,
+            "pins": pins_data, "vignettes": vignettes_data, "cameraPath": camera_path_data,
+            "audioDurationMs": audio_duration_ms,
+            "narrationCues": narration_cues, "subtitleWords": subtitle_words,
+            "hexIcons": hex_icons_data, "routes": routes_data, "regions": regions_data,
+            "mapStyle": "satellite", "scanEffect": True,
+            "lowerThirdData": [
+                {"icon": "🌍", "label": "REGION", "value": highlight_region if highlight_region != "none" else "EARTH"},
+                {"icon": "📐", "label": "AREA", "value": f"{zoom:.1f}° zoom"},
+                {"icon": "📍", "label": "COORDINATES", "value": f"{lat:.1f}°, {lon:.1f}°"},
+            ],
+            "geopolitical": geopolitical_data,
+            "sceneOverlay": scene_overlay,
+        }
+
     def step2b_generate_video_clips(self):
         """
         Step 2b: Render video clips using enhanced Remotion MapRender (3D satellite maps)
@@ -567,7 +674,6 @@ class Pipeline(BaseModelTool):
             return default
 
         def get_scene_audio_duration(scene):
-            """Get the actual audio duration for a scene in milliseconds."""
             audio_seg = self.get_idea_asset_path(
                 idea_obj.id, self.AUDIOS_DIR,
                 self.SCENE_AUDIO_PATTERN.format(scene.scene_number)
@@ -576,9 +682,10 @@ class Pipeline(BaseModelTool):
                 dur = self.ffmpeg.get_audio_duration(audio_seg)
                 if dur > 0:
                     return int(dur * 1000)
-            return 10000  # fallback default
+            return 10000
 
-        def process_scene(scene):
+        def process_fallback_scene(scene):
+            """Handle non-MapRender scene types (data_viz, split_map, hex_grid, stock_video, Ken Burns)."""
             clip_filename = self.SCENE_VIDEO_PATTERN.format(scene.scene_number)
             clip_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, clip_filename)
             img_filename = f"scene_{scene.scene_number:02d}.png"
@@ -591,99 +698,7 @@ class Pipeline(BaseModelTool):
             visual_type = getattr(scene, "visual_type", "stock_video")
             query = getattr(scene, "pexels_query", "")
             is_geography_mode = getattr(idea_obj, "category", "") == "geography"
-
-            # Get REAL audio duration for this scene
             audio_duration_ms = get_scene_audio_duration(scene)
-
-            is_trivia_mode = getattr(idea_obj, "category", "") == "trivia"
-
-            # ── Trivia Quiz scene ──
-            if is_trivia_mode:
-                Messenger.info(f"   🧠 Scene {scene.scene_number}: Rendering trivia quiz via Remotion...")
-                bg_img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}.png")
-                bg_vid_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, f"scene_{scene.scene_number:02d}_bg.mp4")
-                
-                trivia_visual_type = getattr(scene, "visual_type", "stock_video")
-                background_video_url = ""
-                background_image_url = ""
-                
-                if trivia_visual_type == "stock_video":
-                    query = getattr(scene, "pexels_query", "space stars")
-                    if not bg_vid_path.exists() or bg_vid_path.stat().st_size < 1024:
-                        if not pexels_tool.fetch_video(query, bg_vid_path):
-                            pixabay_tool.fetch_video(query, bg_vid_path)
-                    
-                    if bg_vid_path.exists():
-                        remotion_vid_name = f"scene_{scene.scene_number:02d}_bg.mp4"
-                        remotion_vid_dest = remotion_public_images / remotion_vid_name
-                        import shutil
-                        shutil.copy2(bg_vid_path, remotion_vid_dest)
-                        background_video_url = f"http://localhost:3000/temp_images/{remotion_vid_name}"
-                else:
-                    if bg_img_path.exists():
-                        remotion_img_name = f"scene_{scene.scene_number:02d}_bg.png"
-                        remotion_img_dest = remotion_public_images / remotion_img_name
-                        import shutil
-                        shutil.copy2(bg_img_path, remotion_img_dest)
-                        background_image_url = f"http://localhost:3000/temp_images/{remotion_img_name}"
-                
-                props = {
-                    "question": getattr(scene, "question", ""),
-                    "option_a": getattr(scene, "option_a", ""),
-                    "option_b": getattr(scene, "option_b", ""),
-                    "option_c": getattr(scene, "option_c", ""),
-                    "correct_option": getattr(scene, "correct_option", "A"),
-                    "explanation": getattr(scene, "explanation", ""),
-                    "trivia_step": getattr(scene, "trivia_step", "question"),
-                    "question_number": getattr(scene, "question_number", 1),
-                    "audioDurationMs": audio_duration_ms,
-                }
-                if background_video_url:
-                    props["videoUrl"] = background_video_url
-                if background_image_url:
-                    props["backgroundImageUrl"] = background_image_url
-                
-                try:
-                    remotion_root = Path(self.REMOTION_DIR)
-                    self.remotion.render_composition(
-                        remotion_path=remotion_root,
-                        output_path=clip_path,
-                        composition_id="TriviaQuiz",
-                        props=props
-                    )
-                    if clip_path.exists() and clip_path.stat().st_size > 1024:
-                        return True
-                except Exception as e:
-                    Messenger.error(f"   ❌ TriviaQuiz render failed: {e}")
-
-            # Pre-extract pins, vignettes and camera_path for geography scenes
-            map_pins = getattr(scene, "map_pins", []) if is_geography_mode else []
-            vignettes = getattr(scene, "vignettes", []) if is_geography_mode else []
-            camera_path_raw = getattr(scene, "camera_path", []) if is_geography_mode else []
-            pins_data = []
-            for p in map_pins:
-                pins_data.append({
-                    "latitude": p.latitude if hasattr(p, "latitude") else 0,
-                    "longitude": p.longitude if hasattr(p, "longitude") else 0,
-                    "label": p.label if hasattr(p, "label") else "",
-                    "value": p.value if hasattr(p, "value") else "",
-                })
-            vignettes_data = []
-            for v in vignettes:
-                vignettes_data.append({
-                    "icon": v.icon if hasattr(v, "icon") else "📊",
-                    "title": v.title if hasattr(v, "title") else "",
-                    "value": v.value if hasattr(v, "value") else "",
-                })
-            camera_path_data = []
-            for wp in camera_path_raw:
-                camera_path_data.append({
-                    "latitude": wp.latitude if hasattr(wp, "latitude") else 0,
-                    "longitude": wp.longitude if hasattr(wp, "longitude") else 0,
-                    "zoom": wp.zoom if hasattr(wp, "zoom") else 5,
-                    "pitch": wp.pitch if hasattr(wp, "pitch") else 40,
-                    "bearing": wp.bearing if hasattr(wp, "bearing") else 0,
-                })
 
             # ── Data Visualization scene ──
             if is_geography_mode and visual_type in ("data_viz", "data_visualization"):
@@ -706,42 +721,27 @@ class Pipeline(BaseModelTool):
                             val = float(val_str) / 100
                         except ValueError:
                             val = 50
-                        data_points.append({
-                            "label": getattr(v, "title", ""),
-                            "value": val,
-                        })
+                        data_points.append({"label": getattr(v, "title", ""), "value": val})
 
                 props = {
                     "chartType": "bar",
                     "title": highlight_region if highlight_region != "none" else "",
                     "mainValue": floating_label if floating_label != "none" else "",
                     "mainLabel": "",
-                    "dataPoints": data_points or [
-                        {"label": "DATA A", "value": 75},
-                        {"label": "DATA B", "value": 50},
-                        {"label": "DATA C", "value": 90},
-                    ],
+                    "dataPoints": data_points or [{"label": "DATA A", "value": 75}, {"label": "DATA B", "value": 50}, {"label": "DATA C", "value": 90}],
                     "subtitle": "",
                     "audioDurationMs": audio_duration_ms,
                 }
                 try:
-                    remotion_root = Path(self.REMOTION_DIR)
-                    self.remotion.render_composition(
-                        remotion_path=remotion_root,
-                        output_path=clip_path,
-                        composition_id="DataVisualization",
-                        props=props
-                    )
+                    self.remotion.render_composition(remotion_path=Path(self.REMOTION_DIR), output_path=clip_path, composition_id="DataVisualization", props=props)
                     if clip_path.exists() and clip_path.stat().st_size > 1024:
                         return True
                 except Exception as e:
-                    Messenger.error(f"   ❌ DataViz render failed: {e}")
-                    Messenger.warning("   ⚠️ Falling back to map_3d...")
+                    Messenger.error(f"   ❌ DataViz failed: {e}. Falling back to map_3d...")
 
             # ── Split Map scene ──
             if is_geography_mode and visual_type == "split_map":
                 Messenger.info(f"   🗺️ Scene {scene.scene_number}: Rendering split map via Remotion...")
-                camera_path_raw = getattr(scene, "camera_path", [])
                 pins_data = []
                 for p in getattr(scene, "map_pins", []):
                     pins_data.append({
@@ -750,206 +750,154 @@ class Pipeline(BaseModelTool):
                         "label": p.label if hasattr(p, "label") else "",
                         "value": p.value if hasattr(p, "value") else "",
                     })
-
-                left_cam = {
-                    "latitude": _get_camera_attr(scene, "latitude", 4.570868),
-                    "longitude": _get_camera_attr(scene, "longitude", -74.297333),
-                    "zoom": _get_camera_attr(scene, "zoom", 5.2),
-                    "label": getattr(scene, "highlight_region", "LOCATION A"),
-                }
-                right_cam = {
-                    "latitude": _get_camera_attr(scene, "latitude", 40.7128) + 5,
-                    "longitude": _get_camera_attr(scene, "longitude", -74.006) + 10,
-                    "zoom": _get_camera_attr(scene, "zoom", 5.2),
-                    "label": getattr(scene, "floating_label", "LOCATION B"),
-                }
+                left_cam = {"latitude": _get_camera_attr(scene, "latitude", 4.570868), "longitude": _get_camera_attr(scene, "longitude", -74.297333), "zoom": _get_camera_attr(scene, "zoom", 5.2), "label": getattr(scene, "highlight_region", "LOCATION A")}
+                right_cam = {"latitude": _get_camera_attr(scene, "latitude", 40.7128) + 5, "longitude": _get_camera_attr(scene, "longitude", -74.006) + 10, "zoom": _get_camera_attr(scene, "zoom", 5.2), "label": getattr(scene, "floating_label", "LOCATION B")}
                 if pins_data and len(pins_data) >= 2:
                     right_cam["latitude"] = pins_data[1]["latitude"]
                     right_cam["longitude"] = pins_data[1]["longitude"]
                     right_cam["label"] = pins_data[1]["label"]
 
-                props = {
-                    "leftCamera": left_cam,
-                    "rightCamera": right_cam,
-                    "leftTitle": "THEN",
-                    "rightTitle": "NOW",
-                    "comparisonLabel": getattr(scene, "floating_label", ""),
-                    "audioDurationMs": audio_duration_ms,
-                }
+                props = {"leftCamera": left_cam, "rightCamera": right_cam, "leftTitle": "THEN", "rightTitle": "NOW", "comparisonLabel": getattr(scene, "floating_label", ""), "audioDurationMs": audio_duration_ms}
                 try:
-                    remotion_root = Path(self.REMOTION_DIR)
-                    self.remotion.render_composition(
-                        remotion_path=remotion_root,
-                        output_path=clip_path,
-                        composition_id="SplitMap",
-                        props=props
-                    )
+                    self.remotion.render_composition(remotion_path=Path(self.REMOTION_DIR), output_path=clip_path, composition_id="SplitMap", props=props)
                     if clip_path.exists() and clip_path.stat().st_size > 1024:
                         return True
                 except Exception as e:
-                    Messenger.error(f"   ❌ SplitMap render failed: {e}")
-                    Messenger.warning("   ⚠️ Falling back to map_3d...")
+                    Messenger.error(f"   ❌ SplitMap failed: {e}. Falling back to map_3d...")
 
-            # ── Remotion-enhanced rendering (geography mode) ──
-            if is_geography_mode and visual_type == "map_3d":
-                Messenger.info(f"   🗺️ Scene {scene.scene_number}: Rendering 3D satellite map via Remotion...")
-                
-                lat = _get_camera_attr(scene, "latitude", 4.570868)
-                lon = _get_camera_attr(scene, "longitude", -74.297333)
-                zoom = _get_camera_attr(scene, "zoom", 5.2)
-                pitch = _get_camera_attr(scene, "pitch", 45.0)
-                bearing = _get_camera_attr(scene, "bearing", -10.0)
-                
-                highlight_region = getattr(scene, "highlight_region", "none")
-                arrow_direction = getattr(scene, "arrow_direction", "none")
-                floating_label = getattr(scene, "floating_label", "none")
-                
-                narration_cues = self._generate_narration_cues(idea_obj.id, scene)
-
-                props = {
-                    "visualType": "map_3d",
-                    "latitude": lat,
-                    "longitude": lon,
-                    "zoom": zoom,
-                    "pitch": pitch,
-                    "bearing": bearing,
-                    "highlightRegion": highlight_region,
-                    "arrowDirection": arrow_direction,
-                    "floatingLabel": floating_label,
-                    "pins": pins_data,
-                    "vignettes": vignettes_data,
-                    "cameraPath": camera_path_data,
-                    "audioDurationMs": audio_duration_ms,
-                    "narrationCues": narration_cues,
-                }
-                
+            # ── Hex Data Grid scene ──
+            if is_geography_mode and visual_type == "hex_grid":
+                Messenger.info(f"   🔲 Scene {scene.scene_number}: Rendering hex data grid via Remotion...")
+                hex_grid_raw = getattr(scene, "hex_grid", None)
+                hex_grid_title = ""
+                hex_grid_items = []
+                if hex_grid_raw:
+                    hex_grid_title = getattr(hex_grid_raw, "title", "")
+                    for item in getattr(hex_grid_raw, "items", []):
+                        hex_grid_items.append({"icon": item.icon if hasattr(item, "icon") else "📊", "label": item.label if hasattr(item, "label") else "", "value": item.value if hasattr(item, "value") else "", "color": item.color if hasattr(item, "color") else "#FF0078"})
+                props = {"title": hex_grid_title, "items": hex_grid_items, "audioDurationMs": audio_duration_ms}
                 try:
-                    remotion_root = Path(self.REMOTION_DIR)
-                    self.remotion.render_composition(
-                        remotion_path=remotion_root,
-                        output_path=clip_path,
-                        composition_id="MapRender",
-                        props=props
-                    )
+                    self.remotion.render_composition(remotion_path=Path(self.REMOTION_DIR), output_path=clip_path, composition_id="HexDataGrid", props=props)
                     if clip_path.exists() and clip_path.stat().st_size > 1024:
                         return True
-                except Exception as remotion_e:
-                    Messenger.error(f"   ❌ Remotion MapRender failed: {remotion_e}")
-                    Messenger.warning("   ⚠️ Fallback: trying AI image render via Remotion...")
-                    visual_type = "ai_image"
+                except Exception as e:
+                    Messenger.error(f"   ❌ HexDataGrid failed: {e}. Falling back to map_3d...")
+                    visual_type = "map_3d"
 
-            # ── AI Image scene (rendered via Remotion with 3D card effect) ──
-            if is_geography_mode and visual_type == "ai_image":
-                Messenger.info(f"   🎨 Scene {scene.scene_number}: Generating AI image and rendering via Remotion...")
-                
-                ai_img_filename = f"scene_{scene.scene_number:02d}_ai.jpg"
-                ai_img_dest = remotion_public_images / ai_img_filename
-                
-                if not ai_img_dest.exists():
-                    img_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", "A cinematic geography scene")
-                    try:
-                        from tools.image_generation.pollinations import PollinationsImageGenerator
-                        pollinations = PollinationsImageGenerator(aspect_ratio="9:16")
-                        pollinations.generate_image(
-                            prompt=img_prompt,
-                            output_path=ai_img_dest
-                        )
-                    except Exception:
-                        try:
-                            from tools.image_generation.gemini import GeminiImageGenerator
-                            gemini_img = GeminiImageGenerator(
-                                aspect_ratio="9:16",
-                                reference_dir=Path(self.resource_base) / self.REFERENCES_DIR
-                            )
-                            gemini_img.generate_image(
-                                prompt=img_prompt,
-                                output_path=ai_img_dest
-                            )
-                        except Exception as img_e:
-                            Messenger.warning(f"   ⚠️ AI image gen failed: {img_e}. Using existing image.")
-                            if img_path.exists():
-                                import shutil
-                                shutil.copy2(img_path, ai_img_dest)
-                
-                if not ai_img_dest.exists() and img_path.exists():
-                    import shutil
-                    shutil.copy2(img_path, ai_img_dest)
-                
-                narration_cues = self._generate_narration_cues(idea_obj.id, scene)
+            # ── Final fallbacks: stock video or Ken Burns ──
+            if visual_type not in ("map_3d", "ai_image"):
+                if visual_type != "ai_image":
+                    if pexels_tool.fetch_video(query, clip_path):
+                        if clip_path.exists() and clip_path.stat().st_size > 1024:
+                            return True
+                    if pixabay_tool.fetch_video(query, clip_path):
+                        if clip_path.exists() and clip_path.stat().st_size > 1024:
+                            return True
+                    Messenger.warning(f"   ⚠️ APIs failed for '{query}'. Falling back to Ken Burns.")
 
-                props = {
-                    "visualType": "ai_image",
-                    "imageFile": ai_img_filename,
-                    "latitude": 0,
-                    "longitude": 0,
-                    "zoom": 0,
-                    "pitch": 0,
-                    "bearing": 0,
-                    "highlightRegion": "none",
-                    "arrowDirection": "none",
-                    "floatingLabel": "none",
-                    "pins": [],
-                    "vignettes": vignettes_data if vignettes_data else [],
-                    "audioDurationMs": audio_duration_ms,
-                    "narrationCues": narration_cues,
-                }
-                
+                if not img_path.exists() or img_path.stat().st_size < 1024:
+                    Messenger.error(f"   ❌ Scene {scene.scene_number} missing image. CRITICAL.")
+                    return False
+                Messenger.info(f"   🎬 Ken Burns fallback for Scene {scene.scene_number}...")
+                dur_secs = audio_duration_ms / 1000.0
+                zoompan_frames = int(audio_duration_ms / 1000 * 25)
                 try:
-                    remotion_root = Path(self.REMOTION_DIR)
-                    self.remotion.render_composition(
-                        remotion_path=remotion_root,
-                        output_path=clip_path,
-                        composition_id="MapRender",
-                        props=props
-                    )
-                    if clip_path.exists() and clip_path.stat().st_size > 1024:
-                        return True
-                except Exception as remotion_e:
-                    Messenger.error(f"   ❌ Remotion AI image render failed: {remotion_e}")
-                    Messenger.warning("   ⚠️ Falling back to Ken Burns animation...")
+                    subprocess.run(["ffmpeg", "-loop", "1", "-i", str(img_path), "-vf", f"zoompan=z='min(zoom+0.0005,1.1)':d={zoompan_frames}:s=1080x1920", "-c:v", "libx264", "-crf", "18", "-t", str(dur_secs), "-pix_fmt", "yuv420p", "-y", str(clip_path)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    return True
+                except Exception as ffmpeg_e:
+                    Messenger.error(f"   ❌ FFmpeg fallback failed: {ffmpeg_e}")
+                    return False
+            return False
 
-            # ── Stock video search (Pexels / Pixabay) ──
-            if visual_type != "ai_image":
-                if pexels_tool.fetch_video(query, clip_path):
-                    if clip_path.exists() and clip_path.stat().st_size > 1024:
-                        return True
+        is_geography_mode = getattr(idea_obj, "category", "") == "geography"
+        all_map_render = all(
+            getattr(s, "visual_type", "stock_video") in ("map_3d", "ai_image")
+            for s in script.scenes
+        )
 
-                if pixabay_tool.fetch_video(query, clip_path):
-                    if clip_path.exists() and clip_path.stat().st_size > 1024:
-                        return True
-                
-                Messenger.warning(f"   ⚠️ APIs failed for query '{query}'. Falling back to AI Image.")
-            else:
-                Messenger.info(f"   🎨 Scene {scene.scene_number}: 'ai_image' type. Skipping stock video search.")
-
-            # ── Fallback: Ken Burns image animation ──
-            if not img_path.exists() or img_path.stat().st_size < 1024:
-                Messenger.error(f"   ❌ Scene {scene.scene_number} missing image and stock video APIs failed. CRITICAL.")
-                return False
-                
-            Messenger.info(f"   🎬 Generating Ken Burns fallback for Scene {scene.scene_number}...")
-            dur_secs = audio_duration_ms / 1000.0
-            zoompan_frames = int(audio_duration_ms / 1000 * 25)
-            try:
-                subprocess.run(
-                    [
-                        "ffmpeg", "-loop", "1", "-i", str(img_path),
-                        "-vf", f"zoompan=z='min(zoom+0.0005,1.1)':d={zoompan_frames}:s=1080x1920",
-                        "-c:v", "libx264", "-t", str(dur_secs), "-pix_fmt", "yuv420p", "-y", str(clip_path)
-                    ],
-                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                )
+        def render_map_scene(scene):
+            """Render a single map_3d/ai_image scene via Remotion MapRender."""
+            clip_filename = self.SCENE_VIDEO_PATTERN.format(scene.scene_number)
+            clip_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, clip_filename)
+            if clip_path.exists() and clip_path.stat().st_size > 10240:
                 return True
-            except Exception as ffmpeg_e:
-                Messenger.error(f"   ❌ FFmpeg fallback failed: {ffmpeg_e}")
+            ad_ms = get_scene_audio_duration(scene)
+            props = self._build_scene_props(idea_obj, scene, ad_ms, remotion_public_images)
+            try:
+                self.remotion.render_composition(
+                    remotion_path=Path(self.REMOTION_DIR),
+                    output_path=clip_path,
+                    composition_id="MapRender",
+                    props=props
+                )
+                return clip_path.exists() and clip_path.stat().st_size > 1024
+            except Exception as e:
+                Messenger.error(f"   ❌ MapRender failed for scene {scene.scene_number}: {e}")
                 return False
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            results = list(executor.map(process_scene, script.scenes))
+        if is_geography_mode and all_map_render and len(script.scenes) <= 5:
+            Messenger.info(f"   🚀 Rendering all {len(script.scenes)} scenes in ONE Remotion call (MultiSceneVideo)...")
+            scene_props_list = []
+            for scene in script.scenes:
+                ad_ms = get_scene_audio_duration(scene)
+                scene_props_list.append(self._build_scene_props(idea_obj, scene, ad_ms, remotion_public_images))
 
-        if not all(results):
-            Messenger.error("   ❌ One or more video clips failed. Stopping pipeline.")
-            return
+            single_video = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, "temp_multi_scene.mp4")
+            if single_video.exists():
+                single_video.unlink()
+
+            self.remotion.render_composition(
+                remotion_path=Path(self.REMOTION_DIR),
+                output_path=single_video,
+                composition_id="MultiSceneVideo",
+                props={"scenes": scene_props_list, "transitionFrames": 12}
+            )
+
+            if not single_video.exists() or single_video.stat().st_size < 1024:
+                Messenger.error("   ❌ MultiSceneVideo render failed. Falling back to per-scene rendering.")
+                all_map_render = False
+            else:
+                total_dur = self.ffmpeg.get_video_duration(single_video)
+                Messenger.success(f"   ✅ MultiSceneVideo rendered: {single_video.stat().st_size / 1e6:.1f} MB, {total_dur:.1f}s")
+                cum_secs = 0.0
+                for scene in script.scenes:
+                    ad_ms = get_scene_audio_duration(scene)
+                    dur_secs = ad_ms / 1000.0
+                    clip_filename = self.SCENE_VIDEO_PATTERN.format(scene.scene_number)
+                    clip_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, clip_filename)
+                    cmd = [
+                        "ffmpeg", "-y",
+                        "-i", str(single_video),
+                        "-ss", f"{cum_secs:.3f}",
+                        "-t", f"{dur_secs:.3f}",
+                        "-c:v", "libx264", "-crf", "18",
+                        "-preset", "fast",
+                        "-pix_fmt", "yuv420p",
+                        "-an",
+                        str(clip_path)
+                    ]
+                    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    cum_secs += dur_secs
+                    Messenger.info(f"   ✂️ Scene {scene.scene_number}: clipped {dur_secs:.1f}s → {clip_path.name}")
+                Messenger.success("   ✅ All clips extracted from MultiSceneVideo.")
+        else:
+            Messenger.info(f"   🗺️ {len(script.scenes)} escenas, renderizando individualmente (MultiSceneVideo con 8+ escenas lento).")
+            all_map_render = False
+
+        if not all_map_render:
+            results = []
+            for scene in script.scenes:
+                vt = getattr(scene, "visual_type", "stock_video")
+                if vt == "hex_grid":
+                    Messenger.info(f"   🗺️ Scene {scene.scene_number}: hex_grid -> map_3d (hex_grid no produce video con mapa)")
+                    vt = "map_3d"
+                if vt in ("map_3d", "ai_image"):
+                    results.append(render_map_scene(scene))
+                else:
+                    results.append(process_fallback_scene(scene))
+            if not all(results):
+                Messenger.error("   ❌ One or more video clips failed. Stopping pipeline.")
+                return
 
         idea_obj.state = State.CLIPS_GENERATED
         self.store.save(idea_obj)
@@ -1034,17 +982,7 @@ class Pipeline(BaseModelTool):
         Runs BEFORE step2b so video clips can use real audio duration.
         After generating audios, optionally re-segments scenes based on natural pauses.
         """
-        # Trivia mode skips step2 (image generation) and goes straight from
-        # SCRIPT_GENERATED → audio. All other modes require IMAGES_GENERATED.
         idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
-        if not idea_obj:
-            # Fallback: check for trivia ideas in SCRIPT_GENERATED state
-            candidate = self.store.get_first_by_state(State.SCRIPT_GENERATED)
-            if candidate and getattr(candidate, "category", "") == "trivia":
-                idea_obj = candidate
-                # Advance state so pipeline can continue
-                self.store.update_state(idea_obj.id, State.IMAGES_GENERATED)
-                idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
         if not idea_obj:
             Messenger.error(f"No ideas ready for audio generation (target: State.IMAGES_GENERATED).")
             return
@@ -1449,16 +1387,16 @@ class Pipeline(BaseModelTool):
             top_headline=intrigue_text
         )
 
-        # 4. Multi-layer Composition with filter_complex
+        # 4. Composite remotion_overlay (green screen) + grain + progress bar
         import subprocess
         duration = self.ffmpeg.get_video_duration(raw_video)
         
         fc = (
-            f"[0:v]noise=alls=5:allf=t+u[v_grain];"
-            f"[v_grain]drawbox=y=0:w=iw:h=25:color=black@0.5:t=fill[v_bar_bg];"
-            f"[v_bar_bg]drawbox=y=0:w=iw*t/{duration}:h=25:color=#FFFF00@1.0:t=fill[v_composed];"
-            f"[1:v]colorkey=0x00FF00:0.3:0.0[subs_alpha];"
-            f"[v_composed][subs_alpha]overlay=shortest=1[out]"
+            f"[0:v]noise=alls=3:allf=t+u[v_grain];"
+            f"[v_grain]drawbox=y=0:w=iw:h=3:color=black@0.6:t=fill[v_bar_bg];"
+            f"[v_bar_bg]drawbox=y=0:w=iw*t/{duration}:h=3:color=#FFEA00@1.0:t=fill[v_base];"
+            f"[1:v]colorkey=0x00FF00:0.15:0.08[ck];"
+            f"[v_base][ck]overlay[v_out]"
         )
         
         cmd = [
@@ -1466,8 +1404,8 @@ class Pipeline(BaseModelTool):
             "-i", str(raw_video),
             "-i", str(remotion_overlay),
             "-filter_complex", fc,
-            "-map", "[out]", "-map", "0:a",
-            "-c:v", "libx264", "-c:a", "copy", "-pix_fmt", "yuv420p",
+            "-map", "[v_out]", "-map", "0:a",
+            "-c:v", "libx264", "-crf", "18", "-c:a", "copy", "-pix_fmt", "yuv420p",
             str(pro_video)
         ]
         subprocess.run(cmd, check=True)
@@ -1516,7 +1454,23 @@ class Pipeline(BaseModelTool):
             bg_volume=0.18  # Subtle atmosphere
         )
 
-        # 5. Updates state.
+        # 5. Mix SFX if available
+        sfx_dir = self.resource_base / self.SFX_DIR
+        if sfx_dir.exists():
+            from tools.audio_generation.audio_tool import AudioTool
+            sfx_tool = AudioTool(bg_music_dir=sfx_dir)
+            sfx_file = sfx_tool.get_random_audio()
+            if sfx_file:
+                sfx_mixed = self.get_idea_asset_path(
+                    idea_obj.id, self.EDITIONS_DIR, "temp_sfx_mixed.mp4"
+                )
+                self.ffmpeg.mix_sfx(
+                    final_with_music, sfx_file, sfx_mixed, volume=0.35
+                )
+                import shutil
+                shutil.move(str(sfx_mixed), str(final_with_music))
+
+        # 6. Updates state.
         idea_obj.state = State.VIDEO_MUSIC_GENERATED
         self.store.save(idea_obj)
         Messenger.success(f"Step 6 ready: {State.VIDEO_MUSIC_GENERATED} finalized.\n")
@@ -1716,385 +1670,4 @@ class Pipeline(BaseModelTool):
                 Messenger.error(f"   Failed to upload Idea {idea_obj.id}: {str(e)}")
                 break
 
-    def generate_sabias_que_content(self, title: str) -> dict:
-        """
-        Generates the visual curiosity text (for drawing on the image), the post description,
-        and a matching dedicated image prompt using Gemini.
-        All content is generated exclusively in English for BlowYourMind.
-        """
-        # Clean title from A/B testing tags like [Hook B] or [Hook A]
-        import re
-        title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", title, flags=re.IGNORECASE).strip()
 
-        prompt = f"""
-        You are a star creative copywriter for the channel "BlowYourMind" on Facebook.
-        We are going to create a "Did you know...?" style image post based on this topic: "{title}"
-        
-        We need three fields in JSON format (ALL IN ENGLISH):
-        1. **card_text**: A mind-bending, high-curiosity teaser/hook about the topic to draw on the image.
-           It must be framed as a "Hard Truth" or a "Secret" that triggers ego or curiosity.
-           It MUST be in ALL CAPS. Max 15-20 words (1-2 lines).
-           It should end with a cliffhanger or teaser (e.g. "...but the secret truth is much darker.", "...and the reason why is terrifying.")
-           Examples:
-           - "SHARKS WERE HERE BEFORE THE TREES... AND THE SCIENTIFIC REASON WHY IS MINDBLOWING."
-           - "AI IS NOW READING HUMAN DREAMS... AND WHAT IT DECODED WILL TERRIFY YOU."
-           - "OCTOPUSES HAVE THREE HEARTS AND NINE BRAINS... BUT THERE IS A 10TH SECRET THAT SCIENTISTS HID."
-        
-        2. **post_description**: A long, highly engaging, and entertaining educational caption to accompany the image.
-           It must explain the topic in detail but using simple, clear, and easy-to-understand English (suitable for international, non-native audiences).
-           It must NOT be short, generic, or overly brief. It should make the reader go "Wow, that is fascinating!" and understand the science or history behind the topic clearly.
-           Length: Around 150-250 words.
-           Structure:
-           - First line: A stunning, hook-like resolution to the image cliffhanger in simple words.
-           - Body: Break it down into 2-3 short, highly engaging paragraphs detailing the exact mystery, how it works scientifically, and 3 mind-blowing facts about it. Use friendly, clear language without overly dense scientific jargon, but with extreme educational detail.
-           - Ending: A fun, conversational call-to-action question inviting users to comment, share their thoughts, or answer a paradox (e.g., "If nature is capable of this, what else is waiting to be discovered? Tell us your thoughts below! 👇").
-           - Contain exactly 10 high-impact hashtags: #DidYouKnow #Curiosities #MindBlowing #BlowYourMind and 6 others relevant to the topic.
-        
-        3. **image_prompt**: A highly descriptive and detailed prompt in English to generate a premium hyper-realistic image via Vertex AI Imagen 3.
-           It must follow these aesthetic parameters based on the topic:
-           - If Animal/Nature: "National Geographic style, extreme close-up (macro), 8k, bokeh background, hyper-detailed fur/scales, natural sunlight, cinematic color grading."
-           - If Science/Space: "Interstellar movie aesthetic, volumetric lighting, deep blacks, high contrast, scientific accuracy but epic scale, sharp focus."
-           - If Tech/Futuristic: "Cyberpunk minimalism, sleek metallic textures, neon accents (teal/orange), macro lens, shallow depth of field, futuristic realism."
-
-        IMPORTANT: ALL fields MUST be in native English only.
-
-        Mandatory JSON output format:
-        {{
-          "card_text": "HOOK IN CAPS",
-          "post_description": "Detailed deep caption text in simple English",
-          "image_prompt": "Prompt for Vertex AI Imagen 3 matching style guidelines"
-        }}
-        """
-        try:
-            res_raw = self._text_gen.generate(prompt).strip() if self._text_gen else ""
-            if not res_raw:
-                from tools.text_generation.gemini import GeminiTextGenerator
-                text_gen = GeminiTextGenerator()
-                res_raw = text_gen.generate(prompt).strip()
-            
-            # Clean JSON block if present
-            if "```json" in res_raw:
-                res_raw = res_raw.split("```json")[1].split("```")[0].strip()
-            elif "```" in res_raw:
-                res_raw = res_raw.split("```")[1].split("```")[0].strip()
-            
-            import json
-            data = json.loads(res_raw)
-            return {
-                "card_text": data.get("card_text", "").strip(),
-                "post_description": data.get("post_description", "").strip(),
-                "image_prompt": data.get("image_prompt", "").strip()
-            }
-        except Exception as e:
-            Messenger.warning(f"Failed to generate custom Did You Know content: {e}. Using fallback.")
-            return {
-                "card_text": f"{title.upper()} HAS A SECRET... AND THE SCIENTIFIC REASON WILL BLOW YOUR MIND.",
-                "post_description": (
-                    f"🤯 Did you know the incredible truth behind {title}? It is absolutely mind-blowing!\n\n"
-                    f"For a long time, this topic has fascinated people and scientists alike. The reality is that this phenomenon "
-                    f"works in ways that challenge what we normally expect. Specifically, recent discoveries reveal three astonishing facts:\n\n"
-                    f"1️⃣ It operates under unique principles that create highly unusual patterns.\n"
-                    f"2️⃣ The impact it has on its surroundings is far greater than previously thought.\n"
-                    f"3️⃣ It holds secrets that could change how we understand the topic in the future.\n\n"
-                    f"It is a beautiful and mysterious part of our world. What do you think about this fascinating concept? "
-                    f"Does it surprise you? Let us know in the comments below! 👇\n\n"
-                    f"#DidYouKnow #Curiosities #MindBlowing #BlowYourMind #ScienceFacts #NatureLovers #Discoveries #Secrets #LearningIsFun #Fascinating"
-                ),
-                "image_prompt": f"Extreme close-up macro shot representing the mysterious concept of {title}, volumetric lighting, high contrast, cinematic color grading, 8k."
-            }
-
-    def compose_did_you_know_card(self, original_img_path: Path, output_path: Path, card_text: str):
-        """
-        Composes a highly professional, stunning vertical "Did You Know?" card (1080x1350)
-        from a raw generated image. All text is in English.
-        """
-        from PIL import Image, ImageDraw, ImageFont, ImageFilter
-        
-        # 1. Download premium fonts if not already cached
-        font_dir = self.resource_base / "fonts"
-        font_dir.mkdir(parents=True, exist_ok=True)
-        
-        font_bold_path = font_dir / "Montserrat-Bold.ttf"
-        font_medium_path = font_dir / "Montserrat-Medium.ttf"
-        
-        url_bold = "https://raw.githubusercontent.com/JulietaUla/Montserrat/master/fonts/ttf/Montserrat-Bold.ttf"
-        url_medium = "https://raw.githubusercontent.com/JulietaUla/Montserrat/master/fonts/ttf/Montserrat-Medium.ttf"
-        
-        def download_font(url: str, dest: Path):
-            if not dest.exists():
-                import urllib.request
-                try:
-                    Messenger.info(f"Downloading premium font for layout: {dest.name}...")
-                    urllib.request.urlretrieve(url, dest)
-                except Exception as e:
-                    Messenger.warning(f"Could not download font {dest.name}: {e}")
-        
-        download_font(url_bold, font_bold_path)
-        download_font(url_medium, font_medium_path)
-        
-        # Fallback to default if download fails
-        try:
-            font_title = ImageFont.truetype(str(font_bold_path), 64)
-            font_body = ImageFont.truetype(str(font_medium_path), 32)
-        except Exception:
-            font_title = ImageFont.load_default()
-            font_body = ImageFont.load_default()
-            Messenger.warning("Using fallback default fonts for card composition.")
-            
-        # 2. Dimensions
-        canvas_w, canvas_h = 1080, 1350
-        
-        # Load and scale original image (originally 9:16)
-        if not original_img_path.exists():
-            raise FileNotFoundError(f"Original image not found: {original_img_path}")
-            
-        orig_img = Image.open(original_img_path).convert("RGBA")
-        
-        # 3. Create context-aware blurred background
-        # Resize to fill canvas
-        bg_img = orig_img.resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
-        # Apply strong blur for aesthetic depth
-        bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=40))
-        
-        # Apply elegant dark color overlay (semi-transparent black)
-        overlay = Image.new("RGBA", (canvas_w, canvas_h), (11, 15, 25, 180)) # deep navy dark overlay
-        canvas = Image.alpha_composite(bg_img, overlay)
-        draw = ImageDraw.Draw(canvas)
-        
-        # 4. Draw Header "DID YOU KNOW...?"
-        title_text = "DID YOU KNOW...?"
-        title_bbox = font_title.getbbox(title_text)
-        title_w = title_bbox[2] - title_bbox[0]
-        title_x = (canvas_w - title_w) // 2
-        title_y = 80
-        
-        # Draw soft drop shadow for title
-        draw.text((title_x + 3, title_y + 3), title_text, font=font_title, fill=(0, 0, 0, 120))
-        # Draw glowing yellow title
-        draw.text((title_x, title_y), title_text, font=font_title, fill=(255, 255, 0, 255))
-        
-        # Draw elegant golden accent bar under title
-        bar_w, bar_h = 180, 5
-        bar_x = (canvas_w - bar_w) // 2
-        bar_y = title_y + 80
-        draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(255, 255, 0, 255))
-        
-        # 5. Place Center Image Card (960x650 px)
-        card_w, card_h = 960, 650
-        card_x = (canvas_w - card_w) // 2
-        card_y = 200
-        
-        # Crop & scale original image to fit center card exactly (centered crop)
-        orig_w, orig_h = orig_img.size
-        target_ratio = card_w / card_h
-        orig_ratio = orig_w / orig_h
-        
-        if orig_ratio > target_ratio:
-            # Crop width
-            new_w = int(orig_h * target_ratio)
-            left = (orig_w - new_w) // 2
-            cropped = orig_img.crop((left, 0, left + new_w, orig_h))
-        else:
-            # Crop height
-            new_h = int(orig_w / target_ratio)
-            top = (orig_h - new_h) // 2
-            cropped = orig_img.crop((0, top, orig_w, top + new_h))
-            
-        center_img = cropped.resize((card_w, card_h), Image.Resampling.LANCZOS)
-        
-        # Add smooth rounded corners to the center image
-        def add_corners(im, rad):
-            circle = Image.new('L', (rad * 2, rad * 2), 0)
-            draw_circle = ImageDraw.Draw(circle)
-            draw_circle.ellipse((0, 0, rad * 2 - 1, rad * 2 - 1), fill=255)
-            alpha = Image.new('L', im.size, 255)
-            w, h = im.size
-            alpha.paste(circle.crop((0, 0, rad, rad)), (0, 0))
-            alpha.paste(circle.crop((rad, 0, rad * 2, rad)), (w - rad, 0))
-            alpha.paste(circle.crop((rad, rad, rad * 2, rad * 2)), (w - rad, h - rad))
-            alpha.paste(circle.crop((0, rad, rad, rad * 2)), (0, h - rad))
-            im.putalpha(alpha)
-            return im
-            
-        center_img = add_corners(center_img, 24)
-        
-        # Draw rounded backing card for the image
-        glow_padding = 4
-        draw.rounded_rectangle(
-            [card_x - glow_padding, card_y - glow_padding, card_x + card_w + glow_padding, card_y + card_h + glow_padding],
-            radius=28,
-            fill=(255, 255, 255, 15), # subtle transparent white border
-            outline=(255, 255, 255, 30),
-            width=2
-        )
-        
-        # Paste the centered image card
-        canvas.paste(center_img, (card_x, card_y), center_img)
-        
-        # 6. Draw Text Card Area at the Bottom (y = 890px to 1270px)
-        text_card_y = 890
-        text_card_h = 360
-        text_card_w = 960
-        text_card_x = (canvas_w - text_card_w) // 2
-        
-        # Semi-transparent dark card behind the text
-        draw.rounded_rectangle(
-            [text_card_x, text_card_y, text_card_x + text_card_w, text_card_y + text_card_h],
-            radius=24,
-            fill=(0, 0, 0, 160), # darker background for high legibility
-            outline=(255, 255, 255, 20),
-            width=1
-        )
-        
-        # Text wrapping
-        max_text_width = text_card_w - 80 # margin inside card
-        words = card_text.split(' ')
-        lines = []
-        current_line = []
-        
-        for word in words:
-            test_line = ' '.join(current_line + [word])
-            bbox = font_body.getbbox(test_line)
-            w = bbox[2] - bbox[0]
-            if w <= max_text_width:
-                current_line.append(word)
-            else:
-                if current_line:
-                    lines.append(' '.join(current_line))
-                current_line = [word]
-        if current_line:
-            lines.append(' '.join(current_line))
-            
-        # Draw wrapped lines
-        line_height = 48
-        total_text_h = len(lines) * line_height
-        start_y = text_card_y + (text_card_h - total_text_h) // 2 # center vertically inside text card
-        
-        for i, line in enumerate(lines):
-            line_bbox = font_body.getbbox(line)
-            line_w = line_bbox[2] - line_bbox[0]
-            line_x = text_card_x + (text_card_w - line_w) // 2 # center horizontally
-            
-            fill_color = (255, 255, 255, 255) # white
-            if i == 0:
-                fill_color = (255, 255, 0, 255) # yellow highlight
-                
-            draw.text((line_x, start_y + i * line_height), line, font=font_body, fill=fill_color)
-            
-        # 7. Draw High-Impact CTA Banner at the very bottom (y = 1270 to 1330) to drive caption reading
-        cta_y = 1270
-        cta_h = 55
-        cta_w = 960
-        cta_x = (canvas_w - cta_w) // 2
-        
-        draw.rounded_rectangle(
-            [cta_x, cta_y, cta_x + cta_w, cta_y + cta_h],
-            radius=12,
-            fill=(255, 255, 0, 15), # subtle yellow tint background
-            outline=(255, 255, 0, 180), # glowing golden outline
-            width=2
-        )
-        
-        cta_text = "👇 READ THE FULL STORY IN THE CAPTION 👇"
-        try:
-            font_cta = ImageFont.truetype(str(font_bold_path), 26)
-        except Exception:
-            font_cta = font_body
-            
-        cta_bbox = font_cta.getbbox(cta_text)
-        cta_text_w = cta_bbox[2] - cta_bbox[0]
-        cta_text_h = cta_bbox[3] - cta_bbox[1]
-        cta_text_x = cta_x + (cta_w - cta_text_w) // 2
-        cta_text_y = cta_y + (cta_h - cta_text_h) // 2 - 2
-        
-        draw.text((cta_text_x, cta_text_y), cta_text, font=font_cta, fill=(255, 255, 0, 255))
-            
-        # Save composed canvas
-        canvas = canvas.convert("RGB")
-        canvas.save(output_path, "JPEG", quality=95)
-        Messenger.success(f"🎨 Composed 'Did You Know?' image card with premium CTA at: {output_path}")
-
-    def step8_upload_image_to_facebook(self):
-        """
-        Upload Image to Facebook: Uploads a single beautifully composed "Did You Know?" image.
-        Used for the '30 images weekly' requirement.
-        """
-        idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
-        if not idea_obj:
-            Messenger.error("No image found to upload.")
-            return
-
-        Messenger.info(f"\n--- Composing and Uploading Image Post: {idea_obj.title} ---")
-
-        # 1. Generate customized content for card and post (including dedicated image prompt!)
-        Messenger.info("Generating customized 'Did You Know?' text content and image prompt via Gemini...")
-        content_data = self.generate_sabias_que_content(idea_obj.title)
-        
-        card_text = content_data["card_text"]
-        post_description = content_data["post_description"]
-        image_prompt = content_data.get("image_prompt", "")
-        
-        # 2. Path to the dedicated image to use
-        img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "sabias_que_source.png")
-        
-        # 3. Generate the dedicated coherent image if prompt is present
-        if image_prompt:
-            Messenger.info(f"Generating dedicated coherent image via Vertex AI Imagen 3...")
-            Messenger.info(f"   Prompt: {image_prompt}")
-            try:
-                task = ImageTask(
-                    prompt=image_prompt,
-                    output_path=img_path
-                )
-                self.image_gen.generate_images([task])
-                self.cost_tracker.add_image_cost(1)
-            except Exception as gen_e:
-                Messenger.error(f"   ❌ Dedicated image generation failed: {gen_e}. Falling back to default scene_01.png")
-                # Fallback to scene_01.png
-                img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "scene_01.png")
-        else:
-            Messenger.warning("No image prompt generated. Falling back to default scene_01.png")
-            img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "scene_01.png")
-
-        if not img_path.exists():
-            # Second-level fallback to any scene image if scene_01.png is also missing
-            fallback_img = None
-            for idx in range(1, 10):
-                possible_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{idx:02d}.png")
-                if possible_path.exists():
-                    fallback_img = possible_path
-                    break
-            
-            if fallback_img:
-                img_path = fallback_img
-                Messenger.warning(f"Using secondary fallback image: {img_path}")
-            else:
-                Messenger.error(f"Image not found (and all fallbacks failed): {img_path}")
-                return
-        
-        # 4. Path to composed card output
-        composed_img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "sabias_que_composed.jpg")
-        
-        # 5. Compose card
-        Messenger.info("Composing premium 'Did You Know?' card canvas with Pillow...")
-        self.compose_did_you_know_card(img_path, composed_img_path, card_text)
-
-        # 6. Append Transparency Footer to Description
-        transparency_footer = (
-            "\n\n---\n"
-            "🤖 **AI-Generated Content**: This infographic and message have been created with Artificial Intelligence for educational and recreational purposes.\n\n"
-            "✨ Published by BlowYourMind.\n"
-            "#MadeWithAI #DidYouKnow #Curiosities #BlowYourMind #LearningIsFun"
-        )
-        final_description = post_description + transparency_footer
-
-        # 7. Upload composed photo
-        try:
-            Messenger.info("Uploading composed card photo to Facebook...")
-            photo_id = self.facebook.upload_photo(composed_img_path, caption=final_description)
-            if photo_id:
-                idea_obj.state = State.UPLOADED
-                self.store.save(idea_obj)
-                Messenger.success(f"✅ Composed image post successful! ID: {photo_id}")
-        except Exception as e:
-            Messenger.error(f"❌ Failed to upload image: {e}")

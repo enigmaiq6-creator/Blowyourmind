@@ -5,11 +5,8 @@ import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
 
-from flows.image_content_generator.pipeline.prompt_shorts.finances.models import RiddlePost
-from flows.image_content_generator.pipeline.prompt_shorts.finances import constants as finance_constants
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
-from tools.image_generation.vertex_ai import VertexAIImageGenerator
 from tools.social_media.facebook import FacebookTool
 import time
 
@@ -18,14 +15,6 @@ load_dotenv()
 class DailyAutomator:
     def __init__(self):
         self.text_gen = GeminiTextGenerator()
-        self.image_gen = VertexAIImageGenerator(
-            project_id=os.getenv("GCP_PROJECT_ID"),
-            location=os.getenv("GCP_LOCATION")
-        )
-        self.facebook = FacebookTool(
-            page_id=os.getenv("FACEBOOK_PAGE_ID"),
-            access_token=os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
-        )
         self.out_dir = Path("flows/image_content_generator/out_short/daily_content")
         self.out_dir.mkdir(parents=True, exist_ok=True)
         
@@ -110,87 +99,24 @@ class DailyAutomator:
         with open(self.history_file, "a", encoding="utf-8") as f:
             f.write(f"{datetime.now().isoformat()},{post_type},{topic.replace(',', ' ')}\n")
 
-    def generate_daily_standard_image(self):
-        """
-        Generates a single high-quality Curiosity Image.
-        """
-        Messenger.info("🎨 Generating Curiosity Image post...")
-        avoid_msg = self.get_recent_topics()
-        
-        # 1. Generate Story/Metaphor using the main pipeline (Step 1)
-        try:
-            cmd_step1 = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "step1", "--avoid", avoid_msg, "--mode", "standard"]
-            subprocess.run(cmd_step1, check=True)
-            
-            # 2. Generate the first image (Step 2)
-            cmd_step2 = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "step2", "--mode", "standard"]
-            subprocess.run(cmd_step2, check=True)
-            
-            # 3. Upload specifically as Image (New Step 8_IMAGE)
-            cmd_step8 = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "step8_image", "--mode", "standard"]
-            subprocess.run(cmd_step8, check=True)
-            
-            Messenger.success("✅ Curiosity Image post completed!")
-            self.log_post("image", "Curiosity Image")
-            self.sync_to_github()
-        except Exception as e:
-            Messenger.error(f"❌ Failed to generate/upload Curiosity Image: {e}")
-            sys.exit(1)
-
     def run_daily_mix(self):
         """
         Main entry point for GitHub Actions.
-        Cycles through content types and modes for variety.
-        - 70% video (cycling through standard/geography), 30% image
-        - Tracks last mode via .last_mode file
+        Generates a Geography / Mind-Blowing Science Reel.
         """
-        post_type = os.getenv("POST_TYPE", "auto").lower()
-        
-        # Track last mode for cycling
-        mode_file = Path("flows/image_content_generator/out_short/.last_mode")
-        last_mode = ""
-        if mode_file.exists():
-            last_mode = mode_file.read_text().strip()
-        
-        available_modes = ["standard", "geography"]
-        if last_mode in available_modes:
-            # Cycle to the next mode
-            idx = (available_modes.index(last_mode) + 1) % len(available_modes)
-            mode = available_modes[idx]
-        else:
-            mode = random.choice(available_modes)
-        
-        # Implement probability if set to auto
-        if post_type == "auto":
-            post_type = random.choices(["video", "image"], weights=[70, 30], k=1)[0]
-            Messenger.info(f"🎲 Randomly selected: {post_type.upper()} | Mode: {mode.upper()}")
-        else:
-            Messenger.info(f"🚀 Starting Automated Post (Forced: {post_type.upper()}, Mode: {mode.upper()})...")
-        
+        Messenger.info(f"🎬 GENERATING NEW GEOGRAPHY REEL (Full Pipeline)...")
         self.cleanup_stuck_ideas()
 
-        if post_type == "video":
-            env_mode = os.getenv("MODE", "").lower()
-            if env_mode and env_mode in available_modes:
-                mode = env_mode  # Override if explicitly set via env
-            Messenger.info(f"🎬 GENERATING NEW GEOGRAPHY REEL (Full Pipeline | Mode: {mode.upper()})...")
-            avoid_msg = self.get_recent_topics()
-            try:
-                cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", mode]
-                subprocess.run(cmd, check=True)
-                Messenger.success(f"✅ Geography Reel ({mode.upper()}) completed!")
-                self.log_post("video", f"Geography Reel ({mode})")
-                # Save current mode for cycling
-                mode_file.parent.mkdir(parents=True, exist_ok=True)
-                mode_file.write_text(mode)
-                self.sync_to_github()
-            except Exception as e:
-                Messenger.error(f"Error during video task: {e}")
-                sys.exit(1)
-        elif post_type == "image":
-            self.generate_daily_standard_image()
-        else:
-            Messenger.error(f"❌ Unknown post type: {post_type}")
+        avoid_msg = self.get_recent_topics()
+        env_mode = os.getenv("MODE", "geography").lower() or "geography"
+        try:
+            cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", env_mode]
+            subprocess.run(cmd, check=True)
+            Messenger.success(f"✅ Geography Reel completed!")
+            self.log_post("video", "Geography Reel")
+            self.sync_to_github()
+        except Exception as e:
+            Messenger.error(f"Error during video task: {e}")
             sys.exit(1)
 
 

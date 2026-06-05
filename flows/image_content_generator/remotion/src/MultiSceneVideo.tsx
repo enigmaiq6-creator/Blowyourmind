@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Sequence, useVideoConfig, useCurrentFrame, interpolate, Easing } from 'remotion';
 import { MapRender } from './MapRender';
+import type { HexIconData, RouteData, RegionData } from './MapOverlays';
 
 interface NarrationCue {
   word: string;
@@ -26,6 +27,15 @@ interface SceneProps {
   cameraPath?: { latitude: number; longitude: number; zoom: number; pitch: number; bearing: number }[];
   audioDurationMs: number;
   narrationCues?: NarrationCue[];
+  subtitleWords?: { word: string; startMs: number; endMs: number }[];
+  hexIcons?: HexIconData[];
+  routes?: RouteData[];
+  regions?: RegionData[];
+  mapStyle?: 'dark' | 'satellite';
+  scanEffect?: boolean;
+  lowerThirdData?: { icon: string; label: string; value: string }[];
+  geopolitical?: any;
+  sceneOverlay?: any;
 }
 
 interface MultiSceneProps {
@@ -42,7 +52,7 @@ export const MultiSceneVideo: React.FC<MultiSceneProps> = ({
 
   const sceneTimings = useMemo(() => {
     let totalFrames = 0;
-    return scenes.map((scene, i) => {
+    return scenes.map((scene) => {
       const sceneFrames = Math.ceil((scene.audioDurationMs / 1000) * fps);
       const startFrame = totalFrames;
       totalFrames += sceneFrames;
@@ -50,21 +60,16 @@ export const MultiSceneVideo: React.FC<MultiSceneProps> = ({
     });
   }, [scenes, fps]);
 
-  const globalMs = (frame / fps) * 1000;
-
   return (
     <div style={{ width: 1080, height: 1920, position: 'relative', backgroundColor: '#050505' }}>
       {scenes.map((scene, i) => {
         const timing = sceneTimings[i];
-        const sceneFrame = frame - timing.startFrame;
         const isActive = frame >= timing.startFrame && frame < timing.endFrame;
         const isPast = frame >= timing.endFrame;
 
         if (!isActive && !isPast) return null;
 
         const fadeOutDuration = Math.min(transitionFrames, timing.sceneFrames * 0.15);
-        const fadeOutStart = timing.sceneFrames - fadeOutDuration;
-
         const opacity = isActive
           ? 1
           : Math.max(0, interpolate(
@@ -110,7 +115,16 @@ export const MultiSceneVideo: React.FC<MultiSceneProps> = ({
                 vignettes={scene.vignettes || []}
                 cameraPath={scene.cameraPath || []}
                 narrationCues={sceneCues || []}
+                subtitleWords={scene.subtitleWords || []}
+                hexIcons={scene.hexIcons || []}
+                routes={scene.routes || []}
+                regions={scene.regions || []}
+                mapStyle={scene.mapStyle || 'dark'}
+                scanEffect={scene.scanEffect || false}
+                lowerThirdData={scene.lowerThirdData || []}
                 sceneStartMs={(timing.startFrame / fps) * 1000}
+                geopolitical={scene.geopolitical}
+                sceneOverlay={scene.sceneOverlay}
               />
             </Sequence>
           </div>

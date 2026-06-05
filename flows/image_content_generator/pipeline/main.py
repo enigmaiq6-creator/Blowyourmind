@@ -23,7 +23,6 @@ class PipelineStep(str, Enum):
     STEP6 = "step6"
     STEP7 = "step7"
     STEP8 = "step8"
-    STEP8_IMAGE = "step8_image"
 
 
 def main():
@@ -56,7 +55,6 @@ def main():
         PipelineStep.STEP6: pipeline.step6_add_background_music,
         PipelineStep.STEP7: pipeline.step7_rename_final_video,
         PipelineStep.STEP8: pipeline.step8_upload_to_facebook,
-        PipelineStep.STEP8_IMAGE: pipeline.step8_upload_image_to_facebook,
     }
 
     # Note: Step 1 can take an extra_avoid string

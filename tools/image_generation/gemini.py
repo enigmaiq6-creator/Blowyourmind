@@ -5,9 +5,18 @@ from typing import Any, List, Optional, cast
 from google.genai import types
 from PIL import Image
 
+from pathlib import Path
+from typing import List
+from pydantic import BaseModel
+
 from tools.common.gemini_base import GeminiBase
 from tools.common.messenger import Messenger
-from tools.image_generation.midjourney import ImageTask
+
+
+class ImageTask(BaseModel):
+    prompt: str
+    output_path: Path
+    is_video: bool = False
 
 
 class GeminiImageGenerator(GeminiBase):
@@ -45,7 +54,7 @@ class GeminiImageGenerator(GeminiBase):
         contents = self._prepare_contents(prompt, style_references, sequence_reference)
         config = types.GenerateContentConfig(
             response_modalities=['TEXT', 'IMAGE'],
-            image_config=types.ImageConfig(aspect_ratio=self.aspect_ratio, image_size="1K")
+            image_config=types.ImageConfig(aspect_ratio=self.aspect_ratio, image_size="2K")
         )
 
         response = self._execute_with_retry(
