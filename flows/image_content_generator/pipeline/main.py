@@ -1,4 +1,5 @@
 import argparse
+import sys
 from enum import Enum
 from pathlib import Path
 
@@ -68,12 +69,25 @@ def main():
             PipelineStep.STEP2, PipelineStep.STEP3, PipelineStep.STEP2B, PipelineStep.STEP4,
             PipelineStep.STEP5_PRO, PipelineStep.STEP6, PipelineStep.STEP7, PipelineStep.STEP8
         ]
+        any_failed = False
         for step in steps_to_run:
-            step_methods[step]()
+            try:
+                step_methods[step]()
+            except Exception as e:
+                Messenger.error(f"❌ Step {step.value} failed: {e}")
+                any_failed = True
+                break
+        if any_failed:
+            Messenger.error("❌ Pipeline stopped due to step failure.")
+            sys.exit(1)
         Messenger.success("Full pipeline cycle completed successfully.")
     else:
         # Run specific step (2-8)
-        step_methods[args.step]()
+        try:
+            step_methods[args.step]()
+        except Exception as e:
+            Messenger.error(f"❌ Step {args.step.value} failed: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

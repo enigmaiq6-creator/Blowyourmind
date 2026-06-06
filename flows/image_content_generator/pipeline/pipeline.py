@@ -356,12 +356,32 @@ class Pipeline(BaseModelTool):
         script = self.load_script(idea_obj)
         Messenger.info(f"   Script loaded. Scenes: {len(script.scenes)}")
 
+        from tools.image_generation.gemini import GeminiImageGenerator
+        import os as os_mod
+        fallback_gen = None
+
         def generate_one(scene):
+            nonlocal fallback_gen
             action_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", f"A cinematic scene about {idea_obj.title}")
             out_name = f"scene_{scene.scene_number:02d}.png"
             out_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, out_name)
-            if not out_path.exists():
+            if out_path.exists():
+                return
+            try:
                 self.image_gen.generate_image(
+                    prompt=action_prompt,
+                    output_path=out_path
+                )
+            except Exception as e:
+                Messenger.warning(f"   ⚠️ Primary image gen failed for scene {scene.scene_number}: {e}")
+                if not fallback_gen:
+                    ar_value = "9:16" if self.orientation == VideoOrientation.SHORT else "16:9"
+                    fallback_gen = GeminiImageGenerator(
+                        aspect_ratio=ar_value,
+                        reference_dir=self.resource_base / self.REFERENCES_DIR,
+                    )
+                    Messenger.info("   🔄 Falling back to Gemini image generator...")
+                fallback_gen.generate_image(
                     prompt=action_prompt,
                     output_path=out_path
                 )
@@ -385,6 +405,7 @@ class Pipeline(BaseModelTool):
                     future.result()
                 except Exception as e:
                     Messenger.error(f"   ❌ Image generation failed: {e}")
+                    raise
 
         self.cost_tracker.add_image_cost(len(script.scenes))
 
