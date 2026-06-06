@@ -7,10 +7,35 @@ interface Word {
   end: number;
 }
 
+interface LevelMarker {
+  nivel: number;
+  titulo: string;
+  impacto: string;
+  startTime: number;
+  endTime: number;
+}
+
 const ACCENT = '#FFB800';
 const TEXT_SHADOW = '0 2px 12px rgba(0,0,0,0.7), 0 4px 24px rgba(0,0,0,0.3)';
 
-export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ words, topHeadline }) => {
+const IMPACT_COLORS: Record<string, { from: string; to: string }> = {
+  Low: { from: '#00D25A', to: '#00E676' },
+  Medium: { from: '#FF8C00', to: '#FFB300' },
+  High: { from: '#FF1744', to: '#FF5252' },
+  Extreme: { from: '#D500F9', to: '#E040FB' },
+};
+
+function getImpactGradient(impact: string): string {
+  const colors = IMPACT_COLORS[impact] || IMPACT_COLORS.Medium;
+  return `linear-gradient(135deg, ${colors.from}, ${colors.to})`;
+}
+
+function getImpactGlow(impact: string): string {
+  const colors = IMPACT_COLORS[impact] || IMPACT_COLORS.Medium;
+  return `0 0 20px ${colors.from}66, 0 0 40px ${colors.from}33`;
+}
+
+export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMarkers?: LevelMarker[] }> = ({ words, topHeadline, levelMarkers }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -26,9 +51,34 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
 
   const nowMs = (frame / fps) * 1000;
 
+  // Find current level marker
+  const currentLevel = levelMarkers ? levelMarkers.find(
+    lm => nowMs >= lm.startTime && nowMs < lm.endTime
+  ) : null;
+
+  // Progress for current level
+  const levelProgress = currentLevel
+    ? interpolate(
+        Math.min(Math.max((nowMs - currentLevel.startTime) / (currentLevel.endTime - currentLevel.startTime), 0), 1),
+        [0, 1],
+        [0, 100],
+      )
+    : 0;
+
+  // Level badge animation
+  const badgeScale = currentLevel
+    ? interpolate(
+        Math.min(Math.max((nowMs - currentLevel.startTime) / 200, 0), 1),
+        [0, 1],
+        [0.8, 1],
+        { easing: Easing.out(Easing.back) }
+      )
+    : 0;
+
   return (
     <div style={{ flex: 1, backgroundColor: '#00FF00', position: 'relative', overflow: 'hidden' }}>
       
+      {/* Top Headline */}
       {topHeadline && (
         <div style={{
           position: 'absolute', top: 180, left: '50%', transform: 'translateX(-50%)',
@@ -49,6 +99,51 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
         </div>
       )}
 
+      {/* Level Badge + Title */}
+      {currentLevel && levelMarkers && (
+        <div style={{
+          position: 'absolute', top: topHeadline ? 320 : 200,
+          left: '50%', transform: 'translateX(-50%)',
+          zIndex: 100, textAlign: 'center', width: '86%',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+        }}>
+          {/* Badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '6px 20px',
+            borderRadius: 30,
+            background: getImpactGradient(currentLevel.impacto),
+            boxShadow: getImpactGlow(currentLevel.impacto),
+            transform: `scale(${badgeScale})`,
+          }}>
+            <span style={{
+              color: '#ffffff', fontSize: 22, fontWeight: 900,
+              fontFamily: '"Montserrat Black", Inter, Arial Black, sans-serif',
+              letterSpacing: '0.08em',
+            }}>
+              LEVEL {currentLevel.nivel}/7
+            </span>
+          </div>
+          {/* Level Title */}
+          <div style={{
+            padding: '4px 16px',
+            background: 'rgba(0,0,0,0.6)',
+            borderRadius: 8,
+            backdropFilter: 'blur(4px)',
+          }}>
+            <span style={{
+              color: '#ffffff', fontSize: 30, fontWeight: 700,
+              fontFamily: '"Montserrat Bold", Inter, Arial, sans-serif',
+              letterSpacing: '0.04em',
+              textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            }}>
+              {currentLevel.titulo}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Word Karaoke */}
       {phrases.map((phrase, pi) => {
         const startMs = phrase.start;
         const endMs = phrase.end;
@@ -121,9 +216,9 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
                       <div style={{
                         position: 'absolute', bottom: -2, left: '5%', right: '5%',
                         height: 2.5,
-                        background: ACCENT,
+                        background: currentLevel ? getImpactGradient(currentLevel.impacto) : ACCENT,
                         borderRadius: 1,
-                        boxShadow: `0 0 8px ${ACCENT}66`,
+                        boxShadow: currentLevel ? getImpactGlow(currentLevel.impacto) : `0 0 8px ${ACCENT}66`,
                       }}/>
                     )}
                   </span>
@@ -133,6 +228,54 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
           </div>
         );
       })}
+
+      {/* Progress Bar (bottom) */}
+      {levelMarkers && levelMarkers.length > 0 && (
+        <div style={{
+          position: 'absolute', bottom: 100, left: 60, right: 60,
+          zIndex: 100,
+        }}>
+          {/* Level dots */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 8,
+          }}>
+            {levelMarkers.map((lm, i) => {
+              const isActive = nowMs >= lm.startTime && nowMs < lm.endTime;
+              const isPast = nowMs >= lm.endTime;
+              return (
+                <div key={i} style={{
+                  width: isActive ? 14 : 10,
+                  height: isActive ? 14 : 10,
+                  borderRadius: '50%',
+                  background: isPast || isActive
+                    ? getImpactGradient(lm.impacto)
+                    : 'rgba(255,255,255,0.25)',
+                  boxShadow: isActive ? getImpactGlow(lm.impacto) : 'none',
+                  transition: 'all 0.3s ease',
+                }}/>
+              );
+            })}
+          </div>
+          {/* Level labels */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+          }}>
+            {levelMarkers.map((lm, i) => (
+              <span key={i} style={{
+                fontSize: 11,
+                fontFamily: '"Montserrat Bold", Inter, Arial, sans-serif',
+                fontWeight: 700,
+                color: nowMs >= lm.startTime ? '#ffffff' : 'rgba(255,255,255,0.3)',
+                textAlign: 'center',
+                transition: 'color 0.3s ease',
+              }}>
+                {lm.nivel}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

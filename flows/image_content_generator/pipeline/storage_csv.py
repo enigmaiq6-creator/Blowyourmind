@@ -32,13 +32,20 @@ class CsvStore(CsvProcessor):
         row = self.get_row(index)
         return self._map_row(row)
 
-    def get_first_by_state(self, state: State) -> IdeaRaw | None:
+    def get_first_by_state(self, state: State, category: str | None = None) -> IdeaRaw | None:
         df = self.read_all()
         if df.empty:
             return None
 
         # Filter by state
         matching_rows = df[df[Column.STATE.value] == state.value]
+        if matching_rows.empty:
+            return None
+
+        # Optional category filter
+        if category:
+            matching_rows = matching_rows[matching_rows[Column.CATEGORY.value] == category]
+
         if matching_rows.empty:
             return None
 

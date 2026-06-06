@@ -42,6 +42,11 @@ class Pipeline(BaseModelTool):
     orientation: VideoOrientation
     mode: str = "standard"
 
+    @property
+    def _category(self) -> str | None:
+        _map = {"geography": "geography", "stories": "stories", "seven_levels": "seven_levels"}
+        return _map.get(self.mode)
+
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
     _image_gen: Optional[Union[GeminiImageGenerator, VertexAIImageGenerator]] = PrivateAttr(default=None)
     _audio_gen: Optional[Union[GeminiAudioGenerator, VertexAIAudioGenerator]] = PrivateAttr(default=None)
@@ -169,7 +174,12 @@ class Pipeline(BaseModelTool):
     @property
     def audio_tool(self) -> AudioTool:
         if self._audio_tool is None:
-            bg_music_dir = self.resource_base / self.BG_MUSIC_DIR
+            # Use mode-specific subdirectory if it exists, otherwise fall back to base
+            mode_dir = self.resource_base / self.BG_MUSIC_DIR / self.mode
+            if mode_dir.exists():
+                bg_music_dir = mode_dir
+            else:
+                bg_music_dir = self.resource_base / self.BG_MUSIC_DIR
             self._audio_tool = AudioTool(bg_music_dir=bg_music_dir)
         return self._audio_tool
 
@@ -211,9 +221,13 @@ class Pipeline(BaseModelTool):
         return model_class.model_validate_json(path.read_text(encoding="utf-8"))
 
     def load_script(self, idea_obj) -> VideoScript:
-        if getattr(idea_obj, "category", "") == "geography":
+        category = getattr(idea_obj, "category", "")
+        if category == "geography":
             from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler
             return self.load_json(idea_obj.id, self.SCRIPT_JSON, GeographyHandler)
+        if category == "seven_levels":
+            from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models import SevenLevelsHandler
+            return self.load_json(idea_obj.id, self.SCRIPT_JSON, SevenLevelsHandler)
         return self.load_json(idea_obj.id, self.SCRIPT_JSON, VideoScript)
 
     def save_json(self, idea_id: int, filename: str, data: BaseModel):
@@ -329,7 +343,7 @@ class Pipeline(BaseModelTool):
         Generate Images: Batch Image Generation (Gemini).
         Generates 3 frames per scene for Flipbook animation.
         """
-        idea_obj = self.store.get_first_by_state(State.SCRIPT_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.SCRIPT_GENERATED, category=self._category)
         if not idea_obj:
             Messenger.warning("Step 2 skipped: No idea in SCRIPT_GENERATED state.")
             return
@@ -646,7 +660,7 @@ class Pipeline(BaseModelTool):
         Falls back to Pexels/Pixabay stock video or Ken Burns image animation.
         Runs AFTER audio generation so we know exact scene durations.
         """
-        idea_obj = self.store.get_first_by_state(State.AUDIO_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.AUDIO_GENERATED, category=self._category)
         if not idea_obj:
             Messenger.warning("Step 2b skipped: No idea in AUDIO_GENERATED state.")
             return
@@ -982,7 +996,7 @@ class Pipeline(BaseModelTool):
         Runs BEFORE step2b so video clips can use real audio duration.
         After generating audios, optionally re-segments scenes based on natural pauses.
         """
-        idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED, category=self._category)
         if not idea_obj:
             Messenger.error(f"No ideas ready for audio generation (target: State.IMAGES_GENERATED).")
             return
@@ -1123,7 +1137,7 @@ class Pipeline(BaseModelTool):
         Now with crossfade transitions between scenes.
         """
         # 1. Retrieves state
-        idea_obj = self.store.get_first_by_state(State.CLIPS_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.CLIPS_GENERATED, category=self._category)
         if not idea_obj:
             Messenger.error("No clips ready for video generation.")
             return
@@ -1286,7 +1300,7 @@ class Pipeline(BaseModelTool):
         6. Updates state.
         """
         # 1. Retrieves VIDEO_GENERATED idea.
-        idea_obj = self.store.get_first_by_state(State.VIDEO_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.VIDEO_GENERATED, category=self._category)
         if not idea_obj:
             Messenger.error("No video ready for subtitle generation.")
             return
@@ -1331,7 +1345,7 @@ class Pipeline(BaseModelTool):
         Step 5 (PRO): High-End Subtitles and Multi-layer Composition.
         """
         # 1. Retrieves state
-        idea_obj = self.store.get_first_by_state(State.VIDEO_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.VIDEO_GENERATED, category=self._category)
         if not idea_obj:
             Messenger.error("No video ready for PRO subtitles.")
             return
@@ -1377,14 +1391,45 @@ class Pipeline(BaseModelTool):
         remotion_frames_dir = remotion_overlay.parent
         remotion_frames_dir.mkdir(parents=True, exist_ok=True)
         
-        # Get top headline from script (StoryIdea field)
-        intrigue_text = getattr(script_data, "top_headline", None)
-        
+        # Get top headline from idea.json (raw dict to avoid model dependency)
+        import json as json_lib
+        try:
+            idea_json_path = self.get_idea_path(idea_obj.id) / self.IDEA_JSON
+            with open(idea_json_path, encoding="utf-8") as f:
+                idea_dict = json_lib.load(f)
+            intrigue_text = idea_dict.get("intrigue_header", None)
+        except Exception:
+            intrigue_text = None
+
+        # Build level markers for seven_levels mode
+        level_markers = []
+        if self.mode == "seven_levels":
+            try:
+                total_duration = self.ffmpeg.get_audio_duration(audio_wav) * 1000
+                from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models import SevenLevelsHandler
+                seven_script = self.load_json(idea_obj.id, self.SCRIPT_JSON, SevenLevelsHandler)
+                scene_count = len(seven_script.scenes) or 1
+                for i, sc in enumerate(seven_script.scenes):
+                    if hasattr(sc, "nivel") and sc.nivel > 0:
+                        start_ms = (i / scene_count) * total_duration
+                        end_ms = ((i + 1) / scene_count) * total_duration
+                        level_markers.append({
+                            "nivel": sc.nivel,
+                            "titulo": getattr(sc, "level_title", f"Level {sc.nivel}"),
+                            "impacto": getattr(sc, "impact", "Medium"),
+                            "startTime": int(start_ms),
+                            "endTime": int(end_ms),
+                        })
+                Messenger.success(f"   ✅ Built {len(level_markers)} level markers for 7 Levels mode.")
+            except Exception as e:
+                Messenger.warning(f"   ⚠️ Failed to build level markers: {e}")
+
         self.remotion.render_subtitles(
             remotion_path=remotion_root,
             output_path=remotion_overlay,
             words=word_data,
-            top_headline=intrigue_text
+            top_headline=intrigue_text,
+            level_markers=level_markers if level_markers else None
         )
 
         # 4. Composite remotion_overlay (green screen) + grain + progress bar
@@ -1420,10 +1465,10 @@ class Pipeline(BaseModelTool):
         Background Music: Adds a random background track to the subtitled video.
         """
         # 1. Retrieves subtitled video (PRO takes priority)
-        idea_obj = self.store.get_first_by_state(State.VIDEO_PRO_SUBTITLED)
+        idea_obj = self.store.get_first_by_state(State.VIDEO_PRO_SUBTITLED, category=self._category)
         is_pro = True
         if not idea_obj:
-            idea_obj = self.store.get_first_by_state(State.VIDEO_SUBTITLED)
+            idea_obj = self.store.get_first_by_state(State.VIDEO_SUBTITLED, category=self._category)
             is_pro = False
             
         if not idea_obj:
@@ -1484,7 +1529,7 @@ class Pipeline(BaseModelTool):
         4. Updates state.
         """
         # 1. Retrieves VIDEO_MUSIC_GENERATED idea.
-        idea_obj = self.store.get_first_by_state(State.VIDEO_MUSIC_GENERATED)
+        idea_obj = self.store.get_first_by_state(State.VIDEO_MUSIC_GENERATED, category=self._category)
         if not idea_obj:
             Messenger.error("No video with music found to rename.")
             return
@@ -1551,7 +1596,7 @@ class Pipeline(BaseModelTool):
         # 1. Retrieves COMPLETED ideas.
         # We use a loop to process all completed ones as requested by the user
         while True:
-            idea_obj = self.store.get_first_by_state(State.COMPLETED)
+            idea_obj = self.store.get_first_by_state(State.COMPLETED, category=self._category)
             if not idea_obj:
                 break
 

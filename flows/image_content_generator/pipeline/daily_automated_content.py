@@ -102,18 +102,27 @@ class DailyAutomator:
     def run_daily_mix(self):
         """
         Main entry point for GitHub Actions.
-        Generates a Geography / Mind-Blowing Science Reel.
+        Generates a video using the configured mode.
+        Mode can be: geography, seven_levels, standard
         """
-        Messenger.info(f"🎬 GENERATING NEW GEOGRAPHY REEL (Full Pipeline)...")
+        env_mode = os.getenv("MODE", "geography").lower() or "geography"
+
+        if env_mode == "seven_levels":
+            mode_label = "7 Levels"
+        elif env_mode == "geography":
+            mode_label = "Geography Reel"
+        else:
+            mode_label = env_mode.upper()
+
+        Messenger.info(f"🎬 GENERATING NEW {mode_label} VIDEO (Full Pipeline)...")
         self.cleanup_stuck_ideas()
 
         avoid_msg = self.get_recent_topics()
-        env_mode = os.getenv("MODE", "geography").lower() or "geography"
         try:
             cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", env_mode]
             subprocess.run(cmd, check=True)
-            Messenger.success(f"✅ Geography Reel completed!")
-            self.log_post("video", "Geography Reel")
+            Messenger.success(f"✅ {mode_label} video completed!")
+            self.log_post("video", f"{mode_label} Video")
             self.sync_to_github()
         except Exception as e:
             Messenger.error(f"Error during video task: {e}")

@@ -150,4 +150,41 @@ Cuando un texto era largo o habían múltiples elementos, se solapaban entre sí
 - `remotion/src/SceneOverlay.tsx` — **REFACTOR**: sin coordenadas fijas, usa LayoutStack
 - `remotion/src/MapRender.tsx` — floating label top:30%→40%, vignettes top:400→42%
 - `remotion/src/LowerThird.tsx` — bottom:240→320
+
+## ═══════════════════════════════════════════
+# SESIÓN: 5 JUN 2026 — 7 LEVELS MODE (ENGLISH)
+# ═══════════════════════════════════════════
+
+## Nuevo modo: `seven_levels`
+Se creó el modo **"7 Levels"** (inglés) — videos de 8 escenas (intro + 7 niveles escalantes).
+
+### Archivos nuevos:
+- **`prompt_shorts/seven_levels/__init__.py`** — exports
+- **`prompt_shorts/seven_levels/models.py`** — `SevenLevelsIdea`, `SevenLevelsScene`, `SevenLevelsHandler`
+- **`prompt_shorts/seven_levels/constants.py`** — prompts en inglés: `IDEA_PROMPT_SEVEN_LEVELS`, `SCRIPT_PROMPT_SEVEN_LEVELS`, `AUDIO_PROMPT_SEVEN_LEVELS`, `FOCUS_AREAS_SEVEN_LEVELS`
+
+### Archivos modificados:
+- **`prompt_shorts/manager.py`** — nuevo método `_generate_seven_levels_story()`, routing por mode
+- **`pipeline/pipeline.py`** — `_category` map + `load_script()` + `step5_pro_subtitles()` level_markers
+- **`pipeline/main.py`** — `--mode` choices incluye `seven_levels`
+- **`remotion/src/Subtitles.tsx`** — level badges (LEVEL X/7), impact gradients, progress bar, level titles
+- **`tools/video_editing/remotion.py`** — `render_subtitles()` acepta `level_markers` param
+- **`pipeline/daily_automated_content.py`** — soporta `MODE=seven_levels`
+- **`Makefile`** — targets `icg-7-*` para steps del modo seven_levels
+- **`ENGLISH_BOT_SETUP_GUIDE.md`** — guía completa del proyecto en inglés
+
+### Cómo correr:
+```powershell
+# Full pipeline
+make icg-7-all
+
+# O con Poetry
+poetry run python -m flows.image_content_generator.pipeline.main short all --mode seven_levels
+```
+
+### Subtitles.tsx features nuevas:
+- Level badge con gradient según impacto (Low→verde, Medium→naranja, High→rojo, Extreme→púrpura)
+- Level title debajo del badge
+- Progress bar con dots animados por nivel
+- Underline de palabra actual se colorea según el nivel activo
 ```

@@ -17,12 +17,14 @@ class RemotionTool(BaseModelTool):
         output_path: Path,
         words: List[Dict[str, Any]],
         composition_id: str = "Subtitles",
-        top_headline: str = None
+        top_headline: str = None,
+        level_markers: List[Dict[str, Any]] = None
     ) -> None:
         """
         Renders a Remotion composition as an MP4 video (no alpha).
         The Subtitles component renders text on a green (#00FF00) background.
         ffmpeg colorkey makes green transparent during overlay.
+        Pass level_markers for 7 Levels mode (level badges, progress bar).
         """
         # 1. Prepare data file
         data_dir = remotion_path / "data"
@@ -32,6 +34,8 @@ class RemotionTool(BaseModelTool):
         payload = {"words": words}
         if top_headline:
             payload["topHeadline"] = top_headline
+        if level_markers:
+            payload["levelMarkers"] = level_markers
 
         with open(input_json, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)

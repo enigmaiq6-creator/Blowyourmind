@@ -11,6 +11,8 @@ from flows.image_content_generator.pipeline.prompt_base.models import (
 )
 from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler, GeographyIdea
 from flows.image_content_generator.pipeline.prompt_shorts.geography import constants as geo_constants
+from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models import SevenLevelsHandler, SevenLevelsIdea
+from flows.image_content_generator.pipeline.prompt_shorts.seven_levels import constants as seven_constants
 
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
@@ -21,17 +23,24 @@ class PromptManagerShorts(BasePromptManager):
 
     GEOGRAPHY_AUDIO_PROMPT: str = geo_constants.AUDIO_PROMPT_GEOGRAPHY
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler]
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, SevenLevelsHandler]
 
     def get_audio_prompt(self, audio_text: str, mode: str = "standard") -> str:
+        if mode == "seven_levels":
+            return seven_constants.AUDIO_PROMPT_SEVEN_LEVELS.format(audio_text=audio_text)
         return self.GEOGRAPHY_AUDIO_PROMPT.format(audio_text=audio_text)
 
     def generate_full_story(
         self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = "", mode: str = "standard"
     ) -> Tuple[BaseIdea, VideoScript, str]:
         """
-        Executes the generation loop for Geography Reels.
+        Executes the generation loop for the specified mode.
+        Supports 'geography' and 'seven_levels' modes.
         """
+        if mode == "seven_levels":
+            return self._generate_seven_levels_story(content_gen, titles_to_avoid, extra_avoid)
+
+        # --- DEFAULT: Geography mode ---
         category = "geography"
         idea_model = GeographyIdea
         idea_prompt = geo_constants.IDEA_PROMPT_GEOGRAPHY
@@ -131,6 +140,91 @@ class PromptManagerShorts(BasePromptManager):
         )
         
         # Inject transparency footer into caption or hook field
+        if "caption" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
+            setattr(idea_data, "caption", new_val)
+        elif "hook" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "hook", "")) + transparency_footer
+            setattr(idea_data, "hook", new_val)
+
+        return idea_data, script, category
+
+    def _generate_seven_levels_story(
+        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = ""
+    ) -> Tuple[BaseIdea, VideoScript, str]:
+        """
+        Executes the generation loop for 7 Levels (English) mode.
+        """
+        category = "seven_levels"
+        idea_model = SevenLevelsIdea
+        idea_prompt = seven_constants.IDEA_PROMPT_SEVEN_LEVELS
+        script_prompt = seven_constants.SCRIPT_PROMPT_SEVEN_LEVELS
+
+        Messenger.info(f"🎯 Generating 7 Levels Idea...")
+
+        avoid_msg = ""
+
+        combined_avoid = list(titles_to_avoid)
+        if extra_avoid:
+            combined_avoid.append(extra_avoid)
+
+        if combined_avoid:
+            avoid_list_str = "\n".join([str(t) for t in combined_avoid])
+            avoid_msg = (
+                f"\n\n🚨 **ABSOLUTE NO-REPEAT GOLDEN RULE:** 🚨\n"
+                f"It is STRICTLY FORBIDDEN to repeat ANY of these topics, stories, or concepts that were already published:\n"
+                f"{avoid_list_str}\n\n"
+                f"If you generate a story similar to the previous ones, the system will fail. YOU MUST INVENT A COMPLETELY NEW TOPIC.\n"
+            )
+
+        # Select a random focus area
+        selected_area = random.choice(seven_constants.FOCUS_AREAS_SEVEN_LEVELS)
+        Messenger.info(f"🎯 Random Focus Area: {selected_area}")
+
+        # Cinematic visual styles for 7 Levels
+        styles = [
+            "Style: Hyper-realistic cinematic photography, dark moody colors, dramatic volumetric lighting, deep shadows, National Geographic documentary quality, 4K resolution.",
+            "Style: Dark digital art with neon accents, high contrast, cyber-noir aesthetic, glowing highlights on dark backgrounds, cinematic depth of field.",
+            "Style: Vintage documentary aesthetic, warm sepia tones, grainy texture, historical photograph quality, dramatic chiaroscuro lighting.",
+            "Style: Surreal fantasy realism with cosmic colors, ethereal lighting, otherworldly atmosphere, bioluminescent accents, dreamlike quality.",
+            "Style: Dark documentary style, desaturated colors with selective color pops, high contrast shadows, gritty realistic textures, true crime documentary aesthetic.",
+        ]
+        selected_style = random.choice(styles)
+        Messenger.info(f"🎨 Selected Visual Style: {selected_style}")
+
+        # Inject style and avoid message into idea prompt
+        full_idea_prompt = (
+            f"{idea_prompt}\n\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+
+        idea_data = content_gen.generate_text(
+            full_idea_prompt + avoid_msg,
+            idea_model
+        )
+
+        # 4. Generate the script
+        Messenger.info(f"\n--- Generating 7 Levels Script: {idea_data.title} ---")
+
+        personal_impact = getattr(idea_data, "personal_impact", "This will change how you see your world.")
+        key_data = getattr(idea_data, "key_data_stat", "")
+        full_script_prompt = (
+            script_prompt +
+            f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
+            f"**INTRIGUE HEADER:** {getattr(idea_data, 'intrigue_header', '')}\n"
+            f"**KEY DATA STAT:** {key_data}\n"
+            f"**PERSONAL IMPACT (use for final CTA):** {personal_impact}\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+        script = content_gen.generate_text(full_script_prompt, SevenLevelsHandler)
+
+        # --- Transparency footer ---
+        transparency_footer = (
+            "\n\n---\n"
+            "💡 **Transparency**: This content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
+            "✨ Created by the BlowYourMind team."
+        )
+
         if "caption" in idea_data.model_fields:
             new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
             setattr(idea_data, "caption", new_val)
