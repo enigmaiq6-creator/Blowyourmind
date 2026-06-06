@@ -1,3 +1,4 @@
+import os as _os
 from pathlib import Path
 from typing import Any, List, Optional, cast
 
@@ -25,17 +26,27 @@ class GeminiImageGenerator(GeminiBase):
         self,
         aspect_ratio: str,
         reference_dir: Optional[Path] = None,
+        force_api_key: bool = True,
         **kwargs: Any
     ) -> None:
         style_refs = []
         if reference_dir and reference_dir.exists():
             style_refs = sorted(reference_dir.glob("*.png"))
 
+        # Image models (gemini-3.1-flash-image-preview) are NOT available on Vertex AI.
+        # Force API key mode even if USE_VERTEX_AI_GEMINI=true.
+        if force_api_key:
+            old_val = _os.environ.get("USE_VERTEX_AI_GEMINI")
+            _os.environ["USE_VERTEX_AI_GEMINI"] = "false"
+
         super().__init__(
             aspect_ratio=aspect_ratio,
             style_references=style_refs,
             **kwargs
         )
+
+        if force_api_key and old_val is not None:
+            _os.environ["USE_VERTEX_AI_GEMINI"] = old_val
 
     def generate_image(
         self,

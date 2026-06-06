@@ -76,7 +76,7 @@ jobs:
           # Set to 'true' to save videos as drafts (unpublished) in Meta Business Suite
           # This allows manual review and publishing + cross-posting to Instagram Reels
           SAVE_AS_DRAFT: ${{ secrets.SAVE_AS_DRAFT }}
-          USE_VERTEX_AI_IMAGE: "true"
+          USE_VERTEX_AI_IMAGE: "false"
           USE_VERTEX_AI_AUDIO: "true"
           USE_VERTEX_AI_GEMINI: "true"
           VERTEX_IMAGE_RATIO: "10"
