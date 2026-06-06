@@ -77,6 +77,7 @@ jobs:
           SAVE_AS_DRAFT: ${{ secrets.SAVE_AS_DRAFT }}
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
+          USE_VERTEX_AI_GEMINI: "true"
           VERTEX_IMAGE_RATIO: "10"
           MODE: ${{ github.event.inputs.mode || 'geography' }}
         run: |

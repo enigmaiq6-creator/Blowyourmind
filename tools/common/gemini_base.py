@@ -42,8 +42,8 @@ class GeminiBase(BaseModelTool):
         self._project_id = project_id
         self._using_vertex = False
 
-        # Use API key by default (better throughput). Set USE_VERTEX_AI_GEMINI=true to use Vertex AI.
-        use_vertex_for_gemini = os.getenv("USE_VERTEX_AI_GEMINI", "false").lower() == "true"
+        # Use Vertex AI by default (higher quotas, $300 credits). Set USE_VERTEX_AI_GEMINI=false to use API key.
+        use_vertex_for_gemini = os.getenv("USE_VERTEX_AI_GEMINI", "true").lower() == "true"
 
         if use_vertex_for_gemini and self._project_id:
             Messenger.info(f"✨ Using Vertex AI (Enterprise) for Gemini in project: {self._project_id}...")
