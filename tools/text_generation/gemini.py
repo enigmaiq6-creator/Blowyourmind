@@ -9,7 +9,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiTextGenerator(GeminiBase):
-    text_model: str = "gemini-2.5-flash"
+    text_model: str = "gemini-2.0-flash"
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
@@ -24,7 +24,7 @@ class GeminiTextGenerator(GeminiBase):
              Messenger.info(f"DEBUG PROMPT LEN: {len(prompt)}")
 
         response = self._execute_with_retry(
-            self.client.models.generate_content,
+            "models.generate_content",
             model=self.text_model,
             contents=[prompt],
             config={
@@ -44,7 +44,7 @@ class GeminiTextGenerator(GeminiBase):
         Generates raw text with Gemini with retry logic (30s wait, 3 attempts on ServerError).
         """
         response = self._execute_with_retry(
-            self.client.models.generate_content,
+            "models.generate_content",
             model=self.text_model,
             contents=[prompt]
         )
@@ -72,7 +72,7 @@ SRT CONTENT:
 {srt_content}
 """
         response = self._execute_with_retry(
-            self.client.models.generate_content,
+            "models.generate_content",
             model=self.text_model,
             contents=[prompt]
         )
@@ -91,4 +91,3 @@ SRT CONTENT:
             translated_srt = translated_srt[:-3]
             
         return translated_srt.strip()
-

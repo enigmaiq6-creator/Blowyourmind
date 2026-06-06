@@ -1,4 +1,4 @@
-import os as _os
+import time
 from pathlib import Path
 from typing import Any, List, Optional, cast
 
@@ -26,28 +26,17 @@ class GeminiImageGenerator(GeminiBase):
         self,
         aspect_ratio: str,
         reference_dir: Optional[Path] = None,
-        force_api_key: bool = True,
         **kwargs: Any
     ) -> None:
         style_refs = []
         if reference_dir and reference_dir.exists():
             style_refs = sorted(reference_dir.glob("*.png"))
 
-        # Image models (gemini-3.1-flash-image-preview) are NOT available on Vertex AI.
-        # Force API key mode even if USE_VERTEX_AI_GEMINI=true.
-        if force_api_key:
-            old_val = _os.environ.get("USE_VERTEX_AI_GEMINI")
-            _os.environ["USE_VERTEX_AI_GEMINI"] = "false"
-
         super().__init__(
             aspect_ratio=aspect_ratio,
             style_references=style_refs,
-            block_vertex_fallback=True,
             **kwargs
         )
-
-        if force_api_key and old_val is not None:
-            _os.environ["USE_VERTEX_AI_GEMINI"] = old_val
 
     def generate_image(
         self,
@@ -57,16 +46,17 @@ class GeminiImageGenerator(GeminiBase):
         sequence_reference: Optional[Path] = None
     ) -> None:
         """Generates an image with Gemini and saves it to disk."""
+        time.sleep(10)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         contents = self._prepare_contents(prompt, style_references, sequence_reference)
         config = types.GenerateContentConfig(
             response_modalities=['TEXT', 'IMAGE'],
-            image_config=types.ImageConfig(aspect_ratio=self.aspect_ratio, image_size="2K")
+            image_config=types.ImageConfig(aspect_ratio=self.aspect_ratio, image_size="1K")
         )
 
         response = self._execute_with_retry(
-            self.client.models.generate_content,
+            "models.generate_content",
             model=self.image_model,
             contents=contents,
             config=config

@@ -67,6 +67,7 @@ jobs:
       - name: Run Automation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
@@ -78,7 +79,6 @@ jobs:
           SAVE_AS_DRAFT: ${{ secrets.SAVE_AS_DRAFT }}
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
-          USE_VERTEX_AI_GEMINI: "true"
           VERTEX_IMAGE_RATIO: "10"
           MODE: ${{ github.event.inputs.mode || '' }}
         run: |
