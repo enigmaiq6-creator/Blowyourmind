@@ -99,18 +99,41 @@ class DailyAutomator:
         with open(self.history_file, "a", encoding="utf-8") as f:
             f.write(f"{datetime.now().isoformat()},{post_type},{topic.replace(',', ' ')}\n")
 
+    def _pick_mode(self) -> str:
+        """
+        Picks a mode based on weights when MODE env var is not set.
+        Format: MODE_WEIGHTS=geography=0.3,seven_levels=0.5,standard=0.2
+        Defaults: geography=0.3, seven_levels=0.5, standard=0.2
+        """
+        explicit_mode = os.getenv("MODE", "").lower().strip()
+        if explicit_mode:
+            return explicit_mode
+
+        weights_str = os.getenv("MODE_WEIGHTS", "geography=0.3,seven_levels=0.5,standard=0.2")
+        try:
+            import random
+            pairs = [p.strip().split("=") for p in weights_str.split(",")]
+            modes = [p[0].strip() for p in pairs]
+            weights = [float(p[1].strip()) for p in pairs]
+            return random.choices(modes, weights=weights, k=1)[0]
+        except Exception as e:
+            Messenger.warning(f"Invalid MODE_WEIGHTS '{weights_str}': {e}. Falling back to geography.")
+            return "geography"
+
     def run_daily_mix(self):
         """
         Main entry point for GitHub Actions.
-        Generates a video using the configured mode.
-        Mode can be: geography, seven_levels, standard
+        Generates a video using weighted random mode selection.
+        Set MODE env var to force a specific mode, or MODE_WEIGHTS to customize probabilities.
         """
-        env_mode = os.getenv("MODE", "geography").lower() or "geography"
+        env_mode = self._pick_mode()
 
         if env_mode == "seven_levels":
             mode_label = "7 Levels"
         elif env_mode == "geography":
             mode_label = "Geography Reel"
+        elif env_mode == "standard":
+            mode_label = "Standard"
         else:
             mode_label = env_mode.upper()
 

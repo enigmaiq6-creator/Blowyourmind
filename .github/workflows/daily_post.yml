@@ -80,7 +80,7 @@ jobs:
           USE_VERTEX_AI_AUDIO: "true"
           USE_VERTEX_AI_GEMINI: "true"
           VERTEX_IMAGE_RATIO: "10"
-          MODE: ${{ github.event.inputs.mode || 'geography' }}
+          MODE: ${{ github.event.inputs.mode || '' }}
         run: |
           echo "🚀 Generating ${{ github.event.inputs.mode || 'geography' }} video..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
