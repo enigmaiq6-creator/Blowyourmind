@@ -109,7 +109,7 @@ class DailyAutomator:
         if explicit_mode:
             return explicit_mode
 
-        weights_str = os.getenv("MODE_WEIGHTS", "geography=0.3,seven_levels=0.5,standard=0.2")
+        weights_str = os.getenv("MODE_WEIGHTS", "geography=0.1,seven_levels=0.5,standard=0.4")
         try:
             import random
             pairs = [p.strip().split("=") for p in weights_str.split(",")]
