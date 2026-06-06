@@ -5,7 +5,7 @@ from typing import Any, Callable, Optional
 from dotenv import load_dotenv
 from google.genai import Client, errors, types
 from pydantic import PrivateAttr
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from tools.common.base_model import BaseModelTool
 from tools.common.messenger import Messenger
@@ -70,12 +70,12 @@ class GeminiBase(BaseModelTool):
             raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
 
     @retry(
-        wait=wait_fixed(30),
-        stop=stop_after_attempt(4),
+        wait=wait_exponential(multiplier=5, min=5, max=30),
+        stop=stop_after_attempt(3),
         retry=retry_if_exception_type((errors.ServerError, errors.ClientError, httpx.RequestError, httpx.RemoteProtocolError, httpx.HTTPError, httpx.TimeoutException, TimeoutError)),
         before_sleep=lambda retry_state: Messenger.info(
-            f"⏳ Gemini bloqueado (Saturación o Error de Red). Reintentando en 30s... "
-            f"(Intento {retry_state.attempt_number}/4)"
+            f"⏳ Gemini bloqueado (Saturación o Error de Red). Reintentando en "
+            f"{retry_state.next_action.sleep}... (Intento {retry_state.attempt_number}/3)"
         ),
         reraise=True,
     )

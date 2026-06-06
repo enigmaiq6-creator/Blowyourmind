@@ -356,7 +356,7 @@ class Pipeline(BaseModelTool):
         script = self.load_script(idea_obj)
         Messenger.info(f"   Script loaded. Scenes: {len(script.scenes)}")
 
-        for scene in script.scenes:
+        def generate_one(scene):
             action_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", f"A cinematic scene about {idea_obj.title}")
             out_name = f"scene_{scene.scene_number:02d}.png"
             out_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, out_name)
@@ -377,6 +377,14 @@ class Pipeline(BaseModelTool):
                     img.save(out_path, quality=95)
             except Exception:
                 pass
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [executor.submit(generate_one, scene) for scene in script.scenes]
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    Messenger.error(f"   ❌ Image generation failed: {e}")
 
         self.cost_tracker.add_image_cost(len(script.scenes))
 
@@ -851,7 +859,7 @@ class Pipeline(BaseModelTool):
                 Messenger.error(f"   ❌ MapRender failed for scene {scene.scene_number}: {e}")
                 return False
 
-        if is_geography_mode and all_map_render and len(script.scenes) <= 5:
+        if is_geography_mode and all_map_render:
             Messenger.info(f"   🚀 Rendering all {len(script.scenes)} scenes in ONE Remotion call (MultiSceneVideo)...")
             scene_props_list = []
             for scene in script.scenes:
@@ -883,13 +891,11 @@ class Pipeline(BaseModelTool):
                     clip_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, clip_filename)
                     cmd = [
                         "ffmpeg", "-y",
-                        "-i", str(single_video),
                         "-ss", f"{cum_secs:.3f}",
+                        "-i", str(single_video),
                         "-t", f"{dur_secs:.3f}",
-                        "-c:v", "libx264", "-crf", "18",
-                        "-preset", "fast",
-                        "-pix_fmt", "yuv420p",
-                        "-an",
+                        "-c", "copy",
+                        "-avoid_negative_ts", "make_zero",
                         str(clip_path)
                     ]
                     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -897,7 +903,7 @@ class Pipeline(BaseModelTool):
                     Messenger.info(f"   ✂️ Scene {scene.scene_number}: clipped {dur_secs:.1f}s → {clip_path.name}")
                 Messenger.success("   ✅ All clips extracted from MultiSceneVideo.")
         else:
-            Messenger.info(f"   🗺️ {len(script.scenes)} escenas, renderizando individualmente (MultiSceneVideo con 8+ escenas lento).")
+            Messenger.info(f"   🗺️ {len(script.scenes)} escenas, renderizando individualmente.")
             all_map_render = False
 
         if not all_map_render:

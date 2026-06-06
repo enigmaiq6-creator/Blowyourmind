@@ -1,12 +1,9 @@
-import time
 from pathlib import Path
 from typing import Any, List, Optional, cast
 
 from google.genai import types
 from PIL import Image
 
-from pathlib import Path
-from typing import List
 from pydantic import BaseModel
 
 from tools.common.gemini_base import GeminiBase
@@ -48,7 +45,6 @@ class GeminiImageGenerator(GeminiBase):
         sequence_reference: Optional[Path] = None
     ) -> None:
         """Generates an image with Gemini and saves it to disk."""
-        time.sleep(10)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         contents = self._prepare_contents(prompt, style_references, sequence_reference)

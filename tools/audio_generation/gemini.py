@@ -1,4 +1,3 @@
-import time
 import wave
 from pathlib import Path
 
@@ -20,8 +19,6 @@ class GeminiAudioGenerator(GeminiBase):
         """
         Generates audio using Gemini TTS and saves it to disk.
         """
-        time.sleep(20)
-
         audio_path.parent.mkdir(parents=True, exist_ok=True)
 
         response = self.client.models.generate_content(
