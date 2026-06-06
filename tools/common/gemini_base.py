@@ -42,7 +42,10 @@ class GeminiBase(BaseModelTool):
         self._project_id = project_id
         self._using_vertex = False
 
-        if self._project_id:
+        # Use API key by default (better throughput). Set USE_VERTEX_AI_GEMINI=true to use Vertex AI.
+        use_vertex_for_gemini = os.getenv("USE_VERTEX_AI_GEMINI", "false").lower() == "true"
+
+        if use_vertex_for_gemini and self._project_id:
             Messenger.info(f"✨ Using Vertex AI (Enterprise) for Gemini in project: {self._project_id}...")
             self._client = Client(
                 vertexai=True,
@@ -54,6 +57,15 @@ class GeminiBase(BaseModelTool):
         elif self._api_key:
             Messenger.info("🔧 Using Google AI Studio (API Key) for Gemini...")
             self._client = Client(api_key=self._api_key, http_options=types.HttpOptions(timeout=300000))
+        elif self._project_id:
+            Messenger.info(f"✨ Falling back to Vertex AI for Gemini in project: {self._project_id}...")
+            self._client = Client(
+                vertexai=True,
+                project=self._project_id,
+                location=location,
+                http_options=types.HttpOptions(timeout=300000)
+            )
+            self._using_vertex = True
         else:
             raise RuntimeError("❌ GEMINI_API_KEY or GCP_PROJECT_ID is required")
 
