@@ -42,6 +42,7 @@ class GeminiImageGenerator(GeminiBase):
         super().__init__(
             aspect_ratio=aspect_ratio,
             style_references=style_refs,
+            block_vertex_fallback=True,
             **kwargs
         )
 

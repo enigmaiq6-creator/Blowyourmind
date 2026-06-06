@@ -27,13 +27,16 @@ class GeminiBase(BaseModelTool):
     _api_key: Optional[str] = PrivateAttr(default=None)
     _project_id: Optional[str] = PrivateAttr(default=None)
     _using_vertex: bool = PrivateAttr(default=False)
+    _block_vertex_fallback: bool = PrivateAttr(default=False)
 
     @property
     def client(self) -> Client:
         return self._client
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, block_vertex_fallback: bool = False, **kwargs: Any):
         super().__init__(**kwargs)
+        
+        self._block_vertex_fallback = block_vertex_fallback
         
         project_id = os.getenv("GCP_PROJECT_ID")
         location = os.getenv("GCP_LOCATION", "us-central1")
@@ -92,6 +95,12 @@ class GeminiBase(BaseModelTool):
         except errors.ClientError as e:
             error_str = str(e)
             if ("429" in error_str or "RESOURCE_EXHAUSTED" in error_str) and self._project_id and not self._using_vertex:
+                if self._block_vertex_fallback:
+                    raise RuntimeError(
+                        "❌ Gemini API Key rate limit exhausted AND Vertex fallback is blocked. "
+                        "The image model (gemini-3.1-flash-image-preview) is not available on Vertex AI. "
+                        "Wait for API key quota to reset and retry."
+                    ) from e
                 Messenger.warning("⚠️ Gemini API Key rate limit/quota exhausted (429 RESOURCE_EXHAUSTED). Falling back to Vertex AI...")
                 self._using_vertex = True
                 self._client = Client(
