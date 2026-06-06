@@ -55,8 +55,8 @@ class VertexAIImageGenerator:
         """
         Messenger.info(f"Generating Vertex AI Image: {prompt[:50]}...")
         
-        max_attempts = 5
-        base_delay = 5.0
+        max_attempts = 6
+        base_delay = 10.0
         
         for attempt in range(1, max_attempts + 1):
             try:
