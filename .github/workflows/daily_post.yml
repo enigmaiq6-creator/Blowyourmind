@@ -1,7 +1,17 @@
-name: Daily Geography Reel
+name: BlowYourMind Content Engine
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Content generation mode'
+        required: true
+        default: 'geography'
+        type: choice
+        options:
+          - geography
+          - seven_levels
+          - standard
 
 concurrency:
   group: daily-post
@@ -68,9 +78,9 @@ jobs:
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
           VERTEX_IMAGE_RATIO: "10"
-          MODE: "geography"
+          MODE: ${{ github.event.inputs.mode || 'geography' }}
         run: |
-          echo "🚀 Generating Geography Reel..."
+          echo "🚀 Generating ${{ github.event.inputs.mode || 'geography' }} video..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
