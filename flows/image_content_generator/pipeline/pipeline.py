@@ -228,6 +228,9 @@ class Pipeline(BaseModelTool):
         if category == "seven_levels":
             from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models import SevenLevelsHandler
             return self.load_json(idea_obj.id, self.SCRIPT_JSON, SevenLevelsHandler)
+        if category == "stories":
+            from flows.image_content_generator.pipeline.prompt_shorts.stories.models import StoryHandler
+            return self.load_json(idea_obj.id, self.SCRIPT_JSON, StoryHandler)
         return self.load_json(idea_obj.id, self.SCRIPT_JSON, VideoScript)
 
     def save_json(self, idea_id: int, filename: str, data: BaseModel):

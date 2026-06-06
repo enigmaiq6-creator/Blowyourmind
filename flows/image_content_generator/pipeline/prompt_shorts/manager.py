@@ -13,6 +13,8 @@ from flows.image_content_generator.pipeline.prompt_shorts.geography.models impor
 from flows.image_content_generator.pipeline.prompt_shorts.geography import constants as geo_constants
 from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models import SevenLevelsHandler, SevenLevelsIdea
 from flows.image_content_generator.pipeline.prompt_shorts.seven_levels import constants as seven_constants
+from flows.image_content_generator.pipeline.prompt_shorts.stories.models import StoryHandler, StoryIdea
+from flows.image_content_generator.pipeline.prompt_shorts.stories import constants as story_constants
 
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
@@ -23,11 +25,13 @@ class PromptManagerShorts(BasePromptManager):
 
     GEOGRAPHY_AUDIO_PROMPT: str = geo_constants.AUDIO_PROMPT_GEOGRAPHY
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, SevenLevelsHandler]
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, SevenLevelsHandler, StoryHandler]
 
     def get_audio_prompt(self, audio_text: str, mode: str = "standard") -> str:
         if mode == "seven_levels":
             return seven_constants.AUDIO_PROMPT_SEVEN_LEVELS.format(audio_text=audio_text)
+        if mode == "stories" or mode == "standard":
+            return story_constants.AUDIO_PROMPT_STORIES.format(audio_text=audio_text)
         return self.GEOGRAPHY_AUDIO_PROMPT.format(audio_text=audio_text)
 
     def generate_full_story(
@@ -35,10 +39,12 @@ class PromptManagerShorts(BasePromptManager):
     ) -> Tuple[BaseIdea, VideoScript, str]:
         """
         Executes the generation loop for the specified mode.
-        Supports 'geography' and 'seven_levels' modes.
+        Supports 'geography', 'seven_levels', and 'stories'/'standard' modes.
         """
         if mode == "seven_levels":
             return self._generate_seven_levels_story(content_gen, titles_to_avoid, extra_avoid)
+        if mode in ("stories", "standard"):
+            return self._generate_stories_story(content_gen, titles_to_avoid, extra_avoid)
 
         # --- DEFAULT: Geography mode ---
         category = "geography"
@@ -140,6 +146,88 @@ class PromptManagerShorts(BasePromptManager):
         )
         
         # Inject transparency footer into caption or hook field
+        if "caption" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
+            setattr(idea_data, "caption", new_val)
+        elif "hook" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "hook", "")) + transparency_footer
+            setattr(idea_data, "hook", new_val)
+
+        return idea_data, script, category
+
+    def _generate_stories_story(
+        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = ""
+    ) -> Tuple[BaseIdea, VideoScript, str]:
+        """
+        Executes the generation loop for Standard (Curiosity Reels) mode.
+        """
+        category = "stories"
+        idea_model = StoryIdea
+        idea_prompt = story_constants.IDEA_PROMPT_STORIES
+        script_prompt = story_constants.SCRIPT_PROMPT_STORIES
+
+        Messenger.info(f"🎯 Generating Standard Curiosity Idea...")
+
+        avoid_msg = ""
+
+        combined_avoid = list(titles_to_avoid)
+        if extra_avoid:
+            combined_avoid.append(extra_avoid)
+
+        if combined_avoid:
+            avoid_list_str = "\n".join([str(t) for t in combined_avoid])
+            avoid_msg = (
+                f"\n\n🚨 **ABSOLUTE NO-REPEAT GOLDEN RULE:** 🚨\n"
+                f"It is STRICTLY FORBIDDEN to repeat ANY of these topics, stories, or concepts that were already published:\n"
+                f"{avoid_list_str}\n\n"
+                f"If you generate a story similar to the previous ones, the system will fail. YOU MUST INVENT A COMPLETELY NEW TOPIC.\n"
+            )
+
+        # Select a random focus area
+        selected_area = random.choice(story_constants.FOCUS_AREAS_STORIES)
+        Messenger.info(f"🎯 Random Focus Area: {selected_area}")
+
+        # Visual styles for Standard mode
+        styles = [
+            "Style: Hyper-realistic cinematic photography, dark moody colors, dramatic volumetric lighting, National Geographic documentary quality, 4K resolution.",
+            "Style: Vintage illustration on aged parchment, warm sepia tones, hand-drawn aesthetic, historical engraving style.",
+            "Style: Dark digital art with neon accents, high contrast, cyber-noir aesthetic, glowing highlights, modern infographic style.",
+            "Style: Surreal fantasy realism with cosmic colors, ethereal lighting, dreamlike quality, bioluminescent accents.",
+            "Style: Clean modern documentary style, bright vibrant colors, sharp focus, educational channel aesthetic, 4K resolution.",
+        ]
+        selected_style = random.choice(styles)
+        Messenger.info(f"🎨 Selected Visual Style: {selected_style}")
+
+        # Inject style, focus area, and avoid into idea prompt
+        full_idea_prompt = (
+            f"{idea_prompt}\n\n"
+            f"**MANDATORY CENTRAL TOPIC:** {selected_area}\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+
+        idea_data = content_gen.generate_text(
+            full_idea_prompt + avoid_msg,
+            idea_model
+        )
+
+        # Generate the script
+        Messenger.info(f"\n--- Generating Standard Script: {idea_data.title} ---")
+
+        full_script_prompt = (
+            script_prompt +
+            f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
+            f"**HOOK:** {idea_data.hook}\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+        script = content_gen.generate_text(full_script_prompt, StoryHandler)
+
+        # --- Transparency footer ---
+        transparency_footer = (
+            "\n\n---\n"
+            "💡 **Transparency**: This content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
+            "✨ Created by the BlowYourMind team."
+        )
+
         if "caption" in idea_data.model_fields:
             new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
             setattr(idea_data, "caption", new_val)

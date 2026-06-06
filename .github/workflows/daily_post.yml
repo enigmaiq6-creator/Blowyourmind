@@ -12,6 +12,7 @@ on:
           - geography
           - seven_levels
           - standard
+          - stories
 
 concurrency:
   group: daily-post
