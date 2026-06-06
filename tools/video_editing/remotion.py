@@ -52,6 +52,13 @@ class RemotionTool(BaseModelTool):
         if staging_output.exists():
             staging_output.unlink()
         
+        speed_flags = [
+            "--concurrency=2",
+            "--jpeg-quality=70",
+            "--x264-preset=veryfast",
+            "--enable-multiprocess-on-linux",
+        ]
+
         cmd = [
             npx_cmd, "remotion", "render",
             "src/index.ts",
@@ -59,6 +66,7 @@ class RemotionTool(BaseModelTool):
             str(staging_output.absolute()),
             f"--props={input_json.absolute()}",
             "--codec=h264",
+            *speed_flags,
             "-y"
         ]
 
@@ -97,6 +105,13 @@ class RemotionTool(BaseModelTool):
         Messenger.info(f"Rendering Remotion composition '{composition_id}'...")
         
         npx_cmd = "npx.cmd" if platform.system() == "Windows" else "npx"
+
+        speed_flags = [
+            "--concurrency=2",
+            "--jpeg-quality=70",
+            "--x264-preset=veryfast",
+            "--enable-multiprocess-on-linux",
+        ]
         
         cmd = [
             npx_cmd, "remotion", "render",
@@ -105,6 +120,7 @@ class RemotionTool(BaseModelTool):
             str(output_path.absolute()),
             f"--props={input_json.absolute()}",
             "--codec=h264",
+            *speed_flags,
             "-y"
         ]
 

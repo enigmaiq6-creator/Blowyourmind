@@ -47,8 +47,8 @@ class DailyAutomator:
         
         # Deduplicate and format
         unique_topics = list(set([str(t).strip() for t in topics if str(t).strip()]))
-        # Pass up to 250 topics (enough memory without breaking CLI limits)
-        avoid_list = "\n- ".join(unique_topics[-250:]) 
+        # Pass up to 100 most recent topics (smaller prompt = faster Gemini)
+        avoid_list = "\n- ".join(unique_topics[-100:]) 
         
         return f"\n\n**CRITICAL - ANTI-REPETITION RULES:**\nDO NOT repeat, reuse or get inspired by the following themes, metaphors or titles (THEY ARE ALREADY POSTED):\n- {avoid_list}\n\nBe creative. EXPLORE NEW VISUAL TERRITORIES."
 
