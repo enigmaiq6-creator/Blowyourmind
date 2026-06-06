@@ -1,4 +1,5 @@
 import os
+import subprocess
 import requests
 import random
 from pathlib import Path
@@ -34,7 +35,6 @@ class PexelsTool(BaseModelTool):
         random_page = random.randint(1, 3)
         params = {
             "query": query,
-            "orientation": "portrait",
             "per_page": 15,
             "page": random_page,
             "size": "large"
@@ -47,7 +47,6 @@ class PexelsTool(BaseModelTool):
 
             videos = data.get("videos", [])
             if not videos:
-                # Fallback a la pagina 1 si la pagina random no tiene resultados
                 if random_page > 1:
                     params["page"] = 1
                     response = requests.get(url, headers=headers, params=params)
@@ -55,28 +54,29 @@ class PexelsTool(BaseModelTool):
                     videos = data.get("videos", [])
                     
                 if not videos:
-                    Messenger.warning(f"⚠️ No se encontraron videos verticales para '{query}' en Pexels.")
+                    Messenger.warning(f"⚠️ No se encontraron videos para '{query}' en Pexels.")
                     return False
 
-            # Elegir uno al azar de la lista completa
             selected_video = random.choice(videos)
             
-            # Buscar el archivo de video de mejor calidad
             video_files = selected_video.get("video_files", [])
             if not video_files:
                 return False
                 
-            # Ordenar por calidad (vertical 1080x1920 o similar)
-            # Priorizamos calidad 'hd'
+            # Preferir HD vertical (height > width) pero aceptar cualquiera
             best_file = None
+            portrait_hd = None
+            landscape_hd = None
             for f in video_files:
-                if f.get("quality") == "hd" and f.get("width") and f.get("height") and f.get("height") > f.get("width"):
-                    best_file = f
-                    break
+                if f.get("quality") == "hd":
+                    w = f.get("width") or 0
+                    h = f.get("height") or 0
+                    if h > w and not portrait_hd:
+                        portrait_hd = f
+                    elif w >= h and not landscape_hd:
+                        landscape_hd = f
             
-            # Fallback a cualquiera si no hay hd vertical
-            if not best_file:
-                best_file = video_files[0]
+            best_file = portrait_hd or landscape_hd or video_files[0]
                 
             download_link = best_file.get("link")
             if not download_link:
@@ -87,9 +87,25 @@ class PexelsTool(BaseModelTool):
             vid_res.raise_for_status()
             
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(out_path, "wb") as f:
+            raw_path = out_path.with_suffix(".raw.mp4")
+            with open(raw_path, "wb") as f:
                 for chunk in vid_res.iter_content(chunk_size=8192):
                     f.write(chunk)
+            
+            # Recortar a 9:16 vertical si es necesario
+            w = best_file.get("width") or 0
+            h = best_file.get("height") or 0
+            if w > h:
+                Messenger.info("   📐 Recortando video a 9:16 vertical...")
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", str(raw_path),
+                    "-vf", "crop=ih*9/16:ih,scale=1080:1920",
+                    "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+                    "-an", str(out_path)
+                ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                raw_path.unlink()
+            else:
+                raw_path.rename(out_path)
             
             Messenger.success(f"✅ Video descargado con éxito: {out_path.name}")
             return True

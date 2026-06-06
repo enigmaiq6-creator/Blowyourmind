@@ -803,14 +803,13 @@ class Pipeline(BaseModelTool):
 
             # ── Final fallbacks: stock video or Ken Burns ──
             if visual_type not in ("map_3d", "ai_image"):
-                if visual_type != "ai_image":
-                    if pexels_tool.fetch_video(query, clip_path):
-                        if clip_path.exists() and clip_path.stat().st_size > 1024:
-                            return True
-                    if pixabay_tool.fetch_video(query, clip_path):
-                        if clip_path.exists() and clip_path.stat().st_size > 1024:
-                            return True
-                    Messenger.warning(f"   ⚠️ APIs failed for '{query}'. Falling back to Ken Burns.")
+                if pexels_tool.fetch_video(query, clip_path):
+                    if clip_path.exists() and clip_path.stat().st_size > 1024:
+                        return True
+                if pixabay_tool.fetch_video(query, clip_path):
+                    if clip_path.exists() and clip_path.stat().st_size > 1024:
+                        return True
+                Messenger.warning(f"   ⚠️ APIs failed for '{query}'. Falling back to Ken Burns.")
 
                 if not img_path.exists() or img_path.stat().st_size < 1024:
                     Messenger.error(f"   ❌ Scene {scene.scene_number} missing image. CRITICAL.")
