@@ -188,3 +188,68 @@ poetry run python -m flows.image_content_generator.pipeline.main short all --mod
 - Progress bar con dots animados por nivel
 - Underline de palabra actual se colorea según el nivel activo
 ```
+
+## ═══════════════════════════════════════════
+# SESIÓN: 6 JUN 2026 — STANDARD MODE + OPTIMIZACIONES
+# ═══════════════════════════════════════════
+
+## Nuevo modo: `standard` (Curiosity Reels)
+Se creó el modo Standard — videos de curiosidades rápidas (6-8 escenas, 50-60s).
+
+### Archivos nuevos:
+- **`prompt_shorts/stories/__init__.py`** — exports
+- **`prompt_shorts/stories/models.py`** — `StoryIdea`, `StoryHandler`
+- **`prompt_shorts/stories/constants.py`** — prompts en inglés + 30 focus areas (cognitive biases, animal superpowers, space curiosities, etc.)
+
+### Archivos modificados:
+- **`prompt_shorts/manager.py`** — nuevo método `_generate_stories_story()`, routing para mode "stories"/"standard"
+- **`pipeline/pipeline.py`** — `load_script()` ahora carga `StoryHandler` para categoría "stories"
+- **`Makefile`** — targets `icg-s-*` con `--mode standard`
+
+## Optimizaciones de velocidad
+
+### Cambio a API Key (no Vertex) para texto
+- **`gemini_base.py`**: ahora usa `GEMINI_API_KEY` por defecto en vez de Vertex AI
+- Controlado por `USE_VERTEX_AI_GEMINI=false` (default)
+- Vertex AI para Gemini tiene cuotas más restrictivas; API key tiene mejor throughput
+
+### Reducción de reintentos
+- **`gemini_base.py`**: de 8 intentos × 90s a **4 intentos × 30s**
+- Tiempo máximo de espera: 2 min (antes 12 min)
+
+### Modelo más rápido
+- **`text_generation/gemini.py`**: cambiado de `gemini-2.5-flash` → `gemini-2.0-flash`
+- Free tier: 60 RPM vs 10 RPM del 2.5-flash
+
+### Vertex AI reactivado (con $300 crédito)
+- **`gemini_base.py`**: `USE_VERTEX_AI_GEMINI` default ahora es `true`
+- **`daily_post.yml`**: añadido `USE_VERTEX_AI_GEMINI: "true"` al workflow
+- Usa Vertex AI con cuotas más altas + los $300 de crédito GCP
+
+## Workflow mejorado
+- **`daily_post.yml`**: ahora acepta `mode` como input (`workflow_dispatch`) con opciones: geography, seven_levels, standard, stories
+- **`daily_automated_content.py`**: selección ponderada aleatoria de modo
+  - Default weights: `geography=0.1, seven_levels=0.5, standard=0.4`
+  - Configurable via `MODE_WEIGHTS` env var
+  - Forzar modo via `MODE` env var
+
+## Costo por video
+| Componente | Costo |
+|-----------|:-:|
+| Texto (Gemini 2.0 Flash via Vertex) | ~$0.0003 |
+| Imágenes (Imagen 3) × 8 | ~$0.24 |
+| Audio (Vertex TTS) | ~$0.002 |
+| Stock video, Whisper, FFmpeg | GRATIS |
+| **Total** | **~$0.25 USD** |
+| **Con $300 crédito Vertex** | **~1,200 videos** |
+
+## Outputs
+- Todos los cambios fueron commiteados y pusheados a `origin/main`
+- Commits: `1aa8d85`, `9de3863`, `7288d73`, `a016dfa`, `03900e9`, `c91af2b`, `1eb48f8`, `570c32b`
+
+## Cómo correr cada modo
+```powershell
+make icg-s-all     # Standard (Curiosity Reels)
+make icg-7-all     # 7 Levels (English)
+make icg-g-all     # Geography (3D Maps)
+```
