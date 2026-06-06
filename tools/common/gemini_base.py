@@ -96,11 +96,9 @@ class GeminiBase(BaseModelTool):
             error_str = str(e)
             if ("429" in error_str or "RESOURCE_EXHAUSTED" in error_str) and self._project_id and not self._using_vertex:
                 if self._block_vertex_fallback:
-                    raise RuntimeError(
-                        "❌ Gemini API Key rate limit exhausted AND Vertex fallback is blocked. "
-                        "The image model (gemini-3.1-flash-image-preview) is not available on Vertex AI. "
-                        "Wait for API key quota to reset and retry."
-                    ) from e
+                    # Don't fall back to Vertex (model not available there).
+                    # Re-raise the original 429 ClientError so @retry handles it with backoff.
+                    raise  # re-raises the original ClientError (429) for tenacity retry
                 Messenger.warning("⚠️ Gemini API Key rate limit/quota exhausted (429 RESOURCE_EXHAUSTED). Falling back to Vertex AI...")
                 self._using_vertex = True
                 self._client = Client(

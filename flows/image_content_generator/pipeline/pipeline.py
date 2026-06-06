@@ -398,7 +398,11 @@ class Pipeline(BaseModelTool):
             except Exception:
                 pass
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        # Use 1 worker when using Gemini API key (avoid 429 rate limit hammering)
+        import os as _os_workers
+        _use_vertex_img = _os_workers.getenv("USE_VERTEX_AI_IMAGE", "false").lower() == "true"
+        img_workers = 4 if _use_vertex_img else 1
+        with concurrent.futures.ThreadPoolExecutor(max_workers=img_workers) as executor:
             futures = [executor.submit(generate_one, scene) for scene in script.scenes]
             for future in concurrent.futures.as_completed(futures):
                 try:
