@@ -1753,16 +1753,34 @@ class Pipeline(BaseModelTool):
                         # Don't fail the entire process if the secondary draft upload fails
                         Messenger.error(f"   ⚠️ Failed to upload Instagram draft placeholder: {draft_e}")
 
-                    # 3. DIRECT Instagram Reels Upload
-                    try:
-                        Messenger.info("   Uploading direct to Instagram Reels...")
-                        self.instagram.publish_reel(
-                            file_path=video_path,
-                            caption=final_description
+                    # 3. DIRECT Instagram Reels Upload (only if INSTAGRAM_PUBLISH=true)
+                    instagram_publish = os.getenv("INSTAGRAM_PUBLISH", "false").lower() in ("true", "1", "yes")
+                    if instagram_publish:
+                        try:
+                            Messenger.info("   Uploading direct to Instagram Reels...")
+                            self.instagram.publish_reel(
+                                file_path=video_path,
+                                caption=final_description
+                            )
+                        except Exception as insta_e:
+                            # Don't fail the entire process if Instagram upload fails
+                            Messenger.error(f"   ⚠️ Failed to upload directly to Instagram: {insta_e}")
+                    else:
+                        Messenger.info(
+                            "\n" +
+                            "━" * 60 + "\n"
+                            "📱 INSTAGRAM — MANUAL UPLOAD REQUIRED\n"
+                            "━" * 60 + "\n"
+                            f"  Video title : {cleaned_video_title}\n"
+                            f"  Video file  : {video_path}\n"
+                            "\n"
+                            "  Steps to publish with translations:\n"
+                            "  1. Open the Instagram app on your phone\n"
+                            "  2. Create new Reel → select the video file\n"
+                            "  3. Add caption, hashtags and activate 'Add Translation'\n"
+                            "  4. Publish the Reel\n"
+                            "━" * 60
                         )
-                    except Exception as insta_e:
-                        # Don't fail the entire process if Instagram upload fails
-                        Messenger.error(f"   ⚠️ Failed to upload directly to Instagram: {insta_e}")
 
                 # 5. Updates state to UPLOADED.
                 idea_obj.state = State.UPLOADED
