@@ -36,27 +36,42 @@ You are the Video Producer for "BlowYourMind" and you're writing a script for a 
 The format is a rapid-fire listicle/ranking or step-by-step breakdown (6-8 scenes) following an avatar character (we'll call him "Jack", a hard-working average guy) to make the dry financial concept visual, humorous, and highly relatable.
 
 **VISUAL STYLE (MANDATORY & CONSISTENT):**
-Use a flat 2D vector cartoon style with clean lines, solid color backgrounds, and a consistent cartoon character named Jack (who wears a green sweater and looks tired or confused) to illustrate each financial struggle.
-Example style prompt to include in images: `"Flat 2D vector cartoon illustration, bold outlines, simple geometric shapes, clean minimal style, featuring a cartoon worker named Jack in a green sweater..."`
+Use a flat 2D vector cartoon style with clean lines and a consistent cartoon character named Jack (who wears a green sweater and looks tired or confused).
+
+**COLOR PALETTE RULE (CRITICAL — makes each video visually unique):**
+- Choose ONE dominant background color that fits the video's emotional tone (e.g., deep navy blue for "debt", burnt orange for "inflation", dark red for "tax traps", forest green for "investing", purple for "banking tricks").
+- EVERY scene in this video must use the SAME dominant background color so the video has a cohesive visual identity.
+- NEVER use generic white or grey backgrounds.
+- State the color explicitly in every image_prompt (e.g., "solid deep navy blue background", "solid burnt orange background").
+
+**TOPIC-SPECIFIC PROPS (CRITICAL — makes each video content unique):**
+- Design props, objects, and diagrams that are 100% specific to THIS video's topic. For example:
+  - "Debt Snowball" → actual cartoon snowballs rolling, debt labels (CREDIT CARD $5k, CAR $12k), snowball growing bigger
+  - "Fiscal Drag" → salary bar chart rising, tax bracket lines moving left, invisible hand pulling coins
+  - "Coffee Trap" → coffee cups stacking up, calculator, retirement piggy bank cracking
+  - "4% Rule" → investment pie chart, withdrawal arrow, infinite loop symbol
+- DO NOT reuse generic props (plain money bags, simple funnels) — make them SPECIFIC to this topic.
 
 **STRUCTURE (6-8 scenes):**
 1. **Scene 1 - The Hook & Introduction [0-8s]**: (list_number=0). Introduce the topic and Jack. Show Jack working hard but the system quietly draining his wallet.
-2. **Scenes 2-6 - The Breakdown [8-48s]**: (list_number=1 to N). Rank the worst points (like 5 down to 1) or break down the steps. Show Jack suffering under each point with clear visual graphics/diagrams.
-3. **Scene 7 - The Personal Impact [48-55s]**: Show how this adds up and affects Jack's future.
-4. **Scene 8 - The CTA / Outro [55-60s]**: End with a mind-blowing question to Jack and the viewer, prompting comments.
+2. **Scenes 2-6 - The Breakdown [8-48s]**: (list_number=1 to N). Rank the worst points or break down the steps. Show Jack with topic-specific props and diagrams.
+3. **Scene 7 - The Personal Impact [48-55s]**: Show the long-term consequence on Jack's life using a topic-specific visual.
+4. **Scene 8 - The CTA / Outro [55-60s]**: End with a mind-blowing question, show Jack looking shocked at a revealing chart or stat.
 
 **PER-SCENE FIELDS:**
 - `scene_number`: Sequential number (1 to 8)
 - `list_number`: 0 for intro, 1 to N for the list items.
-- `scene_title`: A short ALL CAPS title for the list item/concept (e.g., "FISCAL DRAG", "DOUBLE TAXATION").
-- `visual_type`: Use "ai_image" for these cartoon scenes.
-- `image_prompt`: Description of the scene in ENGLISH using the mandatory cartoon style. Describe what Jack is doing, his expression, and any diagrammatic elements (e.g. arrows, giant stamps, money bags, funnels) in the scene.
-- `pexels_query`: (Leave empty, we will use "ai_image" for everything in this mode).
-- `narration`: Spoken narration in ENGLISH. Keep it punchy, simple, and shocking. MAX 150 words total for the whole script.
+- `scene_title`: A short ALL CAPS title for the list item/concept.
+- `visual_type`: Use "ai_image" for all scenes.
+- `image_prompt`: MUST follow this structure exactly:
+  "Flat 2D vector cartoon illustration, bold outlines, simple geometric shapes, clean minimal style. [SPECIFIC TOPIC-RELATED ACTION Jack is doing]. [SPECIFIC PROP/DIAGRAM unique to this video topic — be very detailed]. Solid [COLOR NAME] background."
+- `pexels_query`: Leave empty.
+- `narration`: Spoken narration in ENGLISH. Punchy, shocking. MAX 150 words total for the whole script.
 
-**CRITICAL:**
+**CRITICAL RULES:**
 1. ALL text and narration must be in ENGLISH.
-2. The image prompts must strictly describe a flat 2D cartoon illustration with Jack the character so the images generated look consistent and custom-made.
+2. Every image_prompt MUST include: (a) the flat 2D cartoon style, (b) Jack in green sweater, (c) a topic-specific prop or diagram described in detail, (d) the chosen background color stated explicitly.
+3. Each scene must look visually DIFFERENT from the previous one (different action, different prop configuration, different diagram).
 """
 
 FOCUS_AREAS_FINANCE = [
