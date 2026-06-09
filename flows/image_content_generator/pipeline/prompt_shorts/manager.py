@@ -374,8 +374,29 @@ class PromptManagerShorts(BasePromptManager):
                 break
 
         if not selected_area:
-            selected_area = random.choice(finance_constants.FOCUS_AREAS_FINANCE)
-            Messenger.info(f"🎯 Focus Area (Fallback Random): {selected_area}")
+            Messenger.info("🚀 All predefined finance topics have been used. Generating a new unique, viral topic using Gemini...")
+            topic_prompt = f"""
+            You are a viral YouTube Shorts and Instagram Reels producer specialized in financial secrets, money mysteries, and tax loopholes.
+            
+            Generate a single central topic for a new video. 
+            The topic must be extremely viral, curiosity-inducing, and educational (similar to "how to clean dirty money", "why banks secretly love inflation", or "the cash tracking loopholes").
+            Format the response as a single title and brief description, like: "TOPIC NAME: Explanation of the loophole or money secret".
+            
+            Avoid these concepts that were already used:
+            {avoid_msg}
+            
+            Respond with ONLY the topic name and description. No introductory or conversational text.
+            """
+            try:
+                # We use the generic generate method to get free-form text for the topic
+                generated_topic = content_gen.generate(topic_prompt).strip()
+                # Clean up any potential markdown wraps
+                generated_topic = generated_topic.replace("`", "").replace("\"", "").strip()
+                selected_area = generated_topic
+                Messenger.success(f"🎯 Dynamic Infinite Topic Generated: {selected_area}")
+            except Exception as e:
+                selected_area = random.choice(finance_constants.FOCUS_AREAS_FINANCE)
+                Messenger.warning(f"Failed to generate dynamic topic: {e}. Fallback to random: {selected_area}")
         else:
             Messenger.info(f"🎯 Focus Area (Sequential Queue): {selected_area}")
 
