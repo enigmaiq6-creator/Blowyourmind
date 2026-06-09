@@ -75,14 +75,15 @@ Use a flat 2D vector cartoon style with clean lines and a consistent cartoon cha
 """
 
 FOCUS_AREAS_FINANCE = [
-    "THE DEBT SNOWBALL TRICK: How the psychological debt snowball method beats the debt avalanche mathematically due to human behavior.",
-    "DYNAMIC PRICING SECRETS: How hotels and airlines use cookies, browsing history, and hidden resort fees to inflate costs dynamically.",
-    "THE COFFEE TRAP: How small daily micro-purchases ($5/day) cost you over $100,000 in retirement savings due to lost compound growth.",
-    "TREASURY BILL SECRETS: How wealthy individuals protect their cash from bank failures and earn tax-free local interest.",
-    "LIFESTYLE CREEP: The silent wealth killer where every salary raise is immediately offset by buying a better car or house, keeping you broke.",
-    "THE 4% RULE: How the Trinity Study proved you can live off your investments forever if you only withdraw 4% annually.",
-    "INSURANCE DEDUCTIBLE LOOPS: How insurance companies use deductibles, fine print, and loyalty penalties to charge long-term customers more.",
-    "THE INDEX FUND REVOLUTION: Why 90% of professional hedge fund managers fail to beat a simple S&P 500 index fund over 15 years.",
-    "TAX-LOSS HARVESTING: The secret strategy used by the ultra-rich to offset their investment gains by selling losing assets at the end of the year.",
-    "FIAT MONEY SECRETS: How the end of the Gold Standard in 1971 completely decoupled wages from productivity and inflated asset prices.",
+    "THE MCDONALD'S REAL ESTATE TRICK: McDonald's doesn't make money from burgers; they are one of the world's largest real estate landlords, charging high rents to franchisees.",
+    "THE G-WAGON TAX LOOPHOLE: The Section 179 tax deduction where business owners buy heavy SUVs (over 6,000 lbs) like a G-Wagon to write off 100% of the cost in year one.",
+    "THE BUY BORROW DIE STRATEGY: How billionaires avoid income tax entirely by holding appreciating assets, taking low-interest loans against them, and passing them to heirs.",
+    "DIRTY MONEY LAUNDERING SECRETS: The placement, layering, and integration process criminals use to wash cash, and how big banks quietly profit from compliance fees.",
+    "THE RETAIL REVENUE TRAP: Why busy high-street shops making millions in revenue end up with £0 in profit due to soaring commercial rent, business rates, and inventory.",
+    "THE TV LICENSE & COUNCIL TAX SCAM: How local UK taxes and license fees force citizens to pay for services they don't use under threat of heavy fines.",
+    "THE STEPPED-UP BASIS LOOPHOLE: How heirs inherit properties and stocks at current market values, completely erasing decades of built-up capital gains taxes.",
+    "CREDIT SCORE ALGORITHM SECRETS: How credit bureaus manipulate scores, why paying off your debt early can actually drop your score, and the piggyback credit trick.",
+    "THE SILENT INFLATION TAX: How central banks printing money is a hidden tax that quietly steals 90% of your savings' buying power over decades.",
+    "BANK BAIL-IN LAWS: The scary legal mechanisms allowing banks to seize customer deposits to save themselves during a financial crash instead of getting government bailouts.",
 ]
+
