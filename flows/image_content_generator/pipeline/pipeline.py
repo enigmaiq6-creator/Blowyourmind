@@ -22,6 +22,7 @@ from tools.text_generation.gemini import GeminiTextGenerator
 from tools.utils.text import slugify
 from tools.utils.time import retry
 from tools.social_media.facebook import FacebookTool
+from tools.social_media.instagram import InstagramTool
 from tools.video_generation.gemini import GeminiVideoGenerator
 from tools.video_editing.ffmpeg import FFmpegTool
 from tools.video_editing.whisper import WhisperTool
@@ -56,6 +57,7 @@ class Pipeline(BaseModelTool):
     _audio_tool: Optional[AudioTool] = PrivateAttr(default=None)
     _store: Optional[CsvStore] = PrivateAttr(default=None)
     _facebook: Optional[FacebookTool] = PrivateAttr(default=None)
+    _instagram: Optional[InstagramTool] = PrivateAttr(default=None)
     _remotion: Optional[Any] = PrivateAttr(default=None)
     _video_gen: Optional[Any] = PrivateAttr(default=None)
     _cost_tracker: Optional[Any] = PrivateAttr(default=None)
@@ -205,6 +207,17 @@ class Pipeline(BaseModelTool):
                 raise ValueError("FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN are required.")
             self._facebook = FacebookTool(page_id=page_id, access_token=access_token)
         return self._facebook
+
+    @property
+    def instagram(self) -> InstagramTool:
+        if self._instagram is None:
+            import os
+            page_id = os.getenv("FACEBOOK_PAGE_ID")
+            access_token = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
+            if not page_id or not access_token:
+                raise ValueError("FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN are required.")
+            self._instagram = InstagramTool(page_id=page_id, access_token=access_token)
+        return self._instagram
 
     def load_json(
         self,
@@ -1739,6 +1752,17 @@ class Pipeline(BaseModelTool):
                     except Exception as draft_e:
                         # Don't fail the entire process if the secondary draft upload fails
                         Messenger.error(f"   ⚠️ Failed to upload Instagram draft placeholder: {draft_e}")
+
+                    # 3. DIRECT Instagram Reels Upload
+                    try:
+                        Messenger.info("   Uploading direct to Instagram Reels...")
+                        self.instagram.publish_reel(
+                            file_path=video_path,
+                            caption=final_description
+                        )
+                    except Exception as insta_e:
+                        # Don't fail the entire process if Instagram upload fails
+                        Messenger.error(f"   ⚠️ Failed to upload directly to Instagram: {insta_e}")
 
                 # 5. Updates state to UPLOADED.
                 idea_obj.state = State.UPLOADED
