@@ -29,11 +29,10 @@ Speak clearly, with punchy emphasis on key data points.
 TEXT TO NARRATE:
 {audio_text}
 """
-
 SCRIPT_PROMPT_FINANCE = """
 You are the Video Producer for "BlowYourMind" and you're writing a script for a vertical short video (1080x1920) about a financial secret, tax trap, or money mechanics.
 
-The format is a rapid-fire listicle/ranking or step-by-step breakdown (6-8 scenes) following an avatar character (we'll call him "Jack", a hard-working average guy) to make the dry financial concept visual, humorous, and highly relatable.
+The format is a rapid-fire listicle/ranking or step-by-step breakdown (EXACTLY 6 scenes) following an avatar character (we'll call him "Jack", a hard-working average guy) to make the dry financial concept visual, humorous, and highly relatable.
 
 **VISUAL STYLE (MANDATORY & CONSISTENT):**
 Use a flat 2D vector cartoon style with clean lines and a consistent cartoon character named Jack (who wears a green sweater and looks tired or confused).
@@ -52,27 +51,29 @@ Use a flat 2D vector cartoon style with clean lines and a consistent cartoon cha
   - "4% Rule" → investment pie chart, withdrawal arrow, infinite loop symbol
 - DO NOT reuse generic props (plain money bags, simple funnels) — make them SPECIFIC to this topic.
 
-**STRUCTURE (6-8 scenes):**
+**STRUCTURE (EXACTLY 6 scenes):**
 1. **Scene 1 - The Hook & Introduction [0-8s]**: (list_number=0). Introduce the topic and Jack. Show Jack working hard but the system quietly draining his wallet.
-2. **Scenes 2-6 - The Breakdown [8-48s]**: (list_number=1 to N). Rank the worst points or break down the steps. Show Jack with topic-specific props and diagrams.
-3. **Scene 7 - The Personal Impact [48-55s]**: Show the long-term consequence on Jack's life using a topic-specific visual.
-4. **Scene 8 - The CTA / Outro [55-60s]**: End with a mind-blowing question, show Jack looking shocked at a revealing chart or stat.
+2. **Scenes 2-4 - The Breakdown [8-40s]**: (list_number=1 to 3). Break down the 3 most critical points or steps. Show Jack with topic-specific props and diagrams.
+3. **Scene 5 - The Personal Impact [40-50s]**: Show the direct consequence on Jack's life using a topic-specific visual.
+4. **Scene 6 - The CTA / Outro [50-60s]**: End with a mind-blowing question, show Jack looking shocked at a revealing chart or stat.
 
 **PER-SCENE FIELDS:**
-- `scene_number`: Sequential number (1 to 8)
-- `list_number`: 0 for intro, 1 to N for the list items.
+- `scene_number`: Sequential number (1 to 6)
+- `list_number`: 0 for intro, 1 to 4 for the list items, 5 for outro.
 - `scene_title`: A short ALL CAPS title for the list item/concept.
 - `visual_type`: Use "ai_image" for all scenes.
 - `image_prompt`: MUST follow this structure exactly:
   "Flat 2D vector cartoon illustration, bold outlines, simple geometric shapes, clean minimal style. [SPECIFIC TOPIC-RELATED ACTION Jack is doing]. [SPECIFIC PROP/DIAGRAM unique to this video topic — be very detailed]. Solid [COLOR NAME] background."
 - `pexels_query`: Leave empty.
-- `narration`: Spoken narration in ENGLISH. Punchy, shocking. MAX 150 words total for the whole script.
+- `narration`: Spoken narration in ENGLISH. Punchy, shocking. MAX 130 words total for the whole script.
 
 **CRITICAL RULES:**
 1. ALL text and narration must be in ENGLISH.
 2. Every image_prompt MUST include: (a) the flat 2D cartoon style, (b) Jack in green sweater, (c) a topic-specific prop or diagram described in detail, (d) the chosen background color stated explicitly.
 3. Each scene must look visually DIFFERENT from the previous one (different action, different prop configuration, different diagram).
+4. You MUST output EXACTLY 6 scenes. No more, no less.
 """
+
 
 FOCUS_AREAS_FINANCE = [
     "THE MCDONALD'S REAL ESTATE TRICK: McDonald's doesn't make money from burgers; they are one of the world's largest real estate landlords, charging high rents to franchisees.",

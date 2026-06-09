@@ -24,4 +24,4 @@ class FinanceHandler(CategoryHandler):
     SCRIPT_PROMPT: ClassVar[str] = finance_constants.SCRIPT_PROMPT_FINANCE
     category: str = "finance"
     idea_variants: ClassVar[List[Type[BaseIdea]]] = [FinanceIdea]
-    scenes: List[FinanceScene] = Field(description="List of 6-8 scenes: 1 intro (list_number=0) + 5-7 ranked items (list_number=1 to N) or step-by-step breakdown.")
+    scenes: List[FinanceScene] = Field(description="List of exactly 6 scenes: 1 intro (list_number=0) + 4 breakdown items (list_number=1 to 4) + 1 CTA/outro.")
