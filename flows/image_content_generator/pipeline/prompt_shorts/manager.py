@@ -15,6 +15,8 @@ from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models im
 from flows.image_content_generator.pipeline.prompt_shorts.seven_levels import constants as seven_constants
 from flows.image_content_generator.pipeline.prompt_shorts.stories.models import StoryHandler, StoryIdea
 from flows.image_content_generator.pipeline.prompt_shorts.stories import constants as story_constants
+from flows.image_content_generator.pipeline.prompt_shorts.finance.models import FinanceHandler, FinanceIdea
+from flows.image_content_generator.pipeline.prompt_shorts.finance import constants as finance_constants
 
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
@@ -25,11 +27,13 @@ class PromptManagerShorts(BasePromptManager):
 
     GEOGRAPHY_AUDIO_PROMPT: str = geo_constants.AUDIO_PROMPT_GEOGRAPHY
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, SevenLevelsHandler, StoryHandler]
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, SevenLevelsHandler, StoryHandler, FinanceHandler]
 
     def get_audio_prompt(self, audio_text: str, mode: str = "standard") -> str:
         if mode == "seven_levels":
             return seven_constants.AUDIO_PROMPT_SEVEN_LEVELS.format(audio_text=audio_text)
+        if mode == "finance":
+            return finance_constants.AUDIO_PROMPT_FINANCE.format(audio_text=audio_text)
         if mode == "stories" or mode == "standard":
             return story_constants.AUDIO_PROMPT_STORIES.format(audio_text=audio_text)
         return self.GEOGRAPHY_AUDIO_PROMPT.format(audio_text=audio_text)
@@ -43,6 +47,8 @@ class PromptManagerShorts(BasePromptManager):
         """
         if mode == "seven_levels":
             return self._generate_seven_levels_story(content_gen, titles_to_avoid, extra_avoid)
+        if mode == "finance":
+            return self._generate_finance_story(content_gen, titles_to_avoid, extra_avoid)
         if mode in ("stories", "standard"):
             return self._generate_stories_story(content_gen, titles_to_avoid, extra_avoid)
 
@@ -305,6 +311,111 @@ class PromptManagerShorts(BasePromptManager):
             f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
         )
         script = content_gen.generate_text(full_script_prompt, SevenLevelsHandler)
+
+        # --- Transparency footer ---
+        transparency_footer = (
+            "\n\n---\n"
+            "💡 **Transparency**: This content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
+            "✨ Created by the BlowYourMind team."
+        )
+
+        if "caption" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
+            setattr(idea_data, "caption", new_val)
+        elif "hook" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "hook", "")) + transparency_footer
+            setattr(idea_data, "hook", new_val)
+
+        return idea_data, script, category
+
+    def _generate_finance_story(
+        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = ""
+    ) -> Tuple[BaseIdea, VideoScript, str]:
+        """
+        Executes the generation loop for Finance mode.
+        """
+        category = "finance"
+        idea_model = FinanceIdea
+        idea_prompt = finance_constants.IDEA_PROMPT_FINANCE
+        script_prompt = finance_constants.SCRIPT_PROMPT_FINANCE
+
+        Messenger.info(f"🎯 Generating Finance Idea...")
+
+        avoid_msg = ""
+
+        combined_avoid = list(titles_to_avoid)
+        if extra_avoid:
+            combined_avoid.append(extra_avoid)
+
+        if combined_avoid:
+            avoid_list_str = "\n".join([str(t) for t in combined_avoid])
+            avoid_msg = (
+                f"\n\n🚨 **ABSOLUTE NO-REPEAT GOLDEN RULE:** 🚨\n"
+                f"It is STRICTLY FORBIDDEN to repeat ANY of these topics, stories, or concepts that were already published:\n"
+                f"{avoid_list_str}\n\n"
+                f"If you generate a story similar to the previous ones, the system will fail. YOU MUST INVENT A COMPLETELY NEW TOPIC.\n"
+            )
+
+        # Select focus area sequentially without repeating
+        selected_area = None
+        for area in finance_constants.FOCUS_AREAS_FINANCE:
+            # Clean up prefix key for check (e.g. "THE DEBT SNOWBALL TRICK" -> "debt snowball")
+            area_title = area.split(":")[0].strip()
+            area_key = area_title.replace("THE ", "").replace("TRICK", "").replace("SECRETS", "").replace("TRAP", "").replace("LOOPS", "").replace("REVOLUTION", "").strip().lower()
+            
+            already_used = False
+            for title in combined_avoid:
+                if area_key in title.lower():
+                    already_used = True
+                    break
+            
+            if not already_used:
+                selected_area = area
+                break
+
+        if not selected_area:
+            selected_area = random.choice(finance_constants.FOCUS_AREAS_FINANCE)
+            Messenger.info(f"🎯 Focus Area (Fallback Random): {selected_area}")
+        else:
+            Messenger.info(f"🎯 Focus Area (Sequential Queue): {selected_area}")
+
+        # Visual styles for Finance mode (exclusively 2D Flat Cartoon)
+        styles = [
+            "Style: Flat 2D vector cartoon illustration, bold outlines, simple geometric shapes, clean minimal style, pastel color background.",
+            "Style: Webcomic illustration style, bold black ink outlines, solid flat color fills, simple cartoon shading, modern financial infographic concept.",
+            "Style: Flat corporate Memphis vector art, clean sharp paths, vibrant harmonious pastel color palette, geometric cartoon character."
+        ]
+        selected_style = random.choice(styles)
+        Messenger.info(f"🎨 Selected Visual Style: {selected_style}")
+
+        # Inject style, focus area, and avoid into idea prompt
+        full_idea_prompt = (
+            f"{idea_prompt}\n\n"
+            f"**MANDATORY CENTRAL TOPIC:** {selected_area}\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+
+        idea_data = content_gen.generate_text(
+            full_idea_prompt + avoid_msg,
+            idea_model
+        )
+
+        # Generate the script
+        Messenger.info(f"\n--- Generating Finance Script: {idea_data.title} ---")
+
+        personal_impact = getattr(idea_data, "personal_impact", "This phenomenon affects your wallet more than you realize.")
+        key_data = getattr(idea_data, "key_data_stat", "")
+
+        full_script_prompt = (
+            script_prompt +
+            f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
+            f"**HOOK:** {idea_data.hook}\n"
+            f"**INTRIGUE HEADER:** {getattr(idea_data, 'intrigue_header', '')}\n"
+            f"**KEY DATA STAT:** {key_data}\n"
+            f"**PERSONAL IMPACT (use for final CTA):** {personal_impact}\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+        script = content_gen.generate_text(full_script_prompt, FinanceHandler)
 
         # --- Transparency footer ---
         transparency_footer = (

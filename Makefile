@@ -21,6 +21,7 @@ icg-s-step7:
 	poetry run python -m flows.image_content_generator.pipeline.main short step7 --mode standard
 
 icg-s-step8:
+
 	poetry run python -m flows.image_content_generator.pipeline.main short step8 --mode standard
 
 icg-s-all:
@@ -57,3 +58,31 @@ icg-7-all:
 # ── Daily Automation ──
 daily-mix:
 	poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
+
+# ── Finance (English Listicle) ──
+icg-f-step1:
+	poetry run python -m flows.image_content_generator.pipeline.main short step1 --mode finance
+
+icg-f-step2:
+	poetry run python -m flows.image_content_generator.pipeline.main short step2 --mode finance
+
+icg-f-step3:
+	poetry run python -m flows.image_content_generator.pipeline.main short step3 --mode finance
+
+icg-f-step4:
+	poetry run python -m flows.image_content_generator.pipeline.main short step4 --mode finance
+
+icg-f-step5:
+	poetry run python -m flows.image_content_generator.pipeline.main short step5 --mode finance
+
+icg-f-step6:
+	poetry run python -m flows.image_content_generator.pipeline.main short step6 --mode finance
+
+icg-f-step7:
+	poetry run python -m flows.image_content_generator.pipeline.main short step7 --mode finance
+
+icg-f-step8:
+	poetry run python -m flows.image_content_generator.pipeline.main short step8 --mode finance
+
+icg-f-all:
+	poetry run python -m flows.image_content_generator.pipeline.main short all --mode finance

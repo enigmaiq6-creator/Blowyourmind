@@ -40,8 +40,8 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
   const { fps } = useVideoConfig();
 
   const phrases: { words: Word[], start: number, end: number }[] = [];
-  for (let i = 0; i < words.length; i += 4) {
-    const chunk = words.slice(i, i + 4);
+  for (let i = 0; i < words.length; i += 3) {
+    const chunk = words.slice(i, i + 3);
     phrases.push({
       words: chunk,
       start: chunk[0].start,
@@ -166,7 +166,7 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
 
         return (
           <div key={pi} style={{ 
-            position: 'absolute', left: 0, right: 0, bottom: 160,
+            position: 'absolute', left: 0, right: 0, bottom: 280,
             transform: `translateY(${phraseEnter}px)`,
             opacity: phraseOpacity,
             display: 'flex', justifyContent: 'center', zIndex: 100,
@@ -174,7 +174,7 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
           }}>
             <div style={{
               display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'center',
-              alignItems: 'baseline', gap: 6, padding: '8px 16px',
+              alignItems: 'baseline', gap: 8, padding: '8px 16px',
               maxWidth: '90%',
             }}>
               {phrase.words.map((word, wi) => {
@@ -200,24 +200,24 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
                   <span key={wi} style={{
                     position: 'relative',
                     display: 'inline-block',
-                    fontSize: isCurrentWord ? 48 : 42,
+                    fontSize: isCurrentWord ? 68 : 56,
                     fontFamily: '"Montserrat Bold", Inter, Arial, sans-serif',
                     fontWeight: 700,
-                    color: isCurrentWord ? '#ffffff' : 'rgba(255,255,255,0.5)',
-                    textShadow: isCurrentWord ? TEXT_SHADOW : '0 1px 6px rgba(0,0,0,0.5)',
+                    color: isCurrentWord ? '#FFEA00' : '#ffffff',
+                    textShadow: isCurrentWord ? TEXT_SHADOW : '0 2px 10px rgba(0,0,0,0.6)',
                     lineHeight: 1.3,
                     letterSpacing: '0.02em',
                     transform: `translateY(${wordSlideUp}px)`,
                     opacity: wordFadeIn,
-                    transition: 'color 0.08s ease',
+                    transition: 'color 0.08s ease, font-size 0.08s ease',
                   }}>
                     {word.text}
                     {isCurrentWord && (
                       <div style={{
                         position: 'absolute', bottom: -2, left: '5%', right: '5%',
-                        height: 2.5,
+                        height: 3.5,
                         background: currentLevel ? getImpactGradient(currentLevel.impacto) : ACCENT,
-                        borderRadius: 1,
+                        borderRadius: 1.5,
                         boxShadow: currentLevel ? getImpactGlow(currentLevel.impacto) : `0 0 8px ${ACCENT}66`,
                       }}/>
                     )}
