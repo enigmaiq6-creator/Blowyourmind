@@ -80,7 +80,7 @@ jobs:
           SAVE_AS_DRAFT: "false"
           # true  = publish directly to Instagram via API (no translations possible)
           # false = skip Instagram API, upload manually from app to add translations
-          INSTAGRAM_PUBLISH: "false"
+          INSTAGRAM_PUBLISH: "true"
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
           VERTEX_IMAGE_RATIO: "10"
