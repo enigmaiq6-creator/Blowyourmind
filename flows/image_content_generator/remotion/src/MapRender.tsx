@@ -198,6 +198,13 @@ const MapTile = React.memo<{
   const [isFailed, setIsFailed] = useState(false);
   const loadedRef = useRef(false);
 
+  useEffect(() => {
+    const cached = tileBlobCache.get(tileKey);
+    setSrc(cached || tileUrl);
+    setIsFailed(false);
+    loadedRef.current = false;
+  }, [tileUrl, tileKey]);
+
   const handleLoad = useCallback(() => {
     if (!loadedRef.current) {
       loadedRef.current = true;
@@ -209,12 +216,20 @@ const MapTile = React.memo<{
   }, [onTileLoad, tileKey, src]);
 
   const handleError = useCallback(() => {
-    if (src === tileUrl && mapStyle !== 'satellite') {
+    if (src === tileUrl) {
+      // First fallback: If satellite or watercolor fails, try dark map
       const fallbackUrl = MAP_STYLES.dark.urlTemplate
         .replace('{z}', String(baseZoom))
         .replace('{x}', String(tileX))
         .replace('{y}', String(tileY));
       setSrc(fallbackUrl);
+    } else if (src !== tileUrl && src.includes('basemaps.cartocdn.com')) {
+      // Second fallback: If dark map fails, use OpenStreetMap (highly reliable)
+      const osmFallback = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+        .replace('{z}', String(baseZoom))
+        .replace('{x}', String(tileX))
+        .replace('{y}', String(tileY));
+      setSrc(osmFallback);
     } else if (!loadedRef.current) {
       setIsFailed(true);
       onTileError(tileKey);
@@ -505,7 +520,6 @@ export const MapRender: React.FC<MapProps> = ({
   const maxTileCoord = Math.pow(2, tileZoomBase) - 1;
   const clampTile = (v: number) => Math.max(0, Math.min(v, maxTileCoord));
 
-  const tilesKey = `${tileZoomBase}-${centerTileX}-${centerTileY}-${hasPath ? 'd' : 's'}`;
   const renderTiles = () => {
     const ts: React.ReactNode[] = [];
     for (let i = 0; i < numTiles; i++) {
@@ -514,24 +528,26 @@ export const MapRender: React.FC<MapProps> = ({
         const tileY = clampTile(startTileY + j);
         const posX  = (i - Math.floor(numTiles / 2)) * TILE_SIZE - offsetX;
         const posY  = (j - Math.floor(numTiles / 2)) * TILE_SIZE - offsetY;
-        const key = `${tilesKey}-${tileX}-${tileY}`;
+        const baseTileKey = `tile-${tileZoomBase}-${tileX}-${tileY}`;
+        const hillTileKey = `hill-${tileZoomBase}-${tileX}-${tileY}`;
+        
         ts.push(
-          <MapTile key={key}
+          <MapTile key={`tile-${i}-${j}`}
             tileX={tileX} tileY={tileY} baseZoom={tileZoomBase}
             posX={posX} posY={posY} mapW={mapW} TILE_SIZE={TILE_SIZE}
             onTileLoad={onTileLoad}
             onTileError={onTileError}
-            tileKey={key}
+            tileKey={baseTileKey}
             mapStyle={mapStyle}
           />
         );
         ts.push(
-          <MapTile key={`hill-${key}`}
+          <MapTile key={`hill-${i}-${j}`}
             tileX={tileX} tileY={tileY} baseZoom={tileZoomBase}
             posX={posX} posY={posY} mapW={mapW} TILE_SIZE={TILE_SIZE}
             onTileLoad={onTileLoad}
             onTileError={onTileError}
-            tileKey={`hill-${key}`}
+            tileKey={hillTileKey}
             mapStyle="hillshade"
             opacity={0.15}
           />
