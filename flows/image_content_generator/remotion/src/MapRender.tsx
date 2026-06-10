@@ -277,14 +277,17 @@ export const MapRender: React.FC<MapProps> = ({
 
   const TILE_SIZE = 512;
   const numTiles  = 3;
-  const TOTAL_TILES = numTiles * numTiles;
+  // We render two tile layers per cell (satellite + hillshade), so total = 2 × (numTiles²)
+  const TOTAL_TILES = numTiles * numTiles * 2;
 
   const countryKey = normalizeCountry(highlightRegion);
   const countryCode = COUNTRY_CODES[countryKey] ?? '';
   const hasCountry = highlightRegion !== 'none' && !!countryCode;
 
   useEffect(() => {
-    const tilesReady = tilesLoaded >= TOTAL_TILES;
+    // Allow a small buffer: require at least 80% of tiles to be ready to avoid
+    // holding render indefinitely when hillshade tiles occasionally fail to load.
+    const tilesReady = tilesLoaded >= Math.ceil(TOTAL_TILES * 0.8);
     const geoReady = !hasCountry || geoFetchDone;
     if ((visualType !== 'map_3d') || (tilesReady && geoReady)) {
       continueRender(handle);
@@ -318,8 +321,15 @@ export const MapRender: React.FC<MapProps> = ({
   }, []);
 
   const progress = frame / durationInFrames;
-  const easeFn = (t: number) => Easing.bezier(0.6, 0.0, 0.3, 1.0)(Math.min(Math.max(t, 0), 1));
-  const pathEase = (t: number) => Easing.bezier(0.85, 0.0, 0.15, 1.0)(Math.min(Math.max(t, 0), 1));
+  // Smoother ease: gentler cubic that avoids abrupt mid-scene acceleration
+  const easeFn = (t: number) => Easing.bezier(0.45, 0.0, 0.55, 1.0)(Math.min(Math.max(t, 0), 1));
+  // Path ease: holds ~5% at start and end so camera feels like it "lands" before moving
+  // bezier(0.5, 0, 0.5, 1) is a smooth symmetric S-curve — much less jarring than 0.85/0.15
+  const pathEase = (t: number) => {
+    // Map progress into a 0.05..0.95 window to create natural hold at start/end
+    const held = Math.min(Math.max((t - 0.05) / 0.90, 0), 1);
+    return Easing.bezier(0.5, 0.0, 0.5, 1.0)(held);
+  };
   const isMapScene = visualType === 'map_3d';
 
   const hasPath = cameraPath.length >= 2;
@@ -520,6 +530,12 @@ export const MapRender: React.FC<MapProps> = ({
     return ts;
   };
 
+  // Fade-in during first 8 frames to mask any tile-load flash at scene start
+  const mapFadeIn = interpolate(frame, [0, 8], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
   return (
     <div style={{
       width: 1080, height: 1920, position: 'relative',
@@ -530,6 +546,7 @@ export const MapRender: React.FC<MapProps> = ({
         width: mapW, height: mapW,
         left: '50%', top: '50%',
         marginLeft: -mapW / 2, marginTop: -mapW / 2,
+        opacity: mapFadeIn,
         transform: `perspective(1200px) rotateX(${animatedPitch}deg) rotateZ(${animatedBearing}deg) scale(${scaleF})`,
         transformStyle: 'preserve-3d',
       }}>
