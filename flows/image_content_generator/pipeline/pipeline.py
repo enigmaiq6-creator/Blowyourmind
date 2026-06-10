@@ -655,7 +655,7 @@ class Pipeline(BaseModelTool):
                 "audioDurationMs": audio_duration_ms,
                 "narrationCues": narration_cues, "subtitleWords": subtitle_words,
                 "hexIcons": [], "routes": [], "regions": [],
-                "mapStyle": "satellite", "scanEffect": False, "lowerThirdData": [],
+                "mapStyle": getattr(scene, "map_style", "satellite"), "scanEffect": False, "lowerThirdData": [],
             }
 
         geopolitical_data = {}
@@ -692,7 +692,7 @@ class Pipeline(BaseModelTool):
             "audioDurationMs": audio_duration_ms,
             "narrationCues": narration_cues, "subtitleWords": subtitle_words,
             "hexIcons": hex_icons_data, "routes": routes_data, "regions": regions_data,
-            "mapStyle": "satellite", "scanEffect": True,
+            "mapStyle": getattr(scene, "map_style", "satellite"), "scanEffect": True,
             "lowerThirdData": [
                 {"icon": "🌍", "label": "REGION", "value": highlight_region if highlight_region != "none" else "EARTH"},
                 {"icon": "📐", "label": "AREA", "value": f"{zoom:.1f}° zoom"},

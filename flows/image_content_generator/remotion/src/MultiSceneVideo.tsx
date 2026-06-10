@@ -31,7 +31,7 @@ interface SceneProps {
   hexIcons?: HexIconData[];
   routes?: RouteData[];
   regions?: RegionData[];
-  mapStyle?: 'dark' | 'satellite';
+  mapStyle?: 'dark' | 'satellite' | 'watercolor';
   scanEffect?: boolean;
   lowerThirdData?: { icon: string; label: string; value: string }[];
   geopolitical?: any;

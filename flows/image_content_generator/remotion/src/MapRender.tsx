@@ -78,7 +78,7 @@ interface MapProps {
   hexIcons?: HexIconData[];
   routes?: RouteData[];
   regions?: RegionData[];
-  mapStyle?: 'dark' | 'satellite';
+  mapStyle?: 'dark' | 'satellite' | 'watercolor';
   scanEffect?: boolean;
   lowerThirdData?: LowerThirdItem[];
   geopolitical?: GeopoliticalData;
@@ -154,6 +154,7 @@ const MAP_STYLES = {
   dark: { urlTemplate: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png' },
   satellite: { urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
   hillshade: { urlTemplate: 'https://a.tile.openstreetmap.de/hillshading/{z}/{x}/{y}.png' },
+  watercolor: { urlTemplate: 'https://watercolormaps.collection.cooperhewitt.org/tile/watercolor/{z}/{x}/{y}.jpg' },
 };
 
 function normalizeCountry(name: string): string {
