@@ -79,6 +79,18 @@ export const MultiSceneVideo: React.FC<MultiSceneProps> = ({
               { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.ease) }
             ));
 
+        const scale = isActive
+          ? interpolate(frame - timing.startFrame, [0, 15], [0.97, 1], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+              easing: Easing.out(Easing.ease),
+            })
+          : interpolate(frame - (timing.endFrame - fadeOutDuration), [0, fadeOutDuration], [1, 1.03], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+              easing: Easing.in(Easing.ease),
+            });
+
         const sceneCues = scene.narrationCues?.filter(c => {
           const sceneStartMs = (timing.startFrame / fps) * 1000;
           const sceneEndMs = (timing.endFrame / fps) * 1000;
@@ -91,6 +103,7 @@ export const MultiSceneVideo: React.FC<MultiSceneProps> = ({
             style={{
               position: 'absolute', inset: 0,
               opacity,
+              transform: `scale(${scale})`,
               pointerEvents: 'none',
               zIndex: isActive ? scenes.length - i : 0,
             }}

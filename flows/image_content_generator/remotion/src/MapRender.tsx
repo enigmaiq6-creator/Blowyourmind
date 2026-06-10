@@ -419,6 +419,16 @@ export const MapRender: React.FC<MapProps> = ({
   const pulseOpacity = interpolate(pulsePhase, [0, 0.4, 0.7, 1], [0.7, 0.5, 0.1, 0.7], { easing: Easing.inOut(Easing.ease) });
   const glowPhase = (frame % 70) / 70;
   const glowPulse    = interpolate(glowPhase, [0, 0.5, 1], [0.55, 1.0, 0.55], { easing: Easing.inOut(Easing.ease) });
+  const drawProgress = interpolate(frame, [0, 50], [1, 0], {
+    easing: Easing.out(Easing.ease),
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const countryFillOpacity = interpolate(frame, [25, 50], [0, 1], {
+    easing: Easing.out(Easing.ease),
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
 
   const showArrow = arrowDirection && arrowDirection !== 'none';
   const arrowA = showArrow ? project(latitude - 1.2, longitude - 2.5) : null;
@@ -596,12 +606,16 @@ export const MapRender: React.FC<MapProps> = ({
               <path
                 d={countryPath}
                 fill={colors.fill}
+                fillOpacity={countryFillOpacity}
                 stroke={colors.stroke}
                 strokeWidth={8}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 opacity={glowPulse}
                 filter="url(#country-glow-intense)"
+                pathLength={1}
+                strokeDasharray="1"
+                strokeDashoffset={drawProgress}
               />
               <path
                 d={countryPath}
@@ -611,6 +625,9 @@ export const MapRender: React.FC<MapProps> = ({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 opacity={0.9}
+                pathLength={1}
+                strokeDasharray="1"
+                strokeDashoffset={drawProgress}
               />
             </>
           )}
@@ -779,25 +796,30 @@ export const MapRender: React.FC<MapProps> = ({
               return (
                 <div key={`vg-${i}`} style={{
                   opacity, transform: `translateX(${slideX}px)`,
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  background: 'rgba(10, 11, 16, 0.75)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderLeft: `4px solid ${colors.stroke}`,
+                  padding: '12px 18px',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  minWidth: 240,
                 }}>
+                  <div style={{ fontSize: 26 }}>{v.icon}</div>
                   <div style={{
-                    width: 3, height: 36,
-                    background: colors.stroke, borderRadius: 2, opacity: 0.5,
-                  }} />
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', gap: 1,
+                    display: 'flex', flexDirection: 'column', gap: 2,
                   }}>
                     <span style={{
-                      color: THEME.textSecondary, fontSize: 10, fontWeight: 700,
+                      color: 'rgba(255, 255, 255, 0.5)', fontSize: 10, fontWeight: 700,
                       letterSpacing: 2, textTransform: 'uppercase',
                     }}>
-                      {v.icon} {v.title}
+                      {v.title}
                     </span>
                     <span style={{
-                      color: '#fff', fontSize: 28, fontWeight: 900,
+                      color: '#fff', fontSize: 24, fontWeight: 900,
                       fontFamily: THEME.fontFamily,
-                      textShadow: `0 0 20px ${colors.stroke}44, 0 2px 4px rgba(0,0,0,0.8)`,
+                      textShadow: `0 0 15px ${colors.stroke}33`,
                       lineHeight: 1.15,
                     }}>
                       {v.value}
