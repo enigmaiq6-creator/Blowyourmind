@@ -533,7 +533,7 @@ export const MapRender: React.FC<MapProps> = ({
             onTileError={onTileError}
             tileKey={`hill-${key}`}
             mapStyle="hillshade"
-            opacity={0.3}
+            opacity={0.15}
           />
         );
       }
@@ -753,20 +753,20 @@ export const MapRender: React.FC<MapProps> = ({
 
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at center, transparent 15%, rgba(10,11,16,0.92) 98%)',
+        background: 'radial-gradient(ellipse at center, transparent 40%, rgba(10,11,16,0.6) 100%)',
         pointerEvents: 'none', zIndex: 50,
       }}/>
 
       <div style={{
         position: 'absolute', inset: 0,
         background: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px)`,
-        pointerEvents: 'none', zIndex: 45, opacity: 0.5,
+        pointerEvents: 'none', zIndex: 45, opacity: 0.3,
       }}/>
 
       <div style={{
         position: 'absolute', inset: 0,
-        background: `radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.3) 100%)`,
-        pointerEvents: 'none', zIndex: 46, opacity: 0.3,
+        background: `radial-gradient(circle at 50% 50%, transparent 50%, rgba(0,0,0,0.2) 100%)`,
+        pointerEvents: 'none', zIndex: 46, opacity: 0.15,
       }}/>
 
       {vignettes.length > 0 && (() => {
