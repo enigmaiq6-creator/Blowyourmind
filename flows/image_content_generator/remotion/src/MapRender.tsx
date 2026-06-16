@@ -351,7 +351,7 @@ export const MapRender: React.FC<MapProps> = ({
     const local = raw - idx;
     const from = cameraPath[idx][key] as number;
     const to = cameraPath[idx + 1][key] as number;
-    return from + (to - from) * easeFn(local);
+    return from + (to - from) * local;
   };
 
   const camLat = interpWaypoint('latitude', latitude);
