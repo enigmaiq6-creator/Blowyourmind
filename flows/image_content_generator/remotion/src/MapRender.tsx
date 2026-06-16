@@ -550,6 +550,67 @@ export const MapRender: React.FC<MapProps> = ({
     return ts;
   };
 
+  const renderGridLines = () => {
+    let step = 10;
+    if (tileZoomBase >= 12) step = 0.05;
+    else if (tileZoomBase >= 10) step = 0.1;
+    else if (tileZoomBase >= 8) step = 0.5;
+    else if (tileZoomBase >= 6) step = 1;
+    else if (tileZoomBase >= 4) step = 5;
+
+    const latMin = Math.floor((curLat - 12) / step) * step;
+    const latMax = Math.ceil((curLat + 12) / step) * step;
+    const lonMin = Math.floor((curLon - 12) / step) * step;
+    const lonMax = Math.ceil((curLon + 12) / step) * step;
+
+    const lines: React.ReactNode[] = [];
+
+    // Latitude lines (horizontal)
+    for (let l = latMin; l <= latMax; l += step) {
+      const p1 = project(l, lonMin);
+      const p2 = project(l, lonMax);
+      lines.push(
+        <line
+          key={`lat-${l}`}
+          x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="1.5"
+        />
+      );
+      // Label text
+      if (Math.abs(l) < 85) {
+        lines.push(
+          <text
+            key={`lat-txt-${l}`}
+            x={p1.x + 20} y={p1.y - 6}
+            fill="rgba(255,255,255,0.25)"
+            fontSize="10"
+            fontFamily={THEME.fontFamily}
+            fontWeight="bold"
+          >
+            {l.toFixed(step < 1 ? 2 : 0)}°N
+          </text>
+        );
+      }
+    }
+
+    // Longitude lines (vertical)
+    for (let l = lonMin; l <= lonMax; l += step) {
+      const p1 = project(latMin, l);
+      const p2 = project(latMax, l);
+      lines.push(
+        <line
+          key={`lon-${l}`}
+          x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="1.5"
+        />
+      );
+    }
+
+    return lines;
+  };
+
   return (
     <div style={{
       width: 1080, height: 1920, position: 'relative',
@@ -566,6 +627,12 @@ export const MapRender: React.FC<MapProps> = ({
       }}>
         <div style={{ position: 'absolute', inset: 0 }}>
           {renderTiles()}
+          <svg style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            overflow: 'visible', pointerEvents: 'none', zIndex: 2,
+          }}>
+            {renderGridLines()}
+          </svg>
         </div>
 
         <svg style={{
@@ -853,6 +920,81 @@ export const MapRender: React.FC<MapProps> = ({
 
       <SceneOverlay data={sceneOverlay} currentMs={currentMs} />
 
+      {isMapScene && (
+        <>
+          <Compass bearing={animatedBearing} />
+          <MapScale zoom={animatedZoom} latitude={curLat} />
+        </>
+      )}
+
+    </div>
+  );
+};
+
+const Compass: React.FC<{ bearing: number }> = ({ bearing }) => {
+  return (
+    <div style={{
+      position: 'absolute', left: 40, top: 160, zIndex: 90,
+      width: 70, height: 70, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(10, 11, 16, 0.65)', backdropFilter: 'blur(8px)',
+      borderRadius: '50%', border: '1.5px solid rgba(255, 255, 255, 0.1)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      transform: `rotate(${-bearing}deg)`,
+      transition: 'transform 0.05s linear',
+    }}>
+      <svg width="46" height="46" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3,3" />
+        <text x="20" y="8" fill="#FF0078" fontSize="9" fontWeight="900" fontFamily='"Montserrat Black", sans-serif' textAnchor="middle">N</text>
+        <text x="20" y="35" fill="rgba(255,255,255,0.4)" fontSize="7" fontWeight="bold" textAnchor="middle">S</text>
+        <text x="34" y="22" fill="rgba(255,255,255,0.4)" fontSize="7" fontWeight="bold" textAnchor="middle">E</text>
+        <text x="6" y="22" fill="rgba(255,255,255,0.4)" fontSize="7" fontWeight="bold" textAnchor="middle">W</text>
+        <polygon points="20,9 23,20 20,18 17,20" fill="#FF0078" />
+        <polygon points="20,31 23,20 20,18 17,20" fill="rgba(255,255,255,0.5)" />
+      </svg>
+    </div>
+  );
+};
+
+const MapScale: React.FC<{ zoom: number; latitude: number }> = ({ zoom, latitude }) => {
+  const scaleWidthPx = 120;
+  const latRadVal = (latitude * Math.PI) / 180;
+  const metersPerPixel = (156543.03 * Math.cos(latRadVal)) / Math.pow(2, zoom);
+  const totalMeters = metersPerPixel * scaleWidthPx;
+  const totalKm = totalMeters / 1000;
+
+  let roundedKm = Math.round(totalKm);
+  if (roundedKm > 1000) {
+    roundedKm = Math.round(roundedKm / 500) * 500;
+  } else if (roundedKm > 100) {
+    roundedKm = Math.round(roundedKm / 50) * 50;
+  } else if (roundedKm > 10) {
+    roundedKm = Math.round(roundedKm / 5) * 5;
+  } else {
+    roundedKm = Math.max(1, roundedKm);
+  }
+
+  const actualWidth = (roundedKm * 1000 / totalMeters) * scaleWidthPx;
+
+  return (
+    <div style={{
+      position: 'absolute', left: 40, bottom: 270, zIndex: 90,
+      display: 'flex', flexDirection: 'column', gap: 4,
+      pointerEvents: 'none',
+    }}>
+      <span style={{
+        color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 900,
+        fontFamily: THEME.fontFamily, letterSpacing: '0.05em',
+        textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+      }}>
+        {roundedKm} km
+      </span>
+      <div style={{
+        width: Math.min(180, Math.max(45, actualWidth)), height: 6,
+        border: '1.5px solid rgba(255,255,255,0.7)',
+        borderTop: 'none',
+        display: 'flex',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+      }} />
     </div>
   );
 };
