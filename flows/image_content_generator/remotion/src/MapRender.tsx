@@ -550,12 +550,6 @@ export const MapRender: React.FC<MapProps> = ({
     return ts;
   };
 
-  // Fade-in during first 8 frames to mask any tile-load flash at scene start
-  const mapFadeIn = interpolate(frame, [0, 8], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-
   return (
     <div style={{
       width: 1080, height: 1920, position: 'relative',
@@ -566,7 +560,7 @@ export const MapRender: React.FC<MapProps> = ({
         width: mapW, height: mapW,
         left: '50%', top: '50%',
         marginLeft: -mapW / 2, marginTop: -mapW / 2,
-        opacity: mapFadeIn,
+        opacity: 1,
         transform: `perspective(1200px) rotateX(${animatedPitch}deg) rotateZ(${animatedBearing}deg) scale(${scaleF})`,
         transformStyle: 'preserve-3d',
       }}>
