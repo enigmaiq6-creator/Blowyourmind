@@ -84,9 +84,9 @@ jobs:
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
           VERTEX_IMAGE_RATIO: "10"
-          MODE: ${{ github.event.inputs.mode || '' }}
+          MODE: ${{ github.event.inputs.mode || 'standard' }}
         run: |
-          echo "🚀 Generating ${{ github.event.inputs.mode || 'geography' }} video..."
+          echo "🚀 Generating ${{ github.event.inputs.mode || 'standard' }} video..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
