@@ -151,7 +151,7 @@ const COUNTRY_COLORS: Record<string, { fill: string; stroke: string }> = {
 };
 
 const MAP_STYLES = {
-  dark: { urlTemplate: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png' },
+  dark: { urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' }, // Fallback to OpenStreetMap instead of CartoDB dark matter
   satellite: { urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
   hillshade: { urlTemplate: 'https://a.tile.openstreetmap.de/hillshading/{z}/{x}/{y}.png' },
   watercolor: { urlTemplate: 'https://watercolormaps.collection.cooperhewitt.org/tile/watercolor/{z}/{x}/{y}.jpg' },
@@ -217,24 +217,17 @@ const MapTile = React.memo<{
 
   const handleError = useCallback(() => {
     if (src === tileUrl) {
-      // First fallback: If satellite or watercolor fails, try dark map
+      // First fallback: If satellite or watercolor fails, try OpenStreetMap (which is mapped to MAP_STYLES.dark)
       const fallbackUrl = MAP_STYLES.dark.urlTemplate
         .replace('{z}', String(baseZoom))
         .replace('{x}', String(tileX))
         .replace('{y}', String(tileY));
       setSrc(fallbackUrl);
-    } else if (src !== tileUrl && src.includes('basemaps.cartocdn.com')) {
-      // Second fallback: If dark map fails, use OpenStreetMap (highly reliable)
-      const osmFallback = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-        .replace('{z}', String(baseZoom))
-        .replace('{x}', String(tileX))
-        .replace('{y}', String(tileY));
-      setSrc(osmFallback);
     } else if (!loadedRef.current) {
       setIsFailed(true);
       onTileError(tileKey);
     }
-  }, [src, tileUrl, mapStyle, baseZoom, tileX, tileY, onTileError, tileKey]);
+  }, [src, tileUrl, baseZoom, tileX, tileY, onTileError, tileKey]);
 
   if (isFailed) return null;
 
