@@ -42,12 +42,11 @@ class Pipeline(BaseModelTool):
     tracking_base: Optional[Path] = None
     resource_base: Path
     orientation: VideoOrientation
-    mode: str = "standard"
+    mode: str = "geography"
 
     @property
     def _category(self) -> str | None:
-        _map = {"geography": "geography", "stories": "stories", "seven_levels": "seven_levels", "finance": "finance", "what_if": "what_if"}
-        return _map.get(self.mode)
+        return "geography"
 
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
     _image_gen: Optional[Union[GeminiImageGenerator, VertexAIImageGenerator]] = PrivateAttr(default=None)
@@ -239,23 +238,8 @@ class Pipeline(BaseModelTool):
         return model_class.model_validate_json(path.read_text(encoding="utf-8"))
 
     def load_script(self, idea_obj) -> VideoScript:
-        category = getattr(idea_obj, "category", "")
-        if category == "geography":
-            from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler
-            return self.load_json(idea_obj.id, self.SCRIPT_JSON, GeographyHandler)
-        if category == "seven_levels":
-            from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models import SevenLevelsHandler
-            return self.load_json(idea_obj.id, self.SCRIPT_JSON, SevenLevelsHandler)
-        if category == "stories":
-            from flows.image_content_generator.pipeline.prompt_shorts.stories.models import StoryHandler
-            return self.load_json(idea_obj.id, self.SCRIPT_JSON, StoryHandler)
-        if category == "finance":
-            from flows.image_content_generator.pipeline.prompt_shorts.finance.models import FinanceHandler
-            return self.load_json(idea_obj.id, self.SCRIPT_JSON, FinanceHandler)
-        if category == "what_if":
-            from flows.image_content_generator.pipeline.prompt_shorts.what_if.models import WhatIfHandler
-            return self.load_json(idea_obj.id, self.SCRIPT_JSON, WhatIfHandler)
-        return self.load_json(idea_obj.id, self.SCRIPT_JSON, VideoScript)
+        from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler
+        return self.load_json(idea_obj.id, self.SCRIPT_JSON, GeographyHandler)
 
     def save_json(self, idea_id: int, filename: str, data: BaseModel):
         """
@@ -1455,28 +1439,8 @@ class Pipeline(BaseModelTool):
         except Exception:
             intrigue_text = None
 
-        # Build level markers for seven_levels mode
+        # Build level markers
         level_markers = []
-        if self.mode == "seven_levels":
-            try:
-                total_duration = self.ffmpeg.get_audio_duration(audio_wav) * 1000
-                from flows.image_content_generator.pipeline.prompt_shorts.seven_levels.models import SevenLevelsHandler
-                seven_script = self.load_json(idea_obj.id, self.SCRIPT_JSON, SevenLevelsHandler)
-                scene_count = len(seven_script.scenes) or 1
-                for i, sc in enumerate(seven_script.scenes):
-                    if hasattr(sc, "nivel") and sc.nivel > 0:
-                        start_ms = (i / scene_count) * total_duration
-                        end_ms = ((i + 1) / scene_count) * total_duration
-                        level_markers.append({
-                            "nivel": sc.nivel,
-                            "titulo": getattr(sc, "level_title", f"Level {sc.nivel}"),
-                            "impacto": getattr(sc, "impact", "Medium"),
-                            "startTime": int(start_ms),
-                            "endTime": int(end_ms),
-                        })
-                Messenger.success(f"   ✅ Built {len(level_markers)} level markers for 7 Levels mode.")
-            except Exception as e:
-                Messenger.warning(f"   ⚠️ Failed to build level markers: {e}")
 
         self.remotion.render_subtitles(
             remotion_path=remotion_root,

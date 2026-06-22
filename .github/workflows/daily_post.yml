@@ -10,11 +10,6 @@ on:
         type: choice
         options:
           - geography
-          - seven_levels
-          - standard
-          - stories
-          - finance
-          - what_if
 
 concurrency:
   group: daily-post
