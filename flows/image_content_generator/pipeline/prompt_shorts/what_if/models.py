@@ -18,7 +18,7 @@ class WhatIfIdea(BaseIdea):
 
 class WhatIfScene(Scene):
     visual_type: str = Field(default="ai_image", description="Use 'ai_image' for ALL scenes — AI-generated imagery with cinematic text overlays. No 3D maps.")
-    image_prompt: str = Field(description="Detailed visual description in ENGLISH for AI image generation. Describe the scene as if it were a documentary still: setting, lighting, colors, composition, mood. Include map-like elements (countries, borders, flags) as graphic design elements in the image itself.")
+    image_prompt: str = Field(description="Detailed visual description in ENGLISH for AI image generation. Describe a photorealistic documentary photograph: setting, lighting, colors, composition, mood. NOT a map or diagram. Show real scenes (landscapes, cityscapes, people, infrastructure) that communicate the alternate geography scenario.")
     sfx: str = Field(default="none", description="Sound effect: 'whoosh', 'digital_swoosh', 'heavy_wind', 'ocean_waves', or 'none'.")
     scene_overlay_type: Optional[str] = Field(default=None, description="Overlay type for this scene: 'title', 'big_number', 'year', 'location', 'nightmare', 'trade', or null.")
 
