@@ -168,7 +168,7 @@ class DailyAutomator:
             return
 
         import shutil
-        video_csv = Path("flows/image_content_generator/out_short/ideas_tracking.csv")
+        video_csv = self.tracking_dir / "ideas_tracking.csv"
         if not video_csv.exists():
             return
 
