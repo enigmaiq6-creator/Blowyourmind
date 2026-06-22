@@ -321,3 +321,23 @@ El workflow usaba `git add -f` para forzar el CSV, pero si un run fallaba a mita
 - **`.github/workflows/daily_post.yml`** — Step de commit ahora hace `git add flows/image_content_generator/tracking/` (sin `-f`) en lugar de los paths de `out_short/`
 
 ### Commit: `dde78d4`
+
+## ═══════════════════════════════════════════
+# SESIÓN: 22 JUN 2026 — LIMPIEZA DE MODOS Y PLANIFICACIÓN FUTURA
+# ═══════════════════════════════════════════
+
+## 1. Simplificación a Mono-Modo (Geography)
+- **Problema**: El repositorio contenía múltiples modos en desuso o rotos (`stories`, `seven_levels`, `finance`, `what_if`).
+- **Cambios**:
+  - Se eliminaron las carpetas de estos modos en `prompt_shorts/`.
+  - Se limpió `PromptManagerShorts` (`manager.py`) eliminando todas las funciones privadas generadoras que no fuesen de `geography`.
+  - Se simplificó `daily_automated_content.py` para correr exclusivamente el pipeline en modo `geography`.
+  - Se actualizó `daily_post.yml` para limitar las opciones de ejecución únicamente a `geography`.
+
+## 2. Planificación de Segundo Modo de Contenido
+- **Objetivo**: Añadir un nuevo modo de contenido personalizado para que conviva junto a `geography`.
+- **Estado**: La estructura está limpia y lista para la extensión. El usuario ha solicitado delegar esta tarea al siguiente modelo de IA.
+- **Instrucciones para el siguiente Agente**:
+  - Lee el prompt de abajo para conocer la intención y pregúntale al usuario para definir la temática y el estilo visual del nuevo modo.
+  - Deberás recrear una carpeta en `prompt_shorts/<nombre_modo>` con su `constants.py` ( prompts de Script e Idea) y `models.py` (Esquemas Pydantic).
+  - Deberás registrar el nuevo modo en `manager.py`, `pipeline.py` y actualizar las opciones en `main.py` y `daily_post.yml`.
