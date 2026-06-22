@@ -39,6 +39,7 @@ class Pipeline(BaseModelTool):
     Orchestrates the creation of shorts using AI tools.
     """
     out_base: Path
+    tracking_base: Optional[Path] = None
     resource_base: Path
     orientation: VideoOrientation
     mode: str = "standard"
@@ -102,7 +103,11 @@ class Pipeline(BaseModelTool):
     @property
     def store(self) -> CsvStore:
         if self._store is None:
-            csv_path = self.out_base / self.IDEAS_TRACKING_CSV
+            # If tracking_base is set, use it (git-tracked folder).
+            # Otherwise fall back to out_base for local runs.
+            base = self.tracking_base if self.tracking_base is not None else self.out_base
+            base.mkdir(parents=True, exist_ok=True)
+            csv_path = base / self.IDEAS_TRACKING_CSV
             self._store = CsvStore(csv_path=csv_path)
         return self._store
 

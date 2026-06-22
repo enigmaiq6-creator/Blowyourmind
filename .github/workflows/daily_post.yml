@@ -94,7 +94,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add -f flows/image_content_generator/out_short/automated_posts_history.csv flows/image_content_generator/out_short/ideas_tracking.csv
+          # Add tracking/ folder (git-tracked, NOT in .gitignore)
+          git add flows/image_content_generator/tracking/
           git commit -m "chore: update tracking and history [skip ci]" || echo "No changes to commit"
           git pull --rebase -X theirs --autostash origin main
           git push origin main || echo "No changes to push"

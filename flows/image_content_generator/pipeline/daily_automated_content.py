@@ -18,7 +18,11 @@ class DailyAutomator:
         self.out_dir = Path("flows/image_content_generator/out_short/daily_content")
         self.out_dir.mkdir(parents=True, exist_ok=True)
         
-        self.history_file = Path("flows/image_content_generator/out_short/automated_posts_history.csv")
+        # Use tracking/ folder (git-tracked) instead of out_short/ (gitignored)
+        self.tracking_dir = Path("flows/image_content_generator/tracking")
+        self.tracking_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.history_file = self.tracking_dir / "automated_posts_history.csv"
         if not self.history_file.exists():
             self.history_file.write_text("date,type,topic\n")
 
@@ -33,8 +37,8 @@ class DailyAutomator:
             except Exception:
                 pass
         
-        # 2. Get video titles history
-        video_csv = Path("flows/image_content_generator/out_short/ideas_tracking.csv")
+        # 2. Get video titles history from tracking CSV
+        video_csv = self.tracking_dir / "ideas_tracking.csv"
         if video_csv.exists():
             try:
                 df_video = pd.read_csv(video_csv)
@@ -62,10 +66,10 @@ class DailyAutomator:
             return
 
         try:
-            # Files to track
+            # Files to track (all in tracking/ folder, which is git-tracked)
             files_to_sync = [
                 str(self.history_file),
-                "flows/image_content_generator/out_short/ideas_tracking.csv"
+                str(self.tracking_dir / "ideas_tracking.csv"),
             ]
             
             # Check which files exist before adding

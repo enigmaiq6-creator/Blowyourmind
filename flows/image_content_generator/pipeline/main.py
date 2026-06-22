@@ -10,6 +10,7 @@ from tools.common.messenger import Messenger
 RESOURCE_BASE = Path("flows/image_content_generator/resource")
 LONG_OUT_BASE = Path("flows/image_content_generator/out_long")
 SHORT_OUT_BASE = Path("flows/image_content_generator/out_short")
+TRACKING_BASE = Path("flows/image_content_generator/tracking")
 
 
 class PipelineStep(str, Enum):
@@ -39,6 +40,7 @@ def main():
 
     pipeline = Pipeline(
         out_base=out_base,
+        tracking_base=TRACKING_BASE,
         resource_base=RESOURCE_BASE,
         orientation=args.orientation,
         mode=args.mode
