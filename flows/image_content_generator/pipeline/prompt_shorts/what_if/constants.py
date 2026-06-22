@@ -39,46 +39,42 @@ TEXT TO NARRATE:
 """
 
 SCRIPT_PROMPT_WHAT_IF = """
-You are the Video Producer & Geospatial Designer for "BlowYourMind".
+You are the Video Producer & Graphic Designer for "BlowYourMind".
 Based on the provided IDEA, write a complete production script for a vertical short video (1080x1920) lasting 35 to 60 seconds.
 
 The video must be a "What If" alternate geography scenario:
-- Use 3D political maps as the PRIMARY visual with country highlights, glowing borders, arrows, flags, and fact boxes.
-- Each scene should feel like a cinematic exploration of a hypothetical world.
-- The viewer should understand the scenario even without audio, just by watching the maps.
+- Use AI-GENERATED IMAGES as the PRIMARY visual for ALL scenes. No 3D maps, no real satellite imagery.
+- Each scene shows a cinematic AI-generated still image depicting the hypothetical world.
+- Text overlays (titles, big numbers, labels) appear on top of the images.
+- The viewer should understand the scenario through powerful visuals + on-screen text.
 
 **STRUCTURE: 6 SCENES (35-60 seconds total):**
 
-1. **Scene 1 - The Hook [0-3s]**: Start with the "What If" question as large text on screen. Show a political map of the primary continent/region with the primary country highlighted in vibrant teal. Other countries slightly dimmed. Use map_3d with zoom 3.0-4.0 for continent view.
+1. **Scene 1 - The Hook [0-3s]**: Start with the "What If" question as large text on screen. The image should show a dramatic vision of the alternate world — a stylized map or landscape that sets the scene. Use scene_overlay_type: "title" for the hook question.
 
-2. **Scene 2 - Context [3-10s]**: Explain the current real-world situation. Show the real map with the primary country highlighted. Include data labels for population, territory, economy. Use map_pins for key cities. Use floating_label with key facts. visual_type: map_3d.
+2. **Scene 2 - Context [3-10s]**: Explain the current real-world situation. The image should show the real-world setting with data visualized as graphic elements within the image (population numbers, territory outlines, flags). Use scene_overlay_type: "big_number" or "location" for key facts.
 
-3. **Scene 3 - The Change [10-20s]**: Show the hypothetical change happening. The map transforms — countries merge, borders disappear, territories expand. Use arrows to show expansion/movement. Use highlight_region for affected countries. Use neon colors (teal for main, coral for affected). Floating labels explain what's happening.
+3. **Scene 3 - The Change [10-20s]**: Show the hypothetical change happening. The image should depict the transformation visually — countries merging, borders shifting, territories expanding. Include visual hints of movement (arrows, dashed lines) as graphic elements within the generated image. Use scene_overlay_type: "title" for the change description.
 
-4. **Scenes 4-5 - Consequences [20-45s]**: Show 2-3 consequences per scene. Each consequence gets its own visual: map with highlighted regions, resource icons, trade routes, population data, military comparisons. Use hex_icons for resources (💰oil, 🌽agriculture, 🏭industry, ⚔️military). Use routes for trade paths. Use vignettes for data cards. Use hex_grid for multi-metric comparison when needed.
+4. **Scenes 4-5 - Consequences [20-45s]**: Show 2-3 consequences per scene. Each image should depict a different aspect: population explosion, economic maps, resource maps, military comparisons. Include flag icons, data numbers, and graphic charts as elements within the image. Use scene_overlay_type: "big_number" or "trade" for data.
 
-5. **Scene 6 - Twist + Closing [45-60s]**: Show the unexpected negative consequence. Map with conflict zones (red arrows, protest icons, tension zones). End with the closing question as text overlay on the final transformed map.
+5. **Scene 6 - Twist + Closing [45-60s]**: Show the unexpected negative consequence. The image should be darker, more dramatic — conflict zones, protests, crisis atmospheres. End with the closing question as text overlay. Use scene_overlay_type: "nightmare" for the twist and "title" for the closing question.
 
-**TECHNICAL RULES FOR REMOTION (STRICT):**
-- Primary visual type: "map_3d" for ALL scenes. Use "ai_image" ONLY for historical or impossible-to-map concepts.
-- Provide REAL GPS coordinates. NEVER use 0.0 for map scenes.
-- `camera_zoom`: 3.0-5.0 for continent views, 5.0-8.0 for country/region views.
-- `camera_pitch`: 30-50 degrees for 3D perspective.
-- `highlight_region`: The country/region to highlight with neon glow. Use real country names.
-- `floating_label`: Key data in ALL CAPS. Include population numbers, territory sizes, economic stats.
-- `map_pins`: 2-4 pins per scene on key cities, resources, or strategic locations.
-- `vignettes`: 2-3 data cards per scene with icon, title, and value (population, area, GDP, resources).
-- `camera_path`: 2-3 waypoints per scene for slow cinematic fly-through.
-- `map_style`: Use 'dark' for premium contrast political map look, or 'satellite' for realistic terrain.
-- `arrow_direction`: MANDATORY for scene 3 (the change) — show the expansion, swap, or movement direction.
-- `hex_icons`: Use for resource locations, military bases, cultural centers. 2-4 per consequence scene.
-- `routes`: Use for trade routes, migration paths, or expansion arrows. 1-2 per relevant scene.
-- `regions`: Use for breaking down a continent into zones. 3-6 per scene for breakdown views.
+**TECHNICAL RULES (STRICT):**
+- Primary visual type: "ai_image" for ALL scenes. NEVER use "map_3d".
+- `image_prompt`: Write a DETAILeD visual description in ENGLISH for AI image generation. Describe:
+  - Setting and composition (e.g., "A stylized map of South America at night")
+  - Colors and lighting (e.g., "Dark navy background with teal and coral accents")
+  - Graphic elements to include (e.g., "Glowing country borders, floating population numbers, flag icons")
+  - Mood and style (e.g., "Cinematic documentary style, clean sans-serif text elements, dark modern aesthetic")
+  - DO NOT describe real 3D map features (camera angles, GPS coordinates, terrain)
+- Each image_prompt MUST be unique per scene. Vary the composition, colors, and focus.
+- `scene_overlay_type`: Use overlays to display key information on screen — titles, big numbers, location badges, etc.
 
 **OVERLAY FIELDS (sceneOverlay) — SIX TYPES AVAILABLE:**
-Each overlay type controls what appears on screen during the scene:
+Each overlay type controls what appears as text on screen during the scene:
 
-- **`title`** {text, position}: Main headline text. Position can be 'top' or 'center'. Use for the hook question in Scene 1.
+- **`title`** {text, position}: Main headline text. Position can be 'top' or 'center'. Use for the hook question in Scene 1 and change title in Scene 3.
 - **`big_number`** {number, label, suffix}: A large animated counter number with label and optional suffix. Use for population, territory, economic stats.
 - **`year`** {year}: A year badge in the corner (for history scenarios).
 - **`location`** {name, country, coordinates}: Location badge showing place name and coordinates.
@@ -92,6 +88,14 @@ Examples of overlay usage:
 - Scene 4: big_number {number: 17000000, label: "SQ KM", suffix: "TOTAL AREA"} + trade {from: "Amazon", to: "Global Markets", value: "$200B", commodity: "Resources"}
 - Scene 5: big_number {number: 450000000, label: "POPULATION", suffix: ""} + nightmare {text: "But controlling such a massive territory with 9 different languages would be extremely difficult."}
 - Scene 6: nightmare {text: "Separatist movements could tear the continent apart."} + title "WOULD THIS UNITE OR DESTROY SOUTH AMERICA?"
+
+**IMAGE PROMPT GUIDELINES:**
+- Scene 1: Wide establishing shot showing the alternate world — stylized map with the main country glowing, surrounding areas dimmed. Dark background, vibrant accent colors (teal, coral). Title text area left empty at top/center.
+- Scene 2: Infographic-style image showing real-world data — country outline with population numbers, flag icons, key cities labeled. Clean data-visualization aesthetic.
+- Scene 3: Dynamic transformation image — arrows showing expansion, dashed lines for new borders, countries merging with gradient colors. Sense of movement and change.
+- Scene 4: Data-focused image — hex-style data points, resource icons (💰oil, 🌽agriculture, 🏭industry, ⚔️military), trade route lines as graphic elements. Infographic layout.
+- Scene 5: Another consequence angle — different color palette, different data focus (population, military, culture). Still infographic but visually distinct from Scene 4.
+- Scene 6: Dark, dramatic image — red highlights, conflict zone markers, protest symbols, crisis feel. Ominous lighting. Space for closing question text.
 
 **NARRATION RULES:**
 - Total narration: MAX 130 WORDS (60 seconds at normal pace).
