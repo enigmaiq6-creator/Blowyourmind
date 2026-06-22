@@ -30,4 +30,6 @@ jimeng-proxy/
 gcp_credentials.json
 *.json
 !package.json
+!package.json
 !package-lock.json
+**/temp_images/
