@@ -86,3 +86,31 @@ icg-f-step8:
 
 icg-f-all:
 	poetry run python -m flows.image_content_generator.pipeline.main short all --mode finance
+
+# ── What If (Alternate Geography) ──
+icg-w-step1:
+	poetry run python -m flows.image_content_generator.pipeline.main short step1 --mode what_if
+
+icg-w-step2:
+	poetry run python -m flows.image_content_generator.pipeline.main short step2 --mode what_if
+
+icg-w-step3:
+	poetry run python -m flows.image_content_generator.pipeline.main short step3 --mode what_if
+
+icg-w-step4:
+	poetry run python -m flows.image_content_generator.pipeline.main short step4 --mode what_if
+
+icg-w-step5:
+	poetry run python -m flows.image_content_generator.pipeline.main short step5 --mode what_if
+
+icg-w-step6:
+	poetry run python -m flows.image_content_generator.pipeline.main short step6 --mode what_if
+
+icg-w-step7:
+	poetry run python -m flows.image_content_generator.pipeline.main short step7 --mode what_if
+
+icg-w-step8:
+	poetry run python -m flows.image_content_generator.pipeline.main short step8 --mode what_if
+
+icg-w-all:
+	poetry run python -m flows.image_content_generator.pipeline.main short all --mode what_if

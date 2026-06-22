@@ -45,7 +45,7 @@ class Pipeline(BaseModelTool):
 
     @property
     def _category(self) -> str | None:
-        _map = {"geography": "geography", "stories": "stories", "seven_levels": "seven_levels", "finance": "finance"}
+        _map = {"geography": "geography", "stories": "stories", "seven_levels": "seven_levels", "finance": "finance", "what_if": "what_if"}
         return _map.get(self.mode)
 
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
@@ -247,6 +247,9 @@ class Pipeline(BaseModelTool):
         if category == "finance":
             from flows.image_content_generator.pipeline.prompt_shorts.finance.models import FinanceHandler
             return self.load_json(idea_obj.id, self.SCRIPT_JSON, FinanceHandler)
+        if category == "what_if":
+            from flows.image_content_generator.pipeline.prompt_shorts.what_if.models import WhatIfHandler
+            return self.load_json(idea_obj.id, self.SCRIPT_JSON, WhatIfHandler)
         return self.load_json(idea_obj.id, self.SCRIPT_JSON, VideoScript)
 
     def save_json(self, idea_id: int, filename: str, data: BaseModel):

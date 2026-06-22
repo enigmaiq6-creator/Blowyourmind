@@ -134,6 +134,8 @@ class DailyAutomator:
             mode_label = "Geography Reel"
         elif env_mode == "standard":
             mode_label = "Standard"
+        elif env_mode == "what_if":
+            mode_label = "What If"
         else:
             mode_label = env_mode.upper()
 

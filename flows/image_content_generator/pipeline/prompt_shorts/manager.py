@@ -17,6 +17,8 @@ from flows.image_content_generator.pipeline.prompt_shorts.stories.models import 
 from flows.image_content_generator.pipeline.prompt_shorts.stories import constants as story_constants
 from flows.image_content_generator.pipeline.prompt_shorts.finance.models import FinanceHandler, FinanceIdea
 from flows.image_content_generator.pipeline.prompt_shorts.finance import constants as finance_constants
+from flows.image_content_generator.pipeline.prompt_shorts.what_if.models import WhatIfHandler, WhatIfIdea
+from flows.image_content_generator.pipeline.prompt_shorts.what_if import constants as what_if_constants
 
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
@@ -27,7 +29,7 @@ class PromptManagerShorts(BasePromptManager):
 
     GEOGRAPHY_AUDIO_PROMPT: str = geo_constants.AUDIO_PROMPT_GEOGRAPHY
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, SevenLevelsHandler, StoryHandler, FinanceHandler]
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, SevenLevelsHandler, StoryHandler, FinanceHandler, WhatIfHandler]
 
     def get_audio_prompt(self, audio_text: str, mode: str = "standard") -> str:
         if mode == "seven_levels":
@@ -36,6 +38,8 @@ class PromptManagerShorts(BasePromptManager):
             return finance_constants.AUDIO_PROMPT_FINANCE.format(audio_text=audio_text)
         if mode == "stories" or mode == "standard":
             return story_constants.AUDIO_PROMPT_STORIES.format(audio_text=audio_text)
+        if mode == "what_if":
+            return what_if_constants.AUDIO_PROMPT_WHAT_IF.format(audio_text=audio_text)
         return self.GEOGRAPHY_AUDIO_PROMPT.format(audio_text=audio_text)
 
     def generate_full_story(
@@ -51,6 +55,8 @@ class PromptManagerShorts(BasePromptManager):
             return self._generate_finance_story(content_gen, titles_to_avoid, extra_avoid)
         if mode in ("stories", "standard"):
             return self._generate_stories_story(content_gen, titles_to_avoid, extra_avoid)
+        if mode == "what_if":
+            return self._generate_what_if_story(content_gen, titles_to_avoid, extra_avoid)
 
         # --- DEFAULT: Geography mode ---
         category = "geography"
@@ -437,6 +443,130 @@ class PromptManagerShorts(BasePromptManager):
             f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
         )
         script = content_gen.generate_text(full_script_prompt, FinanceHandler)
+
+        # --- Transparency footer ---
+        transparency_footer = (
+            "\n\n---\n"
+            "💡 **Transparency**: This content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
+            "✨ Created by the BlowYourMind team."
+        )
+
+        if "caption" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
+            setattr(idea_data, "caption", new_val)
+        elif "hook" in idea_data.model_fields:
+            new_val = str(getattr(idea_data, "hook", "")) + transparency_footer
+            setattr(idea_data, "hook", new_val)
+
+        return idea_data, script, category
+
+    def _generate_what_if_story(
+        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = ""
+    ) -> Tuple[BaseIdea, VideoScript, str]:
+        """
+        Executes the generation loop for What If (Alternate Geography) mode.
+        """
+        category = "what_if"
+        idea_model = WhatIfIdea
+        idea_prompt = what_if_constants.IDEA_PROMPT_WHAT_IF
+        script_prompt = what_if_constants.SCRIPT_PROMPT_WHAT_IF
+
+        Messenger.info(f"🎯 Generating What If Idea...")
+
+        avoid_msg = ""
+
+        combined_avoid = list(titles_to_avoid)
+        if extra_avoid:
+            combined_avoid.append(extra_avoid)
+
+        if combined_avoid:
+            avoid_list_str = "\n".join([str(t) for t in combined_avoid])
+            avoid_msg = (
+                f"\n\n🚨 **ABSOLUTE NO-REPEAT GOLDEN RULE:** 🚨\n"
+                f"It is STRICTLY FORBIDDEN to repeat ANY of these topics, stories, or concepts that were already published:\n"
+                f"{avoid_list_str}\n\n"
+                f"If you generate a story similar to the previous ones, the system will fail. YOU MUST INVENT A COMPLETELY NEW TOPIC.\n"
+            )
+
+        # Select focus area sequentially without repeating (like Finance mode)
+        selected_area = None
+        for area in what_if_constants.FOCUS_AREAS_WHAT_IF:
+            area_title = area.split("—")[0].strip()
+            area_key = area_title.replace("WHAT IF ", "").replace("IF ", "").replace("...", "").strip().lower()
+
+            already_used = False
+            for title in combined_avoid:
+                if area_key in title.lower():
+                    already_used = True
+                    break
+
+            if not already_used:
+                selected_area = area
+                break
+
+        if not selected_area:
+            Messenger.info("🚀 All predefined What If topics have been used. Generating a new unique scenario using Gemini...")
+            topic_prompt = f"""
+            You are a viral YouTube Shorts producer specialized in "What If" alternate geography and geopolitics scenarios.
+
+            Generate a single central topic for a new video.
+            The topic must be a mind-blowing counterfactual geography scenario (similar to "What if India and China switched places?" or "If Africa was one country...").
+
+            Avoid these concepts that were already used:
+            {avoid_msg}
+
+            Respond with ONLY the topic name and a brief description. No introductory text.
+            """
+            try:
+                generated_topic = content_gen.generate(topic_prompt).strip()
+                generated_topic = generated_topic.replace("`", "").replace('"', "").strip()
+                selected_area = generated_topic
+                Messenger.success(f"🎯 Dynamic Infinite Topic Generated: {selected_area}")
+            except Exception as e:
+                selected_area = random.choice(what_if_constants.FOCUS_AREAS_WHAT_IF)
+                Messenger.warning(f"Failed to generate dynamic topic: {e}. Fallback to random: {selected_area}")
+        else:
+            Messenger.info(f"🎯 Focus Area (Sequential Queue): {selected_area}")
+
+        # Visual styles for What If mode (map-based infographics)
+        styles = [
+            "Style: Clean modern infographic documentary style, dark navy background with subtle grid lines, crisp sans-serif text in white, vibrant teal and coral accent colors, photorealistic map textures, 4K resolution.",
+            "Style: Satellite photography style, realistic earth colors, highly detailed 3D terrain, glowing neon cyan and magenta highlights, futuristic HUD overlay, 4K resolution.",
+            "Style: Vintage map illustration with modern tech overlay. Sepia map background, bright glowing neon blue and cyan digital interfaces, topographical contour lines.",
+            "Style: Cinematic National Geographic 3D terrain flight. Vibrant natural colors, dramatic volumetric lighting, detailed texture, ultra-realistic atmosphere with haze and god rays.",
+            "Style: Cyberpunk geography aesthetic. Dark neon-noir map style with magenta/purple grid lines, glowing data nodes, digital rain overlay, high-tech satellite interface.",
+        ]
+        selected_style = random.choice(styles)
+        Messenger.info(f"🎨 Selected Visual Style: {selected_style}")
+
+        # Inject style, focus area, and avoid into idea prompt
+        full_idea_prompt = (
+            f"{idea_prompt}\n\n"
+            f"**MANDATORY CENTRAL TOPIC:** {selected_area}\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+
+        idea_data = content_gen.generate_text(
+            full_idea_prompt + avoid_msg,
+            idea_model
+        )
+
+        # Generate the script
+        Messenger.info(f"\n--- Generating What If Script: {idea_data.title} ---")
+
+        personal_impact = getattr(idea_data, "personal_impact", "This alternate geography would change everything about your world.")
+        key_data = getattr(idea_data, "key_data_stat", "")
+
+        full_script_prompt = (
+            script_prompt +
+            f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
+            f"**HOOK:** {idea_data.hook}\n"
+            f"**INTRIGUE HEADER:** {getattr(idea_data, 'intrigue_header', '')}\n"
+            f"**KEY DATA STAT:** {key_data}\n"
+            f"**PERSONAL IMPACT (use for final CTA):** {personal_impact}\n"
+            f"**RECOMMENDED VISUAL STYLE:** {selected_style}\n"
+        )
+        script = content_gen.generate_text(full_script_prompt, WhatIfHandler)
 
         # --- Transparency footer ---
         transparency_footer = (

@@ -252,4 +252,47 @@ Se creó el modo Standard — videos de curiosidades rápidas (6-8 escenas, 50-6
 make icg-s-all     # Standard (Curiosity Reels)
 make icg-7-all     # 7 Levels (English)
 make icg-g-all     # Geography (3D Maps)
+make icg-f-all     # Finance (English)
+make icg-w-all     # What If (Alternate Geography)
 ```
+
+## ═══════════════════════════════════════════
+# SESIÓN: 21 JUN 2026 — WHAT IF MODE + GIT FIX
+# ═══════════════════════════════════════════
+
+## Nuevo modo: `what_if`
+Se creó el modo **"What If"** (alternate geography / counterfactual scenarios) — videos de 5-6 escenas explorando "qué pasaría si" la geografía mundial fuera diferente.
+
+Se portaron los 14 topics del proyecto `automatizacion-videos-ia` como `FOCUS_AREAS_WHAT_IF` (21 topics total con 7 adicionales), con selección secuencial sin repetición (como Finance mode). Cuando se agoten, Gemini genera nuevos dinámicamente.
+
+### Archivos nuevos:
+- **`prompt_shorts/what_if/__init__.py`** — exports
+- **`prompt_shorts/what_if/models.py`** — `WhatIfIdea`, `WhatIfScene`, `WhatIfHandler`
+- **`prompt_shorts/what_if/constants.py`** — prompts en inglés: `IDEA_PROMPT_WHAT_IF`, `SCRIPT_PROMPT_WHAT_IF`, `AUDIO_PROMPT_WHAT_IF`, `FOCUS_AREAS_WHAT_IF` (21 topics)
+
+### Archivos modificados:
+- **`prompt_shorts/manager.py`** — nuevo método `_generate_what_if_story()`, routing para mode "what_if", añadido `WhatIfHandler` a `CATEGORIES`
+- **`pipeline/pipeline.py`** — `_category` map + `load_script()` para `WhatIfHandler`
+- **`pipeline/main.py`** — `--mode` choices incluye `what_if`
+- **`daily_automated_content.py`** — label "What If" para el modo
+- **`Makefile`** — targets `icg-w-*` (step1-8 + all)
+- **`.github/workflows/daily_post.yml`** — opción `what_if` en inputs
+
+### Visual style
+Map-based infographic documentary style (dark navy, teal/coral accents, same aesthetic as the original `automatizacion-videos-ia` project). All scenes use `visual_type: "ai_image"` (Vertex AI Imagen).
+
+### Cómo correr:
+```powershell
+make icg-w-all     # Full pipeline
+# O step por step:
+make icg-w-step1   # Solo Step 1 (generar story)
+make icg-w-step2   # Solo Step 2 (generar imágenes)
+```
+
+### Output esperado
+Video ~60s con mapas generados por AI, narración TTS, subtítulos animados, música de fondo. Mismo pipeline que los otros modos.
+
+## Fix: automatizacion-videos-ia git 403
+- **Problema**: Workflow `generate-videos.yml` fallaba con `403 Write access to repository not granted`
+- **Causa**: El job no tenía `permissions: contents: write`, por lo que el GITHUB_TOKEN solo tenía acceso de lectura
+- **Fix**: Añadido `permissions: contents: write` al job + `concurrency` group para evitar que runs simultáneos del cron (9, 15, 21 UTC) se pisen entre sí
