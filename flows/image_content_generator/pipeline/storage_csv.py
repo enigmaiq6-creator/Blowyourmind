@@ -53,8 +53,12 @@ class CsvStore(CsvProcessor):
         # This prevents picking up 'stuck' ideas that were deleted by cleanup but remain in CSV
         for _, row in matching_rows.iterrows():
             idea_id = int(row[Column.ID.value])
-            # We assume the parent dir of the CSV is the out_base
-            out_base = self.path.parent
+            # CRITICAL FIX: The CSV is now in tracking/ folder (which is git-tracked),
+            # but the actual media files and idea directories are generated in out_short/ (gitignored).
+            # We must look at out_short/ideas/ rather than the parent of the CSV (which is tracking/ideas/).
+            # The CSV path is always tracking/ideas_tracking.csv, so its parent is tracking/.
+            # We want tracking/../out_short/ideas/ (or flows/image_content_generator/out_short/ideas/).
+            out_base = self.path.parent.parent / "out_short"
             ideas_dir = out_base / "ideas"
             folder_name = f"idea_{idea_id:06d}"
             idea_path = ideas_dir / folder_name
