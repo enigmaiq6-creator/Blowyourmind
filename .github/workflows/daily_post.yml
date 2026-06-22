@@ -1,16 +1,9 @@
 name: BlowYourMind Content Engine
 
 on:
+  schedule:
+    - cron: '0 * * * *'
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Content generation mode'
-        required: true
-        default: 'geography'
-        type: choice
-        options:
-          - geography
-          - what_if
 
 concurrency:
   group: daily-post
@@ -33,7 +26,6 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'poetry'
-
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -62,7 +54,7 @@ jobs:
           python -c "import os, json; f=open('gcp_credentials.json', 'w'); json.dump(json.loads(os.environ.get('GCP_JSON', '{}'), strict=False), f, indent=2)"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp_credentials.json" >> $GITHUB_ENV
 
-      - name: Run Automation
+      - name: Run Geography Automation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
@@ -72,37 +64,49 @@ jobs:
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-          # false = publish directly to Facebook + Instagram simultaneously
-          # true  = save as draft for manual review in Meta Business Suite
           SAVE_AS_DRAFT: "false"
-          # true  = publish directly to Instagram via API (no translations possible)
-          # false = skip Instagram API, upload manually from app to add translations
           INSTAGRAM_PUBLISH: "true"
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
           VERTEX_IMAGE_RATIO: "10"
-          MODE: ${{ github.event.inputs.mode || 'standard' }}
+          MODE: geography
         run: |
-          echo "🚀 Generating ${{ github.event.inputs.mode || 'standard' }} video..."
+          echo "🚀 Generating GEOGRAPHY video..."
+          poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
+
+      - name: Run What If Automation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          SAVE_AS_DRAFT: "false"
+          INSTAGRAM_PUBLISH: "true"
+          USE_VERTEX_AI_IMAGE: "true"
+          USE_VERTEX_AI_AUDIO: "true"
+          VERTEX_IMAGE_RATIO: "10"
+          MODE: what_if
+        run: |
+          echo "🚀 Generating WHAT IF video..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Add tracking/ folder (git-tracked, NOT in .gitignore)
           git add flows/image_content_generator/tracking/
           git commit -m "chore: update tracking and history [skip ci]" || echo "No changes to commit"
           git pull --rebase -X theirs --autostash origin main
           git push origin main || echo "No changes to push"
 
-      - name: Upload Final Video as Artifact (for Instagram manual upload)
+      - name: Upload Videos as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: final-video-instagram
-          # Find the most recently created .mp4 in the ideas folder
+          name: generated-videos
           path: flows/image_content_generator/out_short/ideas/**/*.mp4
-          # Exclude raw/intermediate files, keep only the final renamed video
           if-no-files-found: warn
-          # Keep artifact for 7 days so you have time to download and post to Instagram
           retention-days: 7
