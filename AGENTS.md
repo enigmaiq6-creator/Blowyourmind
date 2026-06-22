@@ -292,7 +292,32 @@ make icg-w-step2   # Solo Step 2 (generar imágenes)
 ### Output esperado
 Video ~60s con mapas generados por AI, narración TTS, subtítulos animados, música de fondo. Mismo pipeline que los otros modos.
 
-## Fix: automatizacion-videos-ia git 403
+### Fix: automatizacion-videos-ia git 403
 - **Problema**: Workflow `generate-videos.yml` fallaba con `403 Write access to repository not granted`
 - **Causa**: El job no tenía `permissions: contents: write`, por lo que el GITHUB_TOKEN solo tenía acceso de lectura
 - **Fix**: Añadido `permissions: contents: write` al job + `concurrency` group para evitar que runs simultáneos del cron (9, 15, 21 UTC) se pisen entre sí
+
+## ═══════════════════════════════════════════
+# SESIÓN: 22 JUN 2026 — FIX TRACKING CSV PERSISTENCIA EN GITHUB ACTIONS
+# ═══════════════════════════════════════════
+
+## Problema: `what_if` siempre subía el mismo video
+El modo `what_if` (y potencialmente otros modos con selección secuencial) siempre generaba el mismo topic porque el CSV de tracking no persistía entre runs de GitHub Actions.
+
+## Causa raíz
+`ideas_tracking.csv` y `automated_posts_history.csv` vivían en `out_short/` que está en `.gitignore`:
+```gitignore
+**/out_short   ← ignora toda la carpeta de output
+```
+El workflow usaba `git add -f` para forzar el CSV, pero si un run fallaba a mitad, el CSV nunca se actualizaba. En el siguiente run se clonaba el repo sin historial → siempre seleccionaba el primer topic de `FOCUS_AREAS_WHAT_IF`.
+
+## Solución: carpeta `tracking/` dedicada (git-tracked)
+
+### Archivos modificados:
+- **`flows/image_content_generator/tracking/.gitkeep`** — [NUEVO] carpeta dedicada fuera de `out_short/`, incluida en git sin `-f`
+- **`pipeline/main.py`** — Nueva constante `TRACKING_BASE = Path("flows/image_content_generator/tracking")` pasada al `Pipeline`
+- **`pipeline/pipeline.py`** — Nuevo campo `tracking_base: Optional[Path] = None`. La propiedad `store` usa `tracking_base` si está disponible, sino `out_base` (compatibilidad local)
+- **`pipeline/daily_automated_content.py`** — `history_file` y `video_csv` apuntan a `tracking/` en lugar de `out_short/`; `sync_to_github()` actualizado con los nuevos paths
+- **`.github/workflows/daily_post.yml`** — Step de commit ahora hace `git add flows/image_content_generator/tracking/` (sin `-f`) en lugar de los paths de `out_short/`
+
+### Commit: `dde78d4`
