@@ -276,6 +276,7 @@ export const MapRender: React.FC<MapProps> = ({
   lowerThirdData = [],
   geopolitical = undefined,
   sceneOverlay = undefined,
+  kenBurnsTarget = 'center',
 }) => {
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
