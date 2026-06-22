@@ -83,6 +83,7 @@ interface MapProps {
   lowerThirdData?: LowerThirdItem[];
   geopolitical?: GeopoliticalData;
   sceneOverlay?: any;
+  kenBurnsTarget?: string;
 }
 
 function latRad(lat: number) {
@@ -449,8 +450,22 @@ export const MapRender: React.FC<MapProps> = ({
     const floatY  = interpolate(floatT, [0, 0.5, 1], [0, -14, 0], { easing: Easing.inOut(Easing.ease) });
     const rotX    = interpolate(progress, [0, 1], [3, -3], { easing: easeFn, extrapolateRight: 'clamp' });
     const rotY    = interpolate(progress, [0, 1], [-3, 3], { easing: easeFn, extrapolateRight: 'clamp' });
-    const bgScale = interpolate(progress, [0, 1], [1, 1.1], { easing: easeFn, extrapolateRight: 'clamp' });
-    const kenBurnsScale = interpolate(progress, [0, 1], [1.0, 1.05], { easing: easeFn, extrapolateRight: 'clamp' });
+    const bgScale = interpolate(progress, [0, 1], [1, 1.3], { easing: easeFn, extrapolateRight: 'clamp' });
+    const kenBurnsScale = interpolate(progress, [0, 1], [1.0, 1.2], { easing: easeFn, extrapolateRight: 'clamp' });
+
+    const kenOrigin = kenBurnsTarget || 'center';
+    const originMap: Record<string, string> = {
+      'center': '50% 50%',
+      'top': '50% 0%',
+      'bottom': '50% 100%',
+      'left': '0% 50%',
+      'right': '100% 50%',
+      'top-left': '0% 0%',
+      'top-right': '100% 0%',
+      'bottom-left': '0% 100%',
+      'bottom-right': '100% 100%',
+    };
+    const transformOrigin = originMap[kenOrigin] || '50% 50%';
 
     return (
       <div style={{
@@ -461,7 +476,7 @@ export const MapRender: React.FC<MapProps> = ({
       }}>
         {resolvedUrl && (
           <div style={{
-            position: 'absolute', inset: -200,
+            position: 'absolute', inset: -400,
             backgroundImage: `url(${resolvedUrl})`,
             backgroundSize: 'cover', backgroundPosition: 'center',
             filter: 'blur(80px) brightness(0.25)',
@@ -477,6 +492,7 @@ export const MapRender: React.FC<MapProps> = ({
             <img src={resolvedUrl} style={{
               width: '100%', height: '100%',
               objectFit: 'cover',
+              transformOrigin,
               transform: `scale(${kenBurnsScale})`,
             }} alt="" />
             <div style={{

@@ -89,13 +89,23 @@ Examples of overlay usage:
 - Scene 5: big_number {number: 450000000, label: "POPULATION", suffix: ""} + nightmare {text: "But controlling such a massive territory with 9 different languages would be extremely difficult."}
 - Scene 6: nightmare {text: "Separatist movements could tear the continent apart."} + title "WOULD THIS UNITE OR DESTROY SOUTH AMERICA?"
 
-**IMAGE PROMPT GUIDELINES:**
-- Scene 1: Wide establishing shot showing the alternate world — stylized map with the main country glowing, surrounding areas dimmed. Dark background, vibrant accent colors (teal, coral). Title text area left empty at top/center.
-- Scene 2: Infographic-style image showing real-world data — country outline with population numbers, flag icons, key cities labeled. Clean data-visualization aesthetic.
-- Scene 3: Dynamic transformation image — arrows showing expansion, dashed lines for new borders, countries merging with gradient colors. Sense of movement and change.
-- Scene 4: Data-focused image — hex-style data points, resource icons (💰oil, 🌽agriculture, 🏭industry, ⚔️military), trade route lines as graphic elements. Infographic layout.
-- Scene 5: Another consequence angle — different color palette, different data focus (population, military, culture). Still infographic but visually distinct from Scene 4.
-- Scene 6: Dark, dramatic image — red highlights, conflict zone markers, protest symbols, crisis feel. Ominous lighting. Space for closing question text.
+**IMAGE PROMPT GUIDELINES (CINEMATIC QUALITY — STRICT):**
+ALL images MUST follow these cinematography rules:
+- **Resolution**: Native vertical 9:16 (1080×1920) — NO horizontal/landscape compositions.
+- **Lighting**: Cinematic lighting — rim lights, dramatic shadows, volumetric light rays where possible. Avoid flat/uniform lighting.
+- **Depth**: Multi-layer composition with clear foreground, midground, and background. Use depth of field (background blur) for cinematic feel.
+- **Colors**: Rich, saturated palette. Dark navy/charcoal backgrounds with vibrant teal, coral, amber, or magenta accents. High contrast.
+- **Style**: Photorealistic documentary still with graphic design elements. NOT a cartoon, NOT a flat illustration. Should look like a frame from a Netflix documentary.
+- **Text space**: Leave the top 25% and bottom 20% of the frame relatively clear for text overlays and subtitles.
+- **Composition**: Use rule of thirds. Place key visual elements off-center to avoid overlap with center-screen text.
+
+Per-scene specifics:
+- **Scene 1**: Cinematic wide shot of the alternate world — stylized political map style with the primary country/region glowing in vibrant teal, surrounded areas dimmed to 30% brightness. Dark navy background with subtle grid lines. Volumetric light rays from the glowing country. Clean open space at top center for the hook title. Aspect: 9:16 vertical.
+- **Scene 2**: Documentary infographic still — the real-world country outline as a glowing wireframe, floating population numbers in clean sans-serif, flag icons as graphic pins, key data visualized as elegant bars/circles. Dark background with subtle data-grid overlay. Teal and amber accents. 9:16 vertical.
+- **Scene 3**: Dynamic transformation visualization — the map shown mid-change: dashed neon borders expanding, gradient arrows sweeping across countries, countries dissolving into each other with particle effects. Coral and teal gradients. Motion blur effect on arrows. Sense of momentum. 9:16 vertical.
+- **Scene 4**: Data-dense infographic — hexagonal data cells with resource icons (💰oil, 🌽agriculture, 🏭industry, ⚔️military), glowing bar charts, trade route arcs as luminous lines connecting regions. Dark background with amber/teal data viz aesthetic. Clean, premium look. 9:16 vertical.
+- **Scene 5**: Second consequence angle — distinct color palette from Scene 4 (e.g., magenta/cyan instead of amber/teal). Different data focus (population pyramids, military comparisons, cultural metrics). Still infographic but visually distinct. 9:16 vertical.
+- **Scene 6**: Dark cinematic climax — red and crimson accents, conflict zone markers as pulsing dots, cracked earth or storm atmosphere, protest silhouettes  in the background. Ominous lighting with heavy shadows. Dramatic vignette. Space at bottom for the closing question text. 9:16 vertical.
 
 **NARRATION RULES:**
 - Total narration: MAX 130 WORDS (60 seconds at normal pace).

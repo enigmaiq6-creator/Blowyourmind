@@ -642,6 +642,8 @@ class Pipeline(BaseModelTool):
                     Messenger.info(f"   ✅ Copied Vertex AI image for idea {idea_obj.id} scene {scene.scene_number}: {ai_img_filename}")
                 else:
                     Messenger.warning(f"   ⚠️ No pre-generated image found for idea {idea_obj.id} scene {scene.scene_number}. Remotion will use placeholder.")
+            ken_targets = ['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
+            ken_idx = (getattr(scene, 'scene_number', 1) - 1) % len(ken_targets)
             return {
                 "visualType": "ai_image",
                 "imageFile": ai_img_filename,
@@ -652,6 +654,7 @@ class Pipeline(BaseModelTool):
                 "narrationCues": narration_cues, "subtitleWords": subtitle_words,
                 "hexIcons": [], "routes": [], "regions": [],
                 "mapStyle": getattr(scene, "map_style", "satellite"), "scanEffect": False, "lowerThirdData": [],
+                "kenBurnsTarget": ken_targets[ken_idx],
             }
 
         geopolitical_data = {}
