@@ -11,19 +11,24 @@ from flows.image_content_generator.pipeline.prompt_base.models import (
 )
 from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler, GeographyIdea
 from flows.image_content_generator.pipeline.prompt_shorts.geography import constants as geo_constants
+from flows.image_content_generator.pipeline.prompt_shorts.what_if.models import WhatIfHandler, WhatIfIdea
+from flows.image_content_generator.pipeline.prompt_shorts.what_if import constants as what_if_constants
 
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
 
 
 class PromptManagerShorts(BasePromptManager):
-    """Manager specific to Geography / Mind-Blowing Science Reels."""
+    """Manager for Geography / Mind-Blowing Science Reels and What If scenarios."""
 
     GEOGRAPHY_AUDIO_PROMPT: str = geo_constants.AUDIO_PROMPT_GEOGRAPHY
+    WHAT_IF_AUDIO_PROMPT: str = what_if_constants.AUDIO_PROMPT_WHAT_IF
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler]
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, WhatIfHandler]
 
     def get_audio_prompt(self, audio_text: str, mode: str = "geography") -> str:
+        if mode == "what_if":
+            return self.WHAT_IF_AUDIO_PROMPT.format(audio_text=audio_text)
         return self.GEOGRAPHY_AUDIO_PROMPT.format(audio_text=audio_text)
 
     def generate_full_story(
@@ -31,16 +36,28 @@ class PromptManagerShorts(BasePromptManager):
     ) -> Tuple[BaseIdea, VideoScript, str]:
         """
         Executes the generation loop for the specified mode.
-        Supports 'geography' mode.
+        Supports 'geography' and 'what_if' modes.
         """
 
-        # --- DEFAULT: Geography mode ---
-        category = "geography"
-        idea_model = GeographyIdea
-        idea_prompt = geo_constants.IDEA_PROMPT_GEOGRAPHY
-        script_prompt = geo_constants.SCRIPT_PROMPT_GEOGRAPHY
-        series_name = "BlowYourMind Geography"
-        
+        # --- MODE SELECTION ---
+        category = mode
+        if mode == "what_if":
+            idea_model = WhatIfIdea
+            idea_prompt = what_if_constants.IDEA_PROMPT_WHAT_IF
+            script_prompt = what_if_constants.SCRIPT_PROMPT_WHAT_IF
+            series_name = "BlowYourMind What If"
+            handler_class = WhatIfHandler
+            focus_areas = what_if_constants.FOCUS_AREAS_WHAT_IF
+        else:
+            # --- DEFAULT: Geography mode ---
+            category = "geography"
+            idea_model = GeographyIdea
+            idea_prompt = geo_constants.IDEA_PROMPT_GEOGRAPHY
+            script_prompt = geo_constants.SCRIPT_PROMPT_GEOGRAPHY
+            series_name = "BlowYourMind Geography"
+            handler_class = GeographyHandler
+            focus_areas = None
+
         # Scan both the list and the extra_avoid string for the series name
         parts_count = sum(1 for t in titles_to_avoid if series_name in str(t))
         if extra_avoid and series_name in extra_avoid:
@@ -53,23 +70,24 @@ class PromptManagerShorts(BasePromptManager):
         next_part = parts_count + 1
         Messenger.info(f"🎞️ Series: {series_name} | Next Part: {next_part}")
 
-        focus_areas = [
-            "HIDDEN RIVERS IN THE SKY: Atmospheric rivers, flying rivers from the Amazon, and how invisible water flows shape YOUR weather and climate.",
-            "THE RING OF FIRE: Earth's 40,000km seismic belt — how tectonic plates build islands, create volcanoes, and reshape the Pacific — and why YOUR flight routes avoid it.",
-            "GRAVITY ANOMALIES AND EARTH'S SECRETS: Places where gravity is weaker, magnetic poles shift, or Earth's core does something unexpected that affects YOUR GPS and compass.",
-            "EXTREME GEOGRAPHICAL BARRIERS: Mountains, deserts, and oceans that block winds, isolate ecosystems, create otherworldly climates — and determine WHERE you can live.",
-            "OCEAN MYSTERIES: Underwater mountains taller than Everest, the place where two oceans meet without mixing, rogue waves that sink YOUR ships, and hidden currents that control YOUR climate.",
-            "WEIRD BORDERS AND BIZARRE GEOGRAPHY: Absurd borders that affect YOUR travel, exclaves you didn't know existed, and the strangest maps that explain modern geopolitics.",
-            "DESERTS AND ICE: How the Atacama became the driest place, Antarctica's hidden valleys, the expanding Sahara that affects YOUR global food prices.",
-            "FORCES THAT SHAPE LIFE: How geography creates biodiversity hotspots, isolated islands evolve unique species, and mountains divide worlds — explaining why YOUR region has certain animals and plants.",
-            "HUMANITY AGAINST GEOGRAPHY: Impossible roads, cities built on water, tunnels through mountains, and how we conquer Earth's obstacles — and why YOUR commute exists where it does.",
-            "EARTH VS SPACE: How solar winds create auroras visible from YOUR backyard, Earth's magnetic shield that protects YOUR electronics, and what would happen if it flipped tomorrow.",
-            "THE HIDDEN OCEAN: Earth's largest mountain range is underwater, there are lakes within the ocean, and YOUR drinking water traveled through this hidden world.",
-            "WEATHER WEAPONS OF NATURE: How a volcanic eruption in one country changes YOUR winter, why a Pacific storm becomes YOUR hurricane, and the atmospheric waves you've never heard of.",
-            "THE UNDERGROUND WORLD: Cities of microbes miles beneath YOUR feet, the deepest hole humans ever dug, and geological forces brewing under YOUR house.",
-            "VANISHING GEOGRAPHY: Islands sinking into the ocean, the fastest-eroding coastline near YOU, and lakes that disappear overnight — what's left when the map changes.",
-            "CLIMATE TIME BOMBS: Methane reserves under YOUR permafrost, freshwater glaciers that feed YOUR cities, and ocean currents that keep YOUR country warm — how they're all connected.",
-        ]
+        if focus_areas is None:
+            focus_areas = [
+                "HIDDEN RIVERS IN THE SKY: Atmospheric rivers, flying rivers from the Amazon, and how invisible water flows shape YOUR weather and climate.",
+                "THE RING OF FIRE: Earth's 40,000km seismic belt — how tectonic plates build islands, create volcanoes, and reshape the Pacific — and why YOUR flight routes avoid it.",
+                "GRAVITY ANOMALIES AND EARTH'S SECRETS: Places where gravity is weaker, magnetic poles shift, or Earth's core does something unexpected that affects YOUR GPS and compass.",
+                "EXTREME GEOGRAPHICAL BARRIERS: Mountains, deserts, and oceans that block winds, isolate ecosystems, create otherworldly climates — and determine WHERE you can live.",
+                "OCEAN MYSTERIES: Underwater mountains taller than Everest, the place where two oceans meet without mixing, rogue waves that sink YOUR ships, and hidden currents that control YOUR climate.",
+                "WEIRD BORDERS AND BIZARRE GEOGRAPHY: Absurd borders that affect YOUR travel, exclaves you didn't know existed, and the strangest maps that explain modern geopolitics.",
+                "DESERTS AND ICE: How the Atacama became the driest place, Antarctica's hidden valleys, the expanding Sahara that affects YOUR global food prices.",
+                "FORCES THAT SHAPE LIFE: How geography creates biodiversity hotspots, isolated islands evolve unique species, and mountains divide worlds — explaining why YOUR region has certain animals and plants.",
+                "HUMANITY AGAINST GEOGRAPHY: Impossible roads, cities built on water, tunnels through mountains, and how we conquer Earth's obstacles — and why YOUR commute exists where it does.",
+                "EARTH VS SPACE: How solar winds create auroras visible from YOUR backyard, Earth's magnetic shield that protects YOUR electronics, and what would happen if it flipped tomorrow.",
+                "THE HIDDEN OCEAN: Earth's largest mountain range is underwater, there are lakes within the ocean, and YOUR drinking water traveled through this hidden world.",
+                "WEATHER WEAPONS OF NATURE: How a volcanic eruption in one country changes YOUR winter, why a Pacific storm becomes YOUR hurricane, and the atmospheric waves you've never heard of.",
+                "THE UNDERGROUND WORLD: Cities of microbes miles beneath YOUR feet, the deepest hole humans ever dug, and geological forces brewing under YOUR house.",
+                "VANISHING GEOGRAPHY: Islands sinking into the ocean, the fastest-eroding coastline near YOU, and lakes that disappear overnight — what's left when the map changes.",
+                "CLIMATE TIME BOMBS: Methane reserves under YOUR permafrost, freshwater glaciers that feed YOUR cities, and ocean currents that keep YOUR country warm — how they're all connected.",
+            ]
         selected_area = random.choice(focus_areas)
         Messenger.info(f"🎯 Random Focus Area: {selected_area}")
 
@@ -124,7 +142,7 @@ class PromptManagerShorts(BasePromptManager):
             f"**KEY DATA STAT FOR HUD (MANDATORY - use this in a floating_label):** {key_data}\n"
             f"**PERSONAL IMPACT (MANDATORY - use this for the final CTA):** {personal_impact}\n"
         )
-        script = content_gen.generate_text(full_script_prompt, GeographyHandler)
+        script = content_gen.generate_text(full_script_prompt, handler_class)
 
         # --- BAN SHIELD: Append transparency footer to caption/hook ---
         transparency_footer = (

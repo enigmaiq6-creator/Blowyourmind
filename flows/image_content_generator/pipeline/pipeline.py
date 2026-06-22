@@ -46,7 +46,7 @@ class Pipeline(BaseModelTool):
 
     @property
     def _category(self) -> str | None:
-        return "geography"
+        return self.mode if self.mode in ("geography", "what_if") else "geography"
 
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
     _image_gen: Optional[Union[GeminiImageGenerator, VertexAIImageGenerator]] = PrivateAttr(default=None)
@@ -238,6 +238,10 @@ class Pipeline(BaseModelTool):
         return model_class.model_validate_json(path.read_text(encoding="utf-8"))
 
     def load_script(self, idea_obj) -> VideoScript:
+        category = getattr(idea_obj, "category", "geography")
+        if category == "what_if":
+            from flows.image_content_generator.pipeline.prompt_shorts.what_if.models import WhatIfHandler
+            return self.load_json(idea_obj.id, self.SCRIPT_JSON, WhatIfHandler)
         from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler
         return self.load_json(idea_obj.id, self.SCRIPT_JSON, GeographyHandler)
 

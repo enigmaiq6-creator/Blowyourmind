@@ -104,15 +104,30 @@ class DailyAutomator:
             f.write(f"{datetime.now().isoformat()},{post_type},{topic.replace(',', ' ')}\n")
 
     def _pick_mode(self) -> str:
-        return "geography"
+        env_mode = os.getenv("MODE", "")
+        if env_mode in ("geography", "what_if"):
+            return env_mode
+        # Random weighted selection
+        weights = os.getenv("MODE_WEIGHTS", "geography=0.7,what_if=0.3")
+        try:
+            parts = [p.split("=") for p in weights.split(",")]
+            modes = [(p[0].strip(), float(p[1])) for p in parts if len(p) == 2]
+        except Exception:
+            modes = [("geography", 0.7), ("what_if", 0.3)]
+        choices, w = zip(*modes) if modes else (["geography"], [1.0])
+        return random.choices(choices, weights=w, k=1)[0]
 
     def run_daily_mix(self):
         """
         Main entry point for GitHub Actions.
-        Generates a video using the geography mode.
+        Generates a video using a randomly selected mode.
         """
-        env_mode = "geography"
-        mode_label = "Geography Reel"
+        env_mode = os.getenv("MODE", self._pick_mode())
+        mode_labels = {
+            "geography": "Geography Reel",
+            "what_if": "What If Scenario",
+        }
+        mode_label = mode_labels.get(env_mode, "Geography Reel")
 
         Messenger.info(f"🎬 GENERATING NEW {mode_label} VIDEO (Full Pipeline)...")
         self.cleanup_stuck_ideas()

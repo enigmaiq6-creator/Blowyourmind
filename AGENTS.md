@@ -334,10 +334,45 @@ El workflow usaba `git add -f` para forzar el CSV, pero si un run fallaba a mita
   - Se simplificó `daily_automated_content.py` para correr exclusivamente el pipeline en modo `geography`.
   - Se actualizó `daily_post.yml` para limitar las opciones de ejecución únicamente a `geography`.
 
-## 2. Planificación de Segundo Modo de Contenido
-- **Objetivo**: Añadir un nuevo modo de contenido personalizado para que conviva junto a `geography`.
-- **Estado**: La estructura está limpia y lista para la extensión. El usuario ha solicitado delegar esta tarea al siguiente modelo de IA.
-- **Instrucciones para el siguiente Agente**:
-  - Lee el prompt de abajo para conocer la intención y pregúntale al usuario para definir la temática y el estilo visual del nuevo modo.
-  - Deberás recrear una carpeta en `prompt_shorts/<nombre_modo>` con su `constants.py` ( prompts de Script e Idea) y `models.py` (Esquemas Pydantic).
-  - Deberás registrar el nuevo modo en `manager.py`, `pipeline.py` y actualizar las opciones en `main.py` y `daily_post.yml`.
+## 2. Implementación del Modo "What If" (Alternate Geography)
+- **Objetivo**: Añadir un segundo modo de contenido: escenarios hipotéticos de geografía, historia, fronteras, población y recursos.
+- **Estado**: IMPLEMENTADO el 22 JUN 2026.
+
+### Archivos creados:
+- **`prompt_shorts/what_if/__init__.py`** — exports WhatIfIdea, WhatIfHandler
+- **`prompt_shorts/what_if/constants.py`** — IDEA_PROMPT_WHAT_IF, SCRIPT_PROMPT_WHAT_IF, AUDIO_PROMPT_WHAT_IF, FOCUS_AREAS_WHAT_IF (76 topics)
+- **`prompt_shorts/what_if/models.py`** — WhatIfIdea, WhatIfScene, WhatIfHandler
+
+### Archivos modificados:
+- **`prompt_shorts/manager.py`** — Añadido WhatIfHandler a CATEGORIES, routing para mode "what_if" con focus areas propios, handler_class dinámico
+- **`pipeline/pipeline.py`** — `_category` usa `self.mode`, `load_script()` selecciona WhatIfHandler según category
+- **`pipeline/main.py`** — choices incluye "what_if"
+- **`pipeline/daily_automated_content.py`** — `_pick_mode()` con random weighted selection (geography=0.7, what_if=0.3), configurable via MODE_WEIGHTS env var
+- **`.github/workflows/daily_post.yml`** — opción "what_if" en workflow_dispatch
+
+### Makefile targets (ya existían de la sesión anterior):
+```powershell
+make icg-w-all     # Full pipeline
+make icg-w-step1   # Solo Step 1 (generar story)
+# etc.
+```
+
+### Visual style
+3D political maps with country highlights (teal/coral glow), animated arrows showing expansion/swap, flags as emoji icons, fact boxes with data, dark navy background with grid lines, clean sans-serif text. Same `map_3d` Remotion components as geography but with `map_style: "dark"` default and what_if-specific overlays.
+
+### Structure (6 scenes, 35-60s)
+1. Hook (0-3s) — "What If" question as text on map
+2. Context (3-10s) — real-world situation with data
+3. The Change (10-20s) — map transforms with arrows
+4-5. Consequences (20-45s) — 2-3 consequences per scene with data viz
+6. Twist + Closing (45-60s) — unexpected problem + question
+
+### Cómo correr
+```powershell
+make icg-w-all
+# O con Poetry
+poetry run python -m flows.image_content_generator.pipeline.main short all --mode what_if
+```
+
+### Output category
+Los videos generados en modo what_if tienen `category: "what_if"` y se guardan en `out_short/ideas/idea_{id}/` con el mismo formato que geography.
