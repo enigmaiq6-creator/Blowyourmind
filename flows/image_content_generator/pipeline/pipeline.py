@@ -874,7 +874,7 @@ class Pipeline(BaseModelTool):
                     return False
             return False
 
-        is_geography_mode = getattr(idea_obj, "category", "") == "geography"
+        is_geography_mode = getattr(idea_obj, "category", "") in ("geography", "what_if")
         all_map_render = all(
             getattr(s, "visual_type", "stock_video") in ("map_3d", "ai_image")
             for s in script.scenes

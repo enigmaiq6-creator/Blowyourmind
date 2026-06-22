@@ -1,8 +1,9 @@
-from typing import ClassVar, List, Type
+from typing import ClassVar, List, Optional, Type
 
 from pydantic import Field
 
-from flows.image_content_generator.pipeline.prompt_base.models import BaseIdea, CategoryHandler, Scene
+from flows.image_content_generator.pipeline.prompt_base.models import BaseIdea, CategoryHandler
+from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyScene
 from flows.image_content_generator.pipeline.prompt_shorts.what_if import constants as what_if_constants
 
 
@@ -15,8 +16,9 @@ class WhatIfIdea(BaseIdea):
     category: str = "what_if"
 
 
-class WhatIfScene(Scene):
-    pass
+class WhatIfScene(GeographyScene):
+    visual_type: str = Field(default="map_3d", description="Type of scene. Use 'map_3d' for 3D political map visuals (default) or 'ai_image' for conceptual illustrations. Always use 'map_3d' for geographic/region-specific scenes.")
+    image_prompt: Optional[str] = Field(default=None, description="Physical description in ENGLISH for AI image generation fallback. Include map colors, highlighted regions, labels, arrows, data boxes. Required for all scenes as a fallback description.")
 
 
 class WhatIfHandler(CategoryHandler):
