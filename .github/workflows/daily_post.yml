@@ -54,7 +54,7 @@ jobs:
           python -c "import os, json; f=open('gcp_credentials.json', 'w'); json.dump(json.loads(os.environ.get('GCP_JSON', '{}'), strict=False), f, indent=2)"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp_credentials.json" >> $GITHUB_ENV
 
-      - name: Run Geography Automation
+      - name: Run Random Mode Automation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
@@ -68,30 +68,9 @@ jobs:
           INSTAGRAM_PUBLISH: "true"
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
-          VERTEX_IMAGE_RATIO: "10"
-          MODE: geography
+          # MODE no se setea — _pick_mode() elige aleatoriamente (70% geography, 30% what_if)
         run: |
-          echo "🚀 Generating GEOGRAPHY video..."
-          poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
-
-      - name: Run What If Automation
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
-          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
-          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-          SAVE_AS_DRAFT: "false"
-          INSTAGRAM_PUBLISH: "true"
-          USE_VERTEX_AI_IMAGE: "true"
-          USE_VERTEX_AI_AUDIO: "true"
-          VERTEX_IMAGE_RATIO: "10"
-          MODE: what_if
-        run: |
-          echo "🚀 Generating WHAT IF video..."
+          echo "🎲 Generating random mode video..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
