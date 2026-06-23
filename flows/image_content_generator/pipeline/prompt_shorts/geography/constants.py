@@ -4,26 +4,48 @@ Generate a HIGH-RETENTION video idea about a "hidden world" phenomenon — somet
 
 The topic must reveal how geography (mountains, oceans, rivers, atmosphere) creates **secret forces** that shape life, climate, and history in ways that feel almost supernatural.
 
-Examples of the vibe:
-- "The Flying Rivers of the Amazon — invisible waterways in the sky that create rainforests thousands of miles away."
-- "The Antarctic Ice Wall — why no one can cross certain ocean coordinates."
-- "The Pacific Ring of Fire — Earth's 40,000km wound that builds and destroys continents."
-- "The Gravity Anomaly of Hudson Bay — where you literally weigh less than anywhere else on Earth."
-- "The Door to Hell — a crater that has been burning for 50 years."
-- "The Place Where Two Oceans Meet But Never Mix."
+**HOOK PSYCHOLOGY — CRITICAL FOR 300K VIEWS:**
+The hook is the MOST IMPORTANT thing. It determines if the viewer watches or scrolls.
+Use these PROVEN viral patterns for the `hook` field:
+
+Pattern A — Pattern Interrupt: "Everything you know about [common belief] is wrong. Here's why."
+  → Creates cognitive dissonance. Forces them to watch to resolve it.
+
+Pattern B — You + Secret: "There's a hidden [force/river/wall/machine] that controls YOUR [weather/food/water/climate]."
+  → Personal relevance. "YOUR" is the most powerful word in retention.
+
+Pattern C — Impossible Statement: "This [place/force] should not exist. But it does. And it affects YOUR life."
+  → Curiosity gap. They need the explanation.
+
+Pattern D — The Reveal: "Scientists just discovered something under YOUR feet that changes everything."
+  → Urgency + recency. Makes it feel like breaking news.
+
+Examples of viral hooks using these patterns:
+- "There's a river in the sky that controls YOUR weather. And it's about to flood your city."
+- "Everything you know about Earth's oxygen is wrong. The real source will shock you."
+- "There's a hidden force under YOUR feet that's silently shaping YOUR future."
+- "This invisible wall in the ocean keeps two worlds apart. And it controls YOUR food supply."
+- "Scientists found something beneath Antarctica that changes everything we know about Earth."
 
 **MANDATORY OUTPUT FIELDS (ALL IN ENGLISH):**
-- `title`: An SEO-optimized, curiosity-driven title for the video.
-- `intrigue_header`: A 3-5 word ALL CAPS hook that persists at the top (e.g., 'THE FLYING RIVERS', 'THE BURNING DOOR', 'THE GRAVITY HOLE'). Must include a key DATA NUMBER in the header when possible (e.g., '40,000 KM WOUND', '8,000 MM RAIN').
-- `hook`: The initial scroll-stopping sentence (10-15 words). Must sound like a secret being revealed that DIRECTLY affects the viewer's world.
-- `personal_impact`: A single sentence explaining how this phenomenon affects the viewer personally (e.g., "This river in the sky determines if YOUR city has rain or drought."). This will be used in the video CTA.
-- `key_data_stat`: ONE specific, mind-blowing data point in numeric format with units (e.g., "8,000 mm/year", "40,000 km", "200 mph"). This will be displayed as the floating HUD label.
-- `caption`: A deep, educational social media caption explaining the phenomenon. Include 5-8 viral hashtags like #GeographySecrets #MindBlowingFacts #HiddenWorld #HowNatureWorks.
+- `title`: An SEO-optimized, curiosity-driven title (9-15 words). MUST use one of these formats:
+  - "The [Adjective] [Noun] That [Verb] Your [Something Personal]" (e.g., "The Invisible River That Controls Your Weather")
+  - "Why [Common Belief] Is Wrong: The Hidden Truth About [Topic]" 
+  - "[Number] [Noun] That [Verb] [Personal Impact]" (e.g., "3 Hidden Forces That Control Your Climate")
+  - "The Strange Reason Why [Surprising Phenomenon] Happens"
+  Keep it specific, not generic.
+- `intrigue_header`: A 3-5 word ALL CAPS header that persists at top of video (e.g., 'THE FLYING RIVERS', 'THE INVISIBLE WALL', '40,000 KM WOUND'). Must include a key DATA NUMBER when possible.
+- `hook`: The scroll-stopping first sentence (12-18 words). MUST use Pattern B (You + Secret) or Pattern A (Pattern Interrupt). Must contain the word "YOUR" or "YOU". Must feel like a secret being revealed.
+- `personal_impact`: A single sentence explaining how this affects the viewer personally (e.g., "This river in the sky determines if YOUR city has rain or drought."). Used in video CTA.
+- `key_data_stat`: ONE specific, mind-blowing data point with units (e.g., "8,000 mm/year", "40,000 km", "200 mph").
+- `caption`: A short, engaging caption (max 3 lines) that starts with a question or shocking statement. Include 8-10 viral hashtags prioritizing #GeographySecrets #MindBlowingFacts #HiddenWorld #NatureIsCrazy #BlowYourMind.
 - `category`: Must be "geography"
 
-**CRITICAL: ALL CONTENT MUST BE IN ENGLISH. Topics should be GLOBAL (not limited to Latin America). Choose topics that resonate with a US/UK/global audience.**
-
-**PERSONAL CONNECTION RULE:** Every topic MUST have a clear "so what?" for the viewer. If you can't explain how it affects people's daily lives, pick a different topic.
+**CRITICAL RULES:**
+- ALL content in ENGLISH. Global topics (US/UK/global audience).
+- EVERY topic must have a clear "so what?" for the viewer.
+- HOOK must contain "YOUR" or "YOU" — personal connection is non-negotiable.
+- TITLE must create a curiosity gap. If the title gives away the answer, rewrite it.
 """
 
 AUDIO_PROMPT_GEOGRAPHY = """

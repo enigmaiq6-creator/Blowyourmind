@@ -1584,29 +1584,35 @@ class Pipeline(BaseModelTool):
 
     def generate_facebook_description(self, title: str) -> str:
         """
-        Generates a short, highly viral description for Facebook/Instagram Reels.
+        Generates an ultra-short, high-engagement description for Facebook/Instagram Reels.
+        Goal: drive comments and shares. 300k views in 25 days = need viral engagement.
         """
-        # Clean title from A/B testing tags like [Hook B] or [Hook A]
         import re
         title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", title, flags=re.IGNORECASE).strip()
 
         prompt = f"""
-        You are the social media expert for "BlowYourMind", a super viral channel about curious facts, mysteries, and science.
-        Write the "Caption" (description) for the following video: "{title}"
+        You write viral Reels captions for "BlowYourMind". Caption for: "{title}"
         
-        MANDATORY Requirements:
-        1. BE EXTREMELY SHORT. Maximum 2 engaging lines that invite people to comment.
-        2. Tone: Intriguing, dynamic, and mind-blowing (e.g. "Did you know this? Let us know in the comments 👇").
-        3. Do not use poetic or philosophical language, use the language of a TikTok/Reels content creator.
-        4. Add exactly 10 VIRAL HASHTAGS relevant to the video topic and always include: #Curiosities #MindBlowing #BlowYourMind
+        RULES (strict):
+        1. MAX 2 lines. Ultra short. TikTok/Reels style.
+        2. Start with a question or controversial statement that forces a comment.
+        3. End with a call-to-action asking for an opinion (e.g. "Which side are you on? 👇").
+        4. EXACTLY 10 hashtags. Always include: #BlowYourMind #MindBlowing #ViralReel
+        5. NEVER explain the video. The caption should ADD mystery, not summarize.
+        6. Use 1-2 emojis max.
         
-        Respond ONLY with the description text and hashtags, without any additional text.
+        Examples of good captions:
+        - "Wait till you see where this is going 🤯 Which country surprised you most? 👇"
+        - "This changes EVERYTHING you know about geography. Are you team REALITY or team WHAT IF? 👇"
+        - "Most people don't know this. And that's the problem. Comment your reaction 👇"
+        
+        Respond ONLY with the caption + hashtags.
         """
         try:
             return self.text_gen.generate(prompt).strip()
         except Exception as e:
             Messenger.warning(f"AI Description generation failed: {e}. Using fallback.")
-            return f"🤯 {title}\n\nWhat do you think? Let us know in the comments 👇\n\n#Curiosities #Viral #Foryou #Mysteries #DidYouKnow #BlowYourMind #Interesting"
+            return f"🤯 {title}\n\nThis changes everything. Which side are you on? 👇\n\n#BlowYourMind #MindBlowing #ViralReel #GeographyFacts #WhatIf #DidYouKnow #Foryou #HiddenWorld #NatureIsCrazy #Mysteries"
 
     def step8_upload_to_facebook(self):
         """

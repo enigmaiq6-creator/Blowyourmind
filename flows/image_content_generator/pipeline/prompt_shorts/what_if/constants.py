@@ -5,29 +5,51 @@ Generate a HIGH-RETENTION video idea about a "What If" hypothetical geography sc
 The topic must explore how changes in geography, borders, population, resources, or history would reshape the world.
 Choose scenarios that feel plausible, spark curiosity, and make viewers want to comment their opinion.
 
-Examples of the vibe:
-- "What if Brazil ruled all of South America?"
-- "What if India and China switched places?"
-- "What if Africa became one country?"
-- "What if the USSR never collapsed?"
-- "What if the Sahara became a rainforest?"
-- "What if Canada had India's population?"
+**HOOK PSYCHOLOGY — CRITICAL FOR 300K VIEWS:**
+The hook must make the viewer STOP SCROLLING in the first second.
+Use these PROVEN viral patterns for the `hook` field:
+
+Pattern A — Imagine + You: "Imagine waking up tomorrow and [impossible scenario]. What would happen to YOUR life?"
+  → Forces mental visualization. "YOUR" creates personal stakes.
+
+Pattern B — The Impossible Statement: "What if [scenario] happened overnight? YOUR [food/jobs/travel/economy] would never be the same."
+  → Immediate personal impact. Makes it real.
+
+Pattern C — The Shocking Comparison: "[Crazy comparison] — that's what the world would look like if [scenario]."
+  → Visual + unexpected. Makes them picture it.
+
+Pattern D — The Secret Reveal: "There's a reason [country/region] looks the way it does. But what if that reason disappeared?"
+  → Curiosity gap about the current world, then twists it.
+
+Examples of viral hooks using these patterns:
+- "Imagine waking up tomorrow and Africa was ONE country. YOUR grocery prices would triple overnight."
+- "What if the Panama Canal was never built? YOUR shipping costs would be 10x higher."
+- "There's a reason Brazil speaks Portuguese in a continent of Spanish. But what if history was different?"
+- "What if Antarctica was green? YOUR coastal city would be underwater right now."
+- "Imagine Canada had India's population overnight. YOUR winter vacations would never be the same."
 
 **MANDATORY OUTPUT FIELDS (ALL IN ENGLISH):**
-- `title`: An SEO-optimized, curiosity-driven "What If" question as the title (e.g., "What If Brazil Ruled All of South America?").
-- `hook`: The opening scroll-stopping question (8-12 words) shown as text on screen. MUST be a direct question (e.g., "What if Brazil controlled every country in South America?").
-- `primary_country`: The main country or region involved in the scenario.
-- `primary_continent`: The continent where the scenario takes place.
-- `scenario_type`: One of these categories — 'location_swap', 'country_union', 'territorial_expansion', 'population_change', 'natural_change', 'alternate_history', 'resource_shift'.
-- `consequences`: A list of 3-5 specific, concrete consequences of the hypothetical change. Each must be unique and measurable (population, territory, resources, military, economy, culture, trade, conflicts, global influence).
-- `unexpected_twist`: A single sentence describing a negative consequence, conflict, or difficulty that would arise (e.g., "But controlling such a massive territory would be extremely difficult with over 400 million people speaking different languages.").
-- `closing_question`: A short, engaging question that invites viewers to comment (e.g., "Would this new Brazil become a superpower?").
-- `caption`: A deep, engaging social media caption explaining the scenario. Include 5-8 viral hashtags like #WhatIf #AlternateGeography #MapFacts #Geography.
+- `title`: An SEO-optimized, curiosity-driven title (8-15 words). MUST use one of these formats:
+  - "What If [Scenario] Happened [Timeframe]?" (e.g., "What If Africa Became One Country Tomorrow?")
+  - "The [Adjective] Reason Why [Scenario] Would Change YOUR Life"
+  - "Imagine [Scenario]. Here's How It Would Destroy YOUR World."
+  Keep it specific and personal. Avoid generic "What If X" — add a consequence in the title.
+- `hook`: The opening scroll-stopping sentence (12-18 words). MUST use Pattern A (Imagine + You) or Pattern D (Secret Reveal). Must contain "YOUR" or "YOU". Must make the viewer imagine the scenario happening to THEM.
+- `primary_country`: The main country or region involved.
+- `primary_continent`: The continent of the scenario.
+- `scenario_type`: One of — 'location_swap', 'country_union', 'territorial_expansion', 'population_change', 'natural_change', 'alternate_history', 'resource_shift'.
+- `consequences`: 3-5 specific, concrete, measurable consequences. Each must mention how it affects real people.
+- `unexpected_twist`: A single sentence with a negative consequence (e.g., "But uniting 54 countries with 2,000 languages would create chaos beyond imagination.")
+- `closing_question`: A short question that forces viewers to comment their opinion (e.g., "Would this new superpower unite or destroy the world? Comment below.")
+- `caption`: A SHORT caption (max 3 lines) that starts with the hook question and ends with the closing question. Include 8-10 viral hashtags prioritizing #WhatIf #AlternateGeography #MindBlowing #GeographyFacts #BlowYourMind.
 - `category`: Must be "what_if"
 
-**CRITICAL: ALL CONTENT MUST BE IN ENGLISH. Topics should be GLOBAL. Choose scenarios that resonate with a US/UK/global audience.**
-
-**VARIETY RULES:** Never repeat the same primary_country or scenario_type in consecutive videos. Alternate between continents.
+**CRITICAL RULES:**
+- ALL content in ENGLISH. Global topics (US/UK/global audience).
+- TITLE must include a personal consequence. "What If X" alone is not enough — add "YOUR life would change".
+- HOOK must contain "YOUR" or "YOU" — personal stakes are mandatory.
+- CLOSING QUESTION must demand a comment. Make it debatable, not yes/no.
+- VARY primary_country and scenario_type across consecutive videos. Alternate continents.
 """
 
 AUDIO_PROMPT_WHAT_IF = """
