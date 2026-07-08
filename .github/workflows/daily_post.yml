@@ -1,8 +1,9 @@
 name: BlowYourMind Content Engine
 
 on:
-#  schedule:
-#    - cron: '0 * * * *'
+  schedule:
+    # Runs daily at 06:00 UTC (adjust to your preferred timezone)
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -47,27 +48,22 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Create GCP Credentials
-        env:
-          GCP_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-        run: |
-          python -c "import os, json; f=open('gcp_credentials.json', 'w'); json.dump(json.loads(os.environ.get('GCP_JSON', '{}'), strict=False), f, indent=2)"
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp_credentials.json" >> $GITHUB_ENV
+      # NOTE: GCP/Vertex AI credentials step is DISABLED to avoid charges on the GCP project.
+      # Re-enable this step when a new GCP account with credits is available.
 
       - name: Run Random Mode Automation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
+          # GCP_PROJECT_ID and GCP_LOCATION intentionally omitted — Vertex AI disabled
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           SAVE_AS_DRAFT: "false"
           INSTAGRAM_PUBLISH: "true"
-          USE_VERTEX_AI_IMAGE: "true"
-          USE_VERTEX_AI_AUDIO: "true"
+          USE_VERTEX_AI_IMAGE: "false"
+          USE_VERTEX_AI_AUDIO: "false"
           # MODE no se setea — _pick_mode() elige aleatoriamente (70% geography, 30% what_if)
         run: |
           echo "🎲 Generating random mode video..."
