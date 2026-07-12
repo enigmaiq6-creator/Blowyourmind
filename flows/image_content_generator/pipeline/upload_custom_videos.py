@@ -41,14 +41,17 @@ def main():
     for video_path in video_files:
         filename_wo_ext = video_path.stem
         
-        # Separar por "--"
-        if "--" in filename_wo_ext:
-            parts = filename_wo_ext.split("--", 1)
+        # Reemplazar guiones bajos por espacios para hacer el nombre legible
+        clean_name = filename_wo_ext.replace("_", " ").strip()
+        
+        # Si se usa "--" se separa título y descripción, si no, se usa el nombre formateado para ambos
+        if "--" in clean_name:
+            parts = clean_name.split("--", 1)
             title = parts[0].strip()
             description = parts[1].strip()
         else:
-            title = filename_wo_ext.strip()
-            description = f"{title}\n\n#BlowYourMind #ViralReels"
+            title = clean_name
+            description = f"🤯 {title}\n\nWhat do you think about this? 👇\n\n#BlowYourMind #ViralReels #Mysteries #DidYouKnow #History"
             
         Messenger.info(f"\n==========================================")
         Messenger.info(f"Processing: {video_path.name}")
