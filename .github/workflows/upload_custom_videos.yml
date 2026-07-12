@@ -1,0 +1,46 @@
+name: Upload Custom Videos to Facebook & Instagram
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: upload-custom-videos
+  cancel-in-progress: true
+
+jobs:
+  upload-videos:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run Upload Script
+        env:
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          INSTAGRAM_PUBLISH: "true"
+        run: |
+          poetry run python flows/image_content_generator/pipeline/upload_custom_videos.py
+
+      - name: Commit and Clean Processed Videos
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add videos_to_upload/
+          git commit -m "chore: clean processed videos from queue [skip ci]" || echo "No changes to commit"
+          git pull --rebase -X theirs --autostash origin main
+          git push origin main || echo "No changes to push"
