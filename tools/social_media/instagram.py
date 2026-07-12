@@ -46,38 +46,56 @@ class InstagramTool(BaseModelTool):
         Messenger.success(f"✅ Found Instagram Business Account ID: {insta_id}")
         return insta_id
 
-    def upload_to_tmpfiles(self, file_path: Path) -> str:
+    def upload_to_public_host(self, file_path: Path) -> str:
         """
-        Uploads a local video file to tmpfiles.org to get a direct public URL
-        that Instagram's servers can read.
+        Uploads a local video file to a public hosting service to get a direct URL
+        that Instagram's servers can access. Tries file.io first, then 0x0.st as fallback.
         """
         if not file_path.exists():
             raise FileNotFoundError(f"Video file not found: {file_path}")
-            
-        Messenger.info(f"📤 Uploading video temporarily to tmpfiles.org to get public URL...")
-        url = "https://tmpfiles.org/api/v1/upload"
-        
-        with open(file_path, "rb") as f:
-            files = {"file": f}
-            response = requests.post(url, files=files)
-            
-        response.raise_for_status()
-        data = response.json()
-        
-        # Format returned is e.g. https://tmpfiles.org/12345/filename.mp4
-        # We need the direct link: https://tmpfiles.org/dl/12345/filename.mp4
-        upload_url = data["data"]["url"]
-        direct_url = upload_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
-        
-        Messenger.info(f"   Temporary public URL generated: {direct_url}")
-        return direct_url
+
+        # --- Intento 1: file.io (más confiable, soporta archivos grandes) ---
+        try:
+            Messenger.info(f"📤 Uploading video to file.io for public URL...")
+            with open(file_path, "rb") as f:
+                response = requests.post(
+                    "https://file.io",
+                    files={"file": f},
+                    data={"expires": "1d"},
+                    timeout=300
+                )
+            response.raise_for_status()
+            data = response.json()
+            if data.get("success") and data.get("link"):
+                url = data["link"]
+                Messenger.info(f"   ✅ Public URL (file.io): {url}")
+                return url
+            raise RuntimeError(f"file.io returned unexpected response: {data}")
+        except Exception as e:
+            Messenger.warning(f"⚠️ file.io failed: {e}. Trying 0x0.st fallback...")
+
+        # --- Intento 2: 0x0.st (fallback) ---
+        try:
+            Messenger.info(f"📤 Uploading video to 0x0.st for public URL...")
+            with open(file_path, "rb") as f:
+                response = requests.post(
+                    "https://0x0.st",
+                    files={"file": f},
+                    timeout=300
+                )
+            response.raise_for_status()
+            url = response.text.strip()
+            Messenger.info(f"   ✅ Public URL (0x0.st): {url}")
+            return url
+        except Exception as e:
+            raise RuntimeError(f"All public hosting services failed. Last error: {e}")
 
     def publish_reel(self, file_path: Path, caption: str = "") -> str:
         """
         Uploads and publishes a local video as a Reel on Instagram.
         """
         insta_id = self.get_instagram_business_account_id()
-        public_video_url = self.upload_to_tmpfiles(file_path)
+        public_video_url = self.upload_to_public_host(file_path)
         
         Messenger.info("🎬 Initializing Instagram Reel container...")
         container_url = f"{self.base_url}/{insta_id}/media"
@@ -94,10 +112,10 @@ class InstagramTool(BaseModelTool):
         container_id = response.json()["id"]
         Messenger.info(f"   Reel container created (ID: {container_id}). Waiting for processing...")
 
-        # Poll status
+        # Poll status — also fetch error_message for better diagnostics
         status_url = f"{self.base_url}/{container_id}"
         status_params = {
-            "fields": "status_code",
+            "fields": "status_code,status,error_message",
             "access_token": self.access_token
         }
         
@@ -106,16 +124,23 @@ class InstagramTool(BaseModelTool):
             time.sleep(10)
             status_resp = requests.get(status_url, params=status_params)
             status_resp.raise_for_status()
-            status_code = status_resp.json().get("status_code")
+            status_data = status_resp.json()
+            status_code = status_data.get("status_code")
+            error_msg = status_data.get("error_message", "No error details provided by Instagram")
             
             Messenger.info(f"   Container status check {attempt}/{max_attempts}: {status_code}")
             
             if status_code == "FINISHED":
                 break
             elif status_code == "ERROR":
-                raise RuntimeError("Instagram failed to process the video container.")
+                raise RuntimeError(
+                    f"Instagram failed to process the video container.\n"
+                    f"   📋 Instagram error: {error_msg}\n"
+                    f"   💡 Common causes: video codec not H.264, audio not AAC, "
+                    f"aspect ratio not 9:16, duration over 90s, or resolution too low."
+                )
         else:
-            raise TimeoutError("Instagram video processing timed out.")
+            raise TimeoutError("Instagram video processing timed out after 5 minutes.")
 
         # Publish the Reel
         Messenger.info("🚀 Publishing Instagram Reel...")
