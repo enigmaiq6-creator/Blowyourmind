@@ -709,6 +709,98 @@ class Pipeline(BaseModelTool):
 
         Messenger.info(f"\n--- Step 2b started: Rendering clips for '{idea_obj.title}' ---")
         script = self.load_script(idea_obj)
+        category = getattr(idea_obj, "category", "")
+
+        # ── FACT SPLIT: Render clips with FFmpeg compositing (no Remotion) ──
+        if category == "fact_split":
+            Messenger.info(f"   🎬 Fact Split mode: compositing {len(script.scenes)} scenes with FFmpeg...")
+            stickman_dir = self.resource_base / "stickman"
+            results = []
+            for scene in script.scenes:
+                clip_filename = self.SCENE_VIDEO_PATTERN.format(scene.scene_number)
+                clip_path = self.get_idea_asset_path(idea_obj.id, self.CLIPS_DIR, clip_filename)
+                if clip_path.exists() and clip_path.stat().st_size > 10240:
+                    Messenger.info(f"   Scene {scene.scene_number} clip already exists. Skipping.")
+                    results.append(True)
+                    continue
+
+                ad_ms = getattr(scene, "audio_duration_ms", None)
+                if not ad_ms:
+                    audio_seg = self.get_idea_asset_path(idea_obj.id, self.AUDIOS_DIR, self.SCENE_AUDIO_PATTERN.format(scene.scene_number))
+                    ad_ms = int(self.ffmpeg.get_audio_duration(audio_seg) * 1000) if audio_seg.exists() else 10000
+                dur = ad_ms / 1000.0
+
+                sujeto = getattr(scene, "sujeto_visible", "A")
+                stickman_state = getattr(scene, "stickman_state", "estado_curiosidad")
+                visual_text = getattr(scene, "visual_text", "")
+
+                img_a = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}_a.png")
+                img_b = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}_b.png")
+                stickman = stickman_dir / f"{stickman_state}.png"
+
+                # Build FFmpeg filter_complex
+                filters = []
+                inputs = []
+
+                # Input 0: color background
+                bg = "color=c=#1a1a2e:s=1080x1920:d={}:r=30".format(dur)
+                filters.append(f"[0:v]format=rgba[bg]")
+
+                idx = 1
+                # Overlay subject A (top-left, 400x400, rounded via alpha if needed)
+                if img_a.exists() and sujeto in ("A", "ambos"):
+                    inputs.append(f"-i {img_a}")
+                    filters.append(f"[{idx}:v]scale=400:400,format=rgba[img_a]")
+                    filters.append(f"[bg][img_a]overlay=x=100:y=200[bg]")
+                    idx += 1
+
+                # Overlay subject B (top-right, 400x400)
+                if img_b.exists() and sujeto in ("B", "ambos"):
+                    inputs.append(f"-i {img_b}")
+                    filters.append(f"[{idx}:v]scale=400:400,format=rgba[img_b]")
+                    filters.append(f"[bg][img_b]overlay=x=580:y=200[bg]")
+                    idx += 1
+
+                # Overlay stickman (bottom-center)
+                if stickman.exists():
+                    inputs.append(f"-i {stickman}")
+                    filters.append(f"[{idx}:v]scale=400:600,format=rgba[sm]")
+                    filters.append(f"[bg][sm]overlay=x=340:y=800[bg]")
+                    idx += 1
+
+                # Add visual text if present
+                if visual_text:
+                    escaped = visual_text.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
+                    filters.append(f"[bg]drawtext=text='{escaped}':fontsize=42:fontcolor=white:x=(w-text_w)/2:y=650:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf'[bg]")
+
+                filter_complex = "; ".join(filters) if filters else "null"
+
+                input_str = " ".join(inputs)
+                cmd = (
+                    f'ffmpeg -y -f lavfi -i "{bg}" {input_str} '
+                    f'-filter_complex "{filter_complex}" '
+                    f'-map "[bg]" -c:v libx264 -crf 18 -preset fast -pix_fmt yuv420p -t {dur} '
+                    f'"{clip_path}"'
+                )
+
+                try:
+                    subprocess.run(cmd, check=True, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    ok = clip_path.exists() and clip_path.stat().st_size > 1024
+                    results.append(ok)
+                    if ok:
+                        Messenger.success(f"   ✅ Scene {scene.scene_number} rendered ({dur:.1f}s)")
+                except Exception as e:
+                    Messenger.error(f"   ❌ Scene {scene.scene_number} FFmpeg failed: {e}")
+                    results.append(False)
+
+            if not all(results):
+                Messenger.error("   ❌ One or more Fact Split clips failed.")
+                return
+
+            idea_obj.state = State.CLIPS_GENERATED
+            self.store.save(idea_obj)
+            Messenger.success(f"Step 2b ready: {State.CLIPS_GENERATED} finalized.\n")
+            return
 
         from tools.video_generation.pexels import PexelsTool
         from tools.video_generation.pixabay import PixabayTool
