@@ -50,7 +50,7 @@ export const Subtitles: React.FC<{ words: Word[] }> = ({ words }) => {
 
         return (
           <div key={pi} style={{ 
-            position: 'absolute', left: 0, right: 0, top: 610,
+            position: 'absolute', left: 0, right: 0, top: 695,
             transform: `translateY(${phraseEnter}px)`,
             opacity: phraseOpacity,
             display: 'flex', justifyContent: 'center', zIndex: 100,

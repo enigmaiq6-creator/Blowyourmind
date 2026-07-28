@@ -13,6 +13,7 @@ Your task is to generate a comparative idea between TWO subjects that has viral 
 - The contrast must be something most people DON'T KNOW.
 - The fact must be surprising but TRUE.
 - Must make people want to comment: "Which one surprised you more?"
+- **CRITICAL: Both subjects MUST be REAL, TANGIBLE, and PHOTOGRAPHABLE.** No abstract concepts, mythological figures, or fictional entities. Use only real animals, real plants, real objects, real places, real people types (e.g., "wolf vs golden retriever", "desert vs tundra", "satellite vs drone", "diamond vs graphite", "coral vs sponge"). The Pexels stock photo site must be able to return a realistic photo for each query. Abstract subjects like "gods", "light", "fate", "radiance" will NOT work because Pexels has no photos of them.
 
 **EXAMPLES OF GOOD CONTRASTS:**
 - Wolf vs Golden Retriever → "The wolf has twice the jaw pressure of any domestic dog."
@@ -27,8 +28,8 @@ Your task is to generate a comparative idea between TWO subjects that has viral 
 - `sujeto_b`: Name of Subject B.
 - `hook`: Scroll-stopping opening phrase (10-15 words in English). Must create intrigue.
 - `contrast_key`: One-line summary of the key difference in English.
-- `pexels.query_sujeto_a`: English search query for stock photo of Subject A (very descriptive, used for the SINGLE shared image of Subject A throughout the video).
-- `pexels.query_sujeto_b`: English search query for stock photo of Subject B (very descriptive, used for the SINGLE shared image of Subject B throughout the video).
+- `pexels.query_sujeto_a`: CRITICAL: English search query for a REALISTIC stock photo of Subject A. Must be a concrete, visually descriptive, real-world object or scene that exists on stock photo sites. Example: "gray wolf howling in snowy forest close up" NOT "mythical creature divine light". Use real, tangible subjects that people can photograph. This SINGLE image is used throughout the entire video.
+- `pexels.query_sujeto_b`: Same as above, for Subject B. Must be equally concrete and visually descriptive. Example: "golden retriever playing fetch green grass" NOT "fated destiny abstract".
 - `locucion.texto_a`: Act 1 narration in English. Starts with "This is...".
 - `locucion.texto_b`: Act 2 narration in English. Starts with "This is...".
 - `locucion.pregunta`: "What's the difference?" (or similar question).
@@ -112,32 +113,16 @@ FOCUS_AREAS_FACT_SPLIT = [
     "Animals: reptile vs amphibian",
     "Science: acid vs base",
     "Science: renewable energy vs fossil fuel",
-    "Science: star vs planet",
     "Science: virus vs bacteria",
     "Science: DNA vs RNA",
-    "History: empire vs republic",
-    "History: revolution vs evolution",
-    "History: middle ages vs renaissance",
-    "History: colonization vs independence",
-    "History: cold war vs world war",
+    "Geography: desert vs tundra",
+    "Geography: volcano vs mountain",
+    "Geography: glacier vs iceberg",
+    "Geography: ocean vs sea",
     "Technology: CPU vs GPU",
-    "Technology: internet vs intranet",
-    "Technology: Machine Learning vs Deep Learning",
-    "Technology: encryption vs hash",
     "Technology: VR vs AR",
-    "Mythology: Greek god vs Norse god",
-    "Mythology: mythical creature vs real",
-    "Mythology: hero vs demigod",
-    "Mythology: myth vs legend",
-    "Mythology: eastern dragon vs western dragon",
+    "Technology: encryption vs hash",
     "Space: rocky planet vs gas giant",
-    "Space: black hole vs neutron star",
     "Space: comet vs asteroid",
     "Space: moon vs artificial satellite",
-    "Space: nebula vs galaxy",
-    "Geography: river vs lake",
-    "Geography: volcano vs mountain",
-    "Geography: desert vs tundra",
-    "Geography: ocean vs sea",
-    "Geography: glacier vs iceberg",
 ]
