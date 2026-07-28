@@ -765,21 +765,21 @@ class Pipeline(BaseModelTool):
                 if img_a.exists() and sujeto in ("A", "ambos"):
                     inputs.append(f"-i {img_a}")
                     filters.append(f"[{idx}:v]scale=480:480,format=rgba[img_a]")
-                    filters.append(f"[bg][img_a]overlay=x=40:y=60[bg]")
+                    filters.append(f"[bg][img_a]overlay=x=40:y=120[bg]")
                     idx += 1
                     # Label above subject A
                     _name_a = sujeto_a.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
-                    filters.append(f"[bg]drawtext=text='{_name_a}':fontsize=32:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=280-text_w/2:y=32:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=2:bordercolor=black@0.8[bg]")
+                    filters.append(f"[bg]drawtext=text='{_name_a}':fontsize=32:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=280-text_w/2:y=95:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=2:bordercolor=black@0.8[bg]")
 
                 # Overlay subject B (top-right, 480x480)
                 if img_b.exists() and sujeto in ("B", "ambos"):
                     inputs.append(f"-i {img_b}")
                     filters.append(f"[{idx}:v]scale=480:480,format=rgba[img_b]")
-                    filters.append(f"[bg][img_b]overlay=x=560:y=60[bg]")
+                    filters.append(f"[bg][img_b]overlay=x=560:y=120[bg]")
                     idx += 1
                     # Label above subject B
                     _name_b = sujeto_b.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
-                    filters.append(f"[bg]drawtext=text='{_name_b}':fontsize=32:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=800-text_w/2:y=32:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=2:bordercolor=black@0.8[bg]")
+                    filters.append(f"[bg]drawtext=text='{_name_b}':fontsize=32:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=800-text_w/2:y=95:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=2:bordercolor=black@0.8[bg]")
 
                 # Overlay stickman (bottom-center, large) — dynamic timeline if present
                 if stickman_timeline:
@@ -793,12 +793,12 @@ class Pipeline(BaseModelTool):
                         inputs.append(f"-i {state_file}")
                         filters.append(f"[{idx}:v]scale=650:975,format=rgba[sm{idx}]")
                         enable = f":enable='between(t,{tl_start},{tl_end})'"
-                        filters.append(f"[bg][sm{idx}]overlay=x=215:y=580{enable}[bg]")
+                        filters.append(f"[bg][sm{idx}]overlay=x=215:y=700{enable}[bg]")
                         idx += 1
                 elif stickman.exists():
                     inputs.append(f"-i {stickman}")
                     filters.append(f"[{idx}:v]scale=650:975,format=rgba[sm]")
-                    filters.append(f"[bg][sm]overlay=x=215:y=580[bg]")
+                    filters.append(f"[bg][sm]overlay=x=215:y=700[bg]")
                     idx += 1
 
                 # Remove visual text drawtext (subject labels are above images; names at bottom removed)

@@ -68,7 +68,7 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string }> = ({ w
 
         return (
           <div key={pi} style={{ 
-            position: 'absolute', left: 0, right: 0, top: 550,
+            position: 'absolute', left: 0, right: 0, top: 615,
             transform: `translateY(${phraseEnter}px)`,
             opacity: phraseOpacity,
             display: 'flex', justifyContent: 'center', zIndex: 100,
