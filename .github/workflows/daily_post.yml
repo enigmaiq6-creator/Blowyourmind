@@ -48,24 +48,28 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      # NOTE: GCP/Vertex AI credentials step is DISABLED to avoid charges on the GCP project.
-      # Re-enable this step when a new GCP account with credits is available.
+      - name: Set up GCP Service Account
+        run: |
+          echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}' > /tmp/gcp-sa-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-sa-key.json" >> $GITHUB_ENV
 
       - name: Run Automation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
-          # GCP_PROJECT_ID and GCP_LOCATION intentionally omitted — Vertex AI disabled
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_LOCATION: us-central1
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           SAVE_AS_DRAFT: "false"
           INSTAGRAM_PUBLISH: "true"
-          USE_VERTEX_AI_IMAGE: "false"
-          USE_VERTEX_AI_AUDIO: "false"
+          USE_VERTEX_AI_IMAGE: "true"
+          USE_VERTEX_AI_AUDIO: "true"
         run: |
-          echo "🎬 Generating video..."
+          echo "🎬 Generating Fact Split video..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
