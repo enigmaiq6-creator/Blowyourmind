@@ -9,56 +9,35 @@ from flows.image_content_generator.pipeline.prompt_base.models import (
     VideoScript,
     ImagePrompt,
 )
-from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler, GeographyIdea
-from flows.image_content_generator.pipeline.prompt_shorts.geography import constants as geo_constants
-from flows.image_content_generator.pipeline.prompt_shorts.what_if.models import WhatIfHandler, WhatIfIdea
-from flows.image_content_generator.pipeline.prompt_shorts.what_if import constants as what_if_constants
+from flows.image_content_generator.pipeline.prompt_shorts.fact_split.models import FactSplitHandler, FactSplitIdea
+from flows.image_content_generator.pipeline.prompt_shorts.fact_split import constants as fact_split_constants
 
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
 
 
 class PromptManagerShorts(BasePromptManager):
-    """Manager for Geography / Mind-Blowing Science Reels and What If scenarios."""
+    """Manager for Fact Split short-form video content."""
 
-    GEOGRAPHY_AUDIO_PROMPT: str = geo_constants.AUDIO_PROMPT_GEOGRAPHY
-    WHAT_IF_AUDIO_PROMPT: str = what_if_constants.AUDIO_PROMPT_WHAT_IF
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [FactSplitHandler]
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [GeographyHandler, WhatIfHandler]
+    FACT_SPLIT_AUDIO_PROMPT: str = fact_split_constants.AUDIO_PROMPT_FACT_SPLIT
 
-    def get_audio_prompt(self, audio_text: str, mode: str = "geography") -> str:
-        if mode == "what_if":
-            return self.WHAT_IF_AUDIO_PROMPT.format(audio_text=audio_text)
-        return self.GEOGRAPHY_AUDIO_PROMPT.format(audio_text=audio_text)
+    def get_audio_prompt(self, audio_text: str, mode: str = "fact_split") -> str:
+        return self.FACT_SPLIT_AUDIO_PROMPT.format(audio_text=audio_text)
 
     def generate_full_story(
-        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = "", mode: str = "geography"
+        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = "", mode: str = "fact_split"
     ) -> Tuple[BaseIdea, VideoScript, str]:
-        """
-        Executes the generation loop for the specified mode.
-        Supports 'geography' and 'what_if' modes.
-        """
+        category = "fact_split"
+        idea_model = FactSplitIdea
+        idea_prompt = fact_split_constants.IDEA_PROMPT_FACT_SPLIT
+        script_prompt = fact_split_constants.SCRIPT_PROMPT_FACT_SPLIT
+        series_name = "BlowYourMind Fact Split"
+        handler_class = FactSplitHandler
+        focus_areas = fact_split_constants.FOCUS_AREAS_FACT_SPLIT
 
-        # --- MODE SELECTION ---
-        category = mode
-        if mode == "what_if":
-            idea_model = WhatIfIdea
-            idea_prompt = what_if_constants.IDEA_PROMPT_WHAT_IF
-            script_prompt = what_if_constants.SCRIPT_PROMPT_WHAT_IF
-            series_name = "BlowYourMind What If"
-            handler_class = WhatIfHandler
-            focus_areas = what_if_constants.FOCUS_AREAS_WHAT_IF
-        else:
-            # --- DEFAULT: Geography mode ---
-            category = "geography"
-            idea_model = GeographyIdea
-            idea_prompt = geo_constants.IDEA_PROMPT_GEOGRAPHY
-            script_prompt = geo_constants.SCRIPT_PROMPT_GEOGRAPHY
-            series_name = "BlowYourMind Geography"
-            handler_class = GeographyHandler
-            focus_areas = None
-
-        # Scan both the list and the extra_avoid string for the series name
+        # Count parts to avoid repetition
         parts_count = sum(1 for t in titles_to_avoid if series_name in str(t))
         if extra_avoid and series_name in extra_avoid:
             import re
@@ -70,33 +49,14 @@ class PromptManagerShorts(BasePromptManager):
         next_part = parts_count + 1
         Messenger.info(f"🎞️ Series: {series_name} | Next Part: {next_part}")
 
-        if focus_areas is None:
-            focus_areas = [
-                "HIDDEN RIVERS IN THE SKY: Atmospheric rivers, flying rivers from the Amazon, and how invisible water flows shape YOUR weather and climate.",
-                "THE RING OF FIRE: Earth's 40,000km seismic belt — how tectonic plates build islands, create volcanoes, and reshape the Pacific — and why YOUR flight routes avoid it.",
-                "GRAVITY ANOMALIES AND EARTH'S SECRETS: Places where gravity is weaker, magnetic poles shift, or Earth's core does something unexpected that affects YOUR GPS and compass.",
-                "EXTREME GEOGRAPHICAL BARRIERS: Mountains, deserts, and oceans that block winds, isolate ecosystems, create otherworldly climates — and determine WHERE you can live.",
-                "OCEAN MYSTERIES: Underwater mountains taller than Everest, the place where two oceans meet without mixing, rogue waves that sink YOUR ships, and hidden currents that control YOUR climate.",
-                "WEIRD BORDERS AND BIZARRE GEOGRAPHY: Absurd borders that affect YOUR travel, exclaves you didn't know existed, and the strangest maps that explain modern geopolitics.",
-                "DESERTS AND ICE: How the Atacama became the driest place, Antarctica's hidden valleys, the expanding Sahara that affects YOUR global food prices.",
-                "FORCES THAT SHAPE LIFE: How geography creates biodiversity hotspots, isolated islands evolve unique species, and mountains divide worlds — explaining why YOUR region has certain animals and plants.",
-                "HUMANITY AGAINST GEOGRAPHY: Impossible roads, cities built on water, tunnels through mountains, and how we conquer Earth's obstacles — and why YOUR commute exists where it does.",
-                "EARTH VS SPACE: How solar winds create auroras visible from YOUR backyard, Earth's magnetic shield that protects YOUR electronics, and what would happen if it flipped tomorrow.",
-                "THE HIDDEN OCEAN: Earth's largest mountain range is underwater, there are lakes within the ocean, and YOUR drinking water traveled through this hidden world.",
-                "WEATHER WEAPONS OF NATURE: How a volcanic eruption in one country changes YOUR winter, why a Pacific storm becomes YOUR hurricane, and the atmospheric waves you've never heard of.",
-                "THE UNDERGROUND WORLD: Cities of microbes miles beneath YOUR feet, the deepest hole humans ever dug, and geological forces brewing under YOUR house.",
-                "VANISHING GEOGRAPHY: Islands sinking into the ocean, the fastest-eroding coastline near YOU, and lakes that disappear overnight — what's left when the map changes.",
-                "CLIMATE TIME BOMBS: Methane reserves under YOUR permafrost, freshwater glaciers that feed YOUR cities, and ocean currents that keep YOUR country warm — how they're all connected.",
-            ]
         selected_area = random.choice(focus_areas)
         Messenger.info(f"🎯 Random Focus Area: {selected_area}")
 
         avoid_msg = ""
-        
         combined_avoid = list(titles_to_avoid)
         if extra_avoid:
             combined_avoid.append(extra_avoid)
-            
+
         if combined_avoid:
             avoid_list_str = "\n".join([str(t) for t in combined_avoid])
             avoid_msg = (
@@ -106,52 +66,31 @@ class PromptManagerShorts(BasePromptManager):
                 f"If you generate a story similar to the previous ones, the system will fail. YOU MUST INVENT A COMPLETELY NEW TOPIC.\n"
             )
 
-        # 3. Dynamic Visual Style Selector
-        styles = [
-            "Style: Satellite photography style, realistic earth colors, highly detailed 3D terrain, glowing neon cyan and magenta highlights, futuristic HUD overlay, 4K resolution.",
-            "Style: Vintage map illustration with modern tech overlay. Sepia map background, bright glowing neon blue and cyan digital interfaces, animated data streams, topographical contour lines.",
-            "Style: Stylized infographic map. High-contrast dark blue background, vibrant neon orange and cyan borders, sharp glowing vector lines, data visualization aesthetic.",
-            "Style: Cinematic National Geographic 3D terrain flight. Vibrant natural colors, dramatic volumetric lighting, detailed texture, ultra-realistic atmosphere with haze and god rays.",
-            "Style: Cyberpunk geography aesthetic. Dark neon-noir map style with magenta/purple grid lines, glowing data nodes, digital rain overlay, high-tech satellite interface."
-        ]
-        selected_style = random.choice(styles)
-        
-        Messenger.info(f"🎨 Selected Visual Style: {selected_style}")
-
-        # Inject the selected style and focus area into the prompt
         full_idea_prompt = (
-            f"{idea_prompt.format(visual_style=selected_style)}\n\n"
+            f"{idea_prompt}\n\n"
             f"**MANDATORY CENTRAL TOPIC:** {selected_area}\n"
             f"**THIS CONTENT IS PART {next_part}** of the series '{series_name}'."
         )
-        
-        idea_data = content_gen.generate_text(
-            full_idea_prompt + avoid_msg, 
-            idea_model
-        )
 
-        # 4. Viral Script / Content Generation
-        Messenger.info(f"\n--- Generating Viral {category.upper()} Content: {idea_data.title} ---")
-        
-        personal_impact = getattr(idea_data, "personal_impact", "This phenomenon affects you more than you realize.")
-        key_data = getattr(idea_data, "key_data_stat", "")
+        idea_data = content_gen.generate_text(full_idea_prompt + avoid_msg, idea_model)
+
+        Messenger.info(f"\n--- Generating FACT SPLIT Script: {idea_data.title} ---")
+
         full_script_prompt = (
             script_prompt +
             f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
-            f"**RECOMMENDED VISUAL STYLES FOR IMAGES/MAPS:** {selected_style}\n"
-            f"**KEY DATA STAT FOR HUD (MANDATORY - use this in a floating_label):** {key_data}\n"
-            f"**PERSONAL IMPACT (MANDATORY - use this for the final CTA):** {personal_impact}\n"
+            f"SUJETO A: {idea_data.sujeto_a}\n"
+            f"SUJETO B: {idea_data.sujeto_b}\n"
         )
         script = content_gen.generate_text(full_script_prompt, handler_class)
 
-        # --- BAN SHIELD: Append transparency footer to caption/hook ---
+        # Transparency footer
         transparency_footer = (
             "\n\n---\n"
             "💡 **Transparency**: This content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
             "✨ Created by the BlowYourMind team."
         )
-        
-        # Inject transparency footer into caption or hook field
+
         if "caption" in idea_data.model_fields:
             new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
             setattr(idea_data, "caption", new_val)

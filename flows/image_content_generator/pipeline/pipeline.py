@@ -11,6 +11,7 @@ from flows.image_content_generator.pipeline.prompt_base.models import VideoScrip
 from flows.image_content_generator.pipeline.prompt_shorts.manager import PromptManagerShorts
 from flows.image_content_generator.pipeline.schemas import AudioAlignment, State, VideoOrientation
 from flows.image_content_generator.pipeline.storage_csv import CsvStore
+
 from tools.audio_generation.audio_tool import AudioTool
 from tools.audio_generation.gemini import GeminiAudioGenerator
 from tools.audio_generation.vertex_ai_tts import VertexAIAudioGenerator
@@ -42,11 +43,11 @@ class Pipeline(BaseModelTool):
     tracking_base: Optional[Path] = None
     resource_base: Path
     orientation: VideoOrientation
-    mode: str = "geography"
+    mode: str = "fact_split"
 
     @property
     def _category(self) -> str | None:
-        return self.mode if self.mode in ("geography", "what_if") else "geography"
+        return self.mode if self.mode else "fact_split"
 
     _text_gen: Optional[GeminiTextGenerator] = PrivateAttr(default=None)
     _image_gen: Optional[Union[GeminiImageGenerator, VertexAIImageGenerator]] = PrivateAttr(default=None)
@@ -238,12 +239,11 @@ class Pipeline(BaseModelTool):
         return model_class.model_validate_json(path.read_text(encoding="utf-8"))
 
     def load_script(self, idea_obj) -> VideoScript:
-        category = getattr(idea_obj, "category", "geography")
-        if category == "what_if":
-            from flows.image_content_generator.pipeline.prompt_shorts.what_if.models import WhatIfHandler
-            return self.load_json(idea_obj.id, self.SCRIPT_JSON, WhatIfHandler)
-        from flows.image_content_generator.pipeline.prompt_shorts.geography.models import GeographyHandler
-        return self.load_json(idea_obj.id, self.SCRIPT_JSON, GeographyHandler)
+        category = getattr(idea_obj, "category", "fact_split")
+        if category == "fact_split":
+            from flows.image_content_generator.pipeline.prompt_shorts.fact_split.models import FactSplitHandler
+            return self.load_json(idea_obj.id, self.SCRIPT_JSON, FactSplitHandler)
+        return self.load_json(idea_obj.id, self.SCRIPT_JSON, VideoScript)
 
     def save_json(self, idea_id: int, filename: str, data: BaseModel):
         """
@@ -499,8 +499,6 @@ class Pipeline(BaseModelTool):
 
     def _build_scene_props(self, idea_obj, scene, audio_duration_ms, remotion_public_images):
         """Build MapRender props dict for a single scene (map_3d or ai_image)."""
-        is_geography_mode = getattr(idea_obj, "category", "") == "geography"
-
         def _get_camera_attr(s, attr, default):
             flat_val = getattr(s, f"camera_{attr}", None)
             if flat_val and flat_val != 0.0:
@@ -759,11 +757,10 @@ class Pipeline(BaseModelTool):
 
             visual_type = getattr(scene, "visual_type", "stock_video")
             query = getattr(scene, "pexels_query", "")
-            is_geography_mode = getattr(idea_obj, "category", "") == "geography"
             audio_duration_ms = get_scene_audio_duration(scene)
 
             # ── Data Visualization scene ──
-            if is_geography_mode and visual_type in ("data_viz", "data_visualization"):
+            if visual_type in ("data_viz", "data_visualization"):
                 Messenger.info(f"   📊 Scene {scene.scene_number}: Rendering data visualization via Remotion...")
                 floating_label = getattr(scene, "floating_label", "none")
                 highlight_region = getattr(scene, "highlight_region", "none")
@@ -802,7 +799,7 @@ class Pipeline(BaseModelTool):
                     Messenger.error(f"   ❌ DataViz failed: {e}. Falling back to map_3d...")
 
             # ── Split Map scene ──
-            if is_geography_mode and visual_type == "split_map":
+            if visual_type == "split_map":
                 Messenger.info(f"   🗺️ Scene {scene.scene_number}: Rendering split map via Remotion...")
                 pins_data = []
                 for p in getattr(scene, "map_pins", []):
@@ -828,7 +825,7 @@ class Pipeline(BaseModelTool):
                     Messenger.error(f"   ❌ SplitMap failed: {e}. Falling back to map_3d...")
 
             # ── Hex Data Grid scene ──
-            if is_geography_mode and visual_type == "hex_grid":
+            if visual_type == "hex_grid":
                 Messenger.info(f"   🔲 Scene {scene.scene_number}: Rendering hex data grid via Remotion...")
                 hex_grid_raw = getattr(scene, "hex_grid", None)
                 hex_grid_title = ""
@@ -870,7 +867,6 @@ class Pipeline(BaseModelTool):
                     return False
             return False
 
-        is_geography_mode = getattr(idea_obj, "category", "") in ("geography", "what_if")
         all_map_render = all(
             getattr(s, "visual_type", "stock_video") in ("map_3d", "ai_image")
             for s in script.scenes
@@ -896,7 +892,7 @@ class Pipeline(BaseModelTool):
                 Messenger.error(f"   ❌ MapRender failed for scene {scene.scene_number}: {e}")
                 return False
 
-        if is_geography_mode and all_map_render:
+        if all_map_render:
             Messenger.info(f"   🚀 Rendering all {len(script.scenes)} scenes in ONE Remotion call (MultiSceneVideo)...")
             scene_props_list = []
             for scene in script.scenes:

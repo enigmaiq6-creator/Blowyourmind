@@ -1,6 +1,5 @@
 import os
 import sys
-import random
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
@@ -103,41 +102,20 @@ class DailyAutomator:
         with open(self.history_file, "a", encoding="utf-8") as f:
             f.write(f"{datetime.now().isoformat()},{post_type},{topic.replace(',', ' ')}\n")
 
-    def _pick_mode(self) -> str:
-        env_mode = os.getenv("MODE", "")
-        if env_mode in ("geography", "what_if"):
-            return env_mode
-        # Random weighted selection
-        weights = os.getenv("MODE_WEIGHTS", "geography=0.7,what_if=0.3")
-        try:
-            parts = [p.split("=") for p in weights.split(",")]
-            modes = [(p[0].strip(), float(p[1])) for p in parts if len(p) == 2]
-        except Exception:
-            modes = [("geography", 0.7), ("what_if", 0.3)]
-        choices, w = zip(*modes) if modes else (["geography"], [1.0])
-        return random.choices(choices, weights=w, k=1)[0]
-
     def run_daily_mix(self):
         """
         Main entry point for GitHub Actions.
-        Generates a video using a randomly selected mode.
+        Generates a video.
         """
-        env_mode = os.getenv("MODE", self._pick_mode())
-        mode_labels = {
-            "geography": "Geography Reel",
-            "what_if": "What If Scenario",
-        }
-        mode_label = mode_labels.get(env_mode, "Geography Reel")
-
-        Messenger.info(f"🎬 GENERATING NEW {mode_label} VIDEO (Full Pipeline)...")
+        Messenger.info(f"🎬 GENERATING NEW VIDEO (Full Pipeline)...")
         self.cleanup_stuck_ideas()
 
         avoid_msg = self.get_recent_topics()
         try:
-            cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", env_mode]
+            cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", "fact_split"]
             subprocess.run(cmd, check=True)
-            Messenger.success(f"✅ {mode_label} video completed!")
-            self.log_post("video", f"{mode_label} Video")
+            Messenger.success(f"✅ Video completed!")
+            self.log_post("video", "Fact Split Video")
             self.sync_to_github()
         except Exception as e:
             Messenger.error(f"Error during video task: {e}")

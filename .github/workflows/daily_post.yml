@@ -51,7 +51,7 @@ jobs:
       # NOTE: GCP/Vertex AI credentials step is DISABLED to avoid charges on the GCP project.
       # Re-enable this step when a new GCP account with credits is available.
 
-      - name: Run Random Mode Automation
+      - name: Run Automation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
@@ -64,9 +64,8 @@ jobs:
           INSTAGRAM_PUBLISH: "true"
           USE_VERTEX_AI_IMAGE: "false"
           USE_VERTEX_AI_AUDIO: "false"
-          # MODE no se setea — _pick_mode() elige aleatoriamente (70% geography, 30% what_if)
         run: |
-          echo "🎲 Generating random mode video..."
+          echo "🎬 Generating video..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
