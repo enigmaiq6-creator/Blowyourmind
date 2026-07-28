@@ -391,12 +391,12 @@ class Pipeline(BaseModelTool):
             if cat == "fact_split":
                 query_a = getattr(scene, "pexels_query_a", None) or ""
                 query_b = getattr(scene, "pexels_query_b", None) or ""
-                if query_a:
-                    out_a = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}_a.png")
-                    fetch_one(f"Scene {scene.scene_number} A", query_a, out_a)
-                if query_b:
-                    out_b = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}_b.png")
-                    fetch_one(f"Scene {scene.scene_number} B", query_b, out_b)
+                out_a = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "subject_a.png")
+                out_b = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "subject_b.png")
+                if query_a and not out_a.exists():
+                    fetch_one(f"Subject A", query_a, out_a)
+                if query_b and not out_b.exists():
+                    fetch_one(f"Subject B", query_b, out_b)
                 return
 
             action_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", f"A cinematic scene about {idea_obj.title}")
@@ -748,8 +748,8 @@ class Pipeline(BaseModelTool):
                 stickman_timeline = getattr(scene, "stickman_timeline", None)
                 visual_text = getattr(scene, "visual_text", "")
 
-                img_a = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}_a.png")
-                img_b = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}_b.png")
+                img_a = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "subject_a.png")
+                img_b = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "subject_b.png")
                 stickman = stickman_dir / f"{stickman_state}.png"
 
                 # Build FFmpeg filter_complex

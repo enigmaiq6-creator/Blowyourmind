@@ -27,8 +27,8 @@ Your task is to generate a comparative idea between TWO subjects that has viral 
 - `sujeto_b`: Name of Subject B.
 - `hook`: Scroll-stopping opening phrase (10-15 words in English). Must create intrigue.
 - `contrast_key`: One-line summary of the key difference in English.
-- `pexels.query_sujeto_a`: English search query for stock photo of Subject A (very descriptive).
-- `pexels.query_sujeto_b`: English search query for stock photo of Subject B (very descriptive).
+- `pexels.query_sujeto_a`: English search query for stock photo of Subject A (very descriptive, used for the SINGLE shared image of Subject A throughout the video).
+- `pexels.query_sujeto_b`: English search query for stock photo of Subject B (very descriptive, used for the SINGLE shared image of Subject B throughout the video).
 - `locucion.texto_a`: Act 1 narration in English. Starts with "This is...".
 - `locucion.texto_b`: Act 2 narration in English. Starts with "This is...".
 - `locucion.pregunta`: "What's the difference?" (or similar question).
@@ -45,19 +45,19 @@ Based on the IDEA, write the complete technical production script.
 
 **ACT 1 (0-2s) — Subject A**
 - Character: estado_A.png (pointing top-left)
-- Subject visible: A (top-left quadrant, x=100:y=200)
+- Subject visible: A (top-left quadrant, x=40:y=60)
 - On-screen text: Subject A name
 - Narration (locucion.texto_a): "This is [Subject A]. [Mind-blowing fact]."
 
 **ACT 2 (2-4s) — Subject B**
 - Character: estado_B.png (pointing top-right)
-- Subject visible: B (top-right quadrant, x=600:y=200)
+- Subject visible: B (top-right quadrant, x=560:y=60)
 - On-screen text: Subject B name
 - Narration (locucion.texto_b): "This is [Subject B]. [Mind-blowing fact]."
 
 **ACT 3 (4-6s) — Question**
 - Character: estado_curiosidad.png (hands down, question marks)
-- Subject visible: both (A at x=100:y=200, B at x=600:y=200)
+- Subject visible: both (A at x=40:y=60, B at x=560:y=60)
 - Visual text: "Did you know?" or large question mark
 - Narration (locucion.pregunta): "What's the difference?"
 
@@ -93,6 +93,7 @@ Based on the IDEA, write the complete technical production script.
 - Each act must last EXACTLY as specified (2s, 2s, 2s, remainder).
 - Pexels queries must be in ENGLISH.
 - The final explanation must be surprising but TRUE.
+- **IMPORTANT: The SAME subject images are used throughout the entire video.** The pexels_query_a / pexels_query_b for each scene should be CONSISTENT (same query for Subject A across all scenes, same query for Subject B across all scenes). The images never change per scene.
 """
 
 AUDIO_PROMPT_FACT_SPLIT = """
