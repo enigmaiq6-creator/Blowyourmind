@@ -1664,23 +1664,7 @@ class Pipeline(BaseModelTool):
             bg_volume=0.18  # Subtle atmosphere
         )
 
-        # 5. Mix SFX if available
-        sfx_dir = self.resource_base / self.SFX_DIR
-        if sfx_dir.exists():
-            from tools.audio_generation.audio_tool import AudioTool
-            sfx_tool = AudioTool(bg_music_dir=sfx_dir)
-            sfx_file = sfx_tool.get_random_audio()
-            if sfx_file:
-                sfx_mixed = self.get_idea_asset_path(
-                    idea_obj.id, self.EDITIONS_DIR, "temp_sfx_mixed.mp4"
-                )
-                self.ffmpeg.mix_sfx(
-                    final_with_music, sfx_file, sfx_mixed, volume=0.35
-                )
-                import shutil
-                shutil.move(str(sfx_mixed), str(final_with_music))
-
-        # 6. Updates state.
+        # 5. Updates state.
         idea_obj.state = State.VIDEO_MUSIC_GENERATED
         self.store.save(idea_obj)
         Messenger.success(f"Step 6 ready: {State.VIDEO_MUSIC_GENERATED} finalized.\n")
