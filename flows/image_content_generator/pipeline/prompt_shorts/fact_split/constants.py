@@ -6,7 +6,7 @@ Your task is to generate a comparative idea between TWO subjects that has viral 
 1. **Act 1 (0-2s)**: "This is [Subject A]" — Character points top-left (estado_A.png).
 2. **Act 2 (2-4s)**: "This is [Subject B]" — Character points top-right (estado_B.png).
 3. **Act 3 (4-6s)**: "What's the difference?" — Character with hands down, question marks (estado_curiosidad.png).
-4. **Act 4 (6-end)**: Explanation of the unique contrast between them — Character in estado_curiosidad.
+4. **Act 4 (6-end)**: Explanation of the unique contrast — Character dynamically points to whichever subject is being mentioned at that moment.
 
 **VIRAL COMPARISON RULES:**
 - Both subjects must be VISUALLY DISTINCT but belong to the same general category.
@@ -18,6 +18,8 @@ Your task is to generate a comparative idea between TWO subjects that has viral 
 - Wolf vs Golden Retriever → "The wolf has twice the jaw pressure of any domestic dog."
 - Crocodile vs Lizard → "Crocodiles don't sweat — they regulate temperature with their mouths open."
 - Helium vs Hydrogen → "Hydrogen is the most abundant element in the universe, but helium cannot be synthesized."
+
+**CRITICAL SPELLING RULE:** All generated English text MUST have PERFECT spelling and grammar. No typos, no misspellings, no punctuation errors. Each word must be correctly spelled. This is a hard requirement.
 
 **MANDATORY FIELDS (ALL IN ENGLISH):**
 - `tema`: Theme category: 'science', 'animals', 'history', 'mythology', 'technology', 'space', or 'geography'.
@@ -60,18 +62,22 @@ Based on the IDEA, write the complete technical production script.
 - Narration (locucion.pregunta): "What's the difference?"
 
 **ACT 4 (6s-end) — Explanation**
-- Character: estado_curiosidad.png
+- Character: dynamically points to whichever subject is being mentioned
 - Subject visible: both (same positions)
 - On-screen explanation text
 - Narration (locucion.contraste_final): Contrast explanation.
+
+**SOUND EFFECTS (SFX):** Each scene can have an `sfx` field. Use `sfx: "swoosh"` for scenes where the character changes pointing direction (character transitions). Use `sfx: "none"` for static scenes.
 
 **MANDATORY TECHNICAL FIELDS:**
 - `scenes`: Array of 4 acts, each with:
   - `act_number`: 1-4
   - `narration`: English narration for this act
-  - `stickman_state`: 'estado_A', 'estado_B', or 'estado_curiosidad'
+  - `stickman_state`: Default state for the act ('estado_A', 'estado_B', or 'estado_curiosidad')
+  - `stickman_timeline`: Array of {start_sec, end_sec, state} for time-based switching within the act. CRITICAL: In Act 4, when narration mentions Subject A, the character MUST point to A (estado_A). When it mentions Subject B, it MUST point to B (estado_B). Use estado_curiosidad for general statements.
   - `sujeto_visible`: 'A', 'B', or 'ambos'
   - `visual_text`: Optional on-screen text in English
+  - `sfx`: Sound effect for this scene. "swoosh" when character changes state, "none" for static scenes.
   - `pexels_query_a`: Pexels query for Subject A image
   - `pexels_query_b`: Pexels query for Subject B image
   - `overlay_positions`: FFmpeg overlay coordinates
@@ -83,7 +89,7 @@ Based on the IDEA, write the complete technical production script.
 - `whisper_payload`: Full concatenated narration text for subtitle segmentation
 
 **CRITICAL:**
-- ALL content must be in ENGLISH.
+- ALL content must be in ENGLISH with PERFECT spelling and grammar — no typos, no misspellings.
 - Each act must last EXACTLY as specified (2s, 2s, 2s, remainder).
 - Pexels queries must be in ENGLISH.
 - The final explanation must be surprising but TRUE.

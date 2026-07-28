@@ -714,6 +714,19 @@ class Pipeline(BaseModelTool):
         # ── FACT SPLIT: Render clips with FFmpeg compositing (no Remotion) ──
         if category == "fact_split":
             Messenger.info(f"   🎬 Fact Split mode: compositing {len(script.scenes)} scenes with FFmpeg...")
+            # Load subject names from idea JSON
+            sujeto_a = "A"
+            sujeto_b = "B"
+            try:
+                import json as _json
+                _idea_path = self.get_idea_path(idea_obj.id) / self.IDEA_JSON
+                if _idea_path.exists():
+                    _idea_data = _json.loads(_idea_path.read_text(encoding="utf-8"))
+                    sujeto_a = _idea_data.get("sujeto_a", "A")
+                    sujeto_b = _idea_data.get("sujeto_b", "B")
+            except Exception:
+                pass
+
             stickman_dir = self.resource_base / "stickman"
             results = []
             for scene in script.scenes:
@@ -732,6 +745,7 @@ class Pipeline(BaseModelTool):
 
                 sujeto = getattr(scene, "sujeto_visible", "A")
                 stickman_state = getattr(scene, "stickman_state", "estado_curiosidad")
+                stickman_timeline = getattr(scene, "stickman_timeline", None)
                 visual_text = getattr(scene, "visual_text", "")
 
                 img_a = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{scene.scene_number:02d}_a.png")
@@ -743,7 +757,7 @@ class Pipeline(BaseModelTool):
                 inputs = []
 
                 # Input 0: color background
-                bg = "color=c=#1a1a2e:s=1080x1920:d={}:r=30".format(dur)
+                bg = "color=c=#ffffff:s=1080x1920:d={}:r=30".format(dur)
                 filters.append(f"[0:v]format=rgba[bg]")
 
                 idx = 1
@@ -753,6 +767,9 @@ class Pipeline(BaseModelTool):
                     filters.append(f"[{idx}:v]scale=400:400,format=rgba[img_a]")
                     filters.append(f"[bg][img_a]overlay=x=100:y=200[bg]")
                     idx += 1
+                    # Label above subject A
+                    _name_a = sujeto_a.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
+                    filters.append(f"[bg]drawtext=text='{_name_a}':fontsize=24:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=300-text_w/2:y=158:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=1:bordercolor=black@0.8[bg]")
 
                 # Overlay subject B (top-right, 400x400)
                 if img_b.exists() and sujeto in ("B", "ambos"):
@@ -760,9 +777,25 @@ class Pipeline(BaseModelTool):
                     filters.append(f"[{idx}:v]scale=400:400,format=rgba[img_b]")
                     filters.append(f"[bg][img_b]overlay=x=580:y=200[bg]")
                     idx += 1
+                    # Label above subject B
+                    _name_b = sujeto_b.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
+                    filters.append(f"[bg]drawtext=text='{_name_b}':fontsize=24:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=780-text_w/2:y=158:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=1:bordercolor=black@0.8[bg]")
 
-                # Overlay stickman (bottom-center)
-                if stickman.exists():
+                # Overlay stickman (bottom-center) — dynamic timeline if present
+                if stickman_timeline:
+                    for tl_item in stickman_timeline:
+                        tl_state = tl_item.state if hasattr(tl_item, 'state') else tl_item.get('state', 'estado_curiosidad')
+                        tl_start = tl_item.start_sec if hasattr(tl_item, 'start_sec') else tl_item.get('start_sec', 0)
+                        tl_end = tl_item.end_sec if hasattr(tl_item, 'end_sec') else tl_item.get('end_sec', dur)
+                        state_file = stickman_dir / f"{tl_state}.png"
+                        if not state_file.exists():
+                            continue
+                        inputs.append(f"-i {state_file}")
+                        filters.append(f"[{idx}:v]scale=400:600,format=rgba[sm{idx}]")
+                        enable = f":enable='between(t,{tl_start},{tl_end})'"
+                        filters.append(f"[bg][sm{idx}]overlay=x=340:y=800{enable}[bg]")
+                        idx += 1
+                elif stickman.exists():
                     inputs.append(f"-i {stickman}")
                     filters.append(f"[{idx}:v]scale=400:600,format=rgba[sm]")
                     filters.append(f"[bg][sm]overlay=x=340:y=800[bg]")
@@ -771,7 +804,7 @@ class Pipeline(BaseModelTool):
                 # Add visual text if present
                 if visual_text:
                     escaped = visual_text.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
-                    filters.append(f"[bg]drawtext=text='{escaped}':fontsize=42:fontcolor=white:x=(w-text_w)/2:y=650:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf'[bg]")
+                    filters.append(f"[bg]drawtext=text='{escaped}':fontsize=42:fontcolor=black:x=(w-text_w)/2:y=650:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf'[bg]")
 
                 filter_complex = "; ".join(filters) if filters else "null"
 
@@ -1283,26 +1316,49 @@ class Pipeline(BaseModelTool):
             scene_num = getattr(script_data.scenes[i], 'scene_number', i + 1)
             seg = self.get_idea_asset_path(idea_obj.id, self.AUDIOS_DIR, self.SCENE_AUDIO_PATTERN.format(scene_num))
             
-            # --- FASE 1: SFX TRANSITION LOGIC ---
-            sfx_name = getattr(script_data.scenes[i], 'sfx', 'swoosh')
-            if not sfx_name or sfx_name == 'none':
-                sfx_name = 'swoosh'
-            sfx_name = sfx_name.lower().strip()
-            
-            sfx_path = Path("flows/image_content_generator/resources/sfx") / f"{sfx_name}.mp3"
+            # --- SFX: Character transition sounds ---
+            stickman_timeline = getattr(script_data.scenes[i], 'stickman_timeline', None)
+            sfx_path = self.resource_base / self.SFX_DIR / "whoosh.wav"
             if not sfx_path.exists():
-                sfx_path = Path("flows/image_content_generator/resources/sfx") / f"{sfx_name}.wav"
+                sfx_path = self.resource_base / self.SFX_DIR / "swoosh.wav"
             if not sfx_path.exists():
-                sfx_path = Path("flows/image_content_generator/resources/sfx/swoosh.mp3")
+                sfx_path = None
 
-            if sfx_path.exists() and seg.exists():
-                sfx_seg = self.get_idea_asset_path(idea_obj.id, self.AUDIOS_DIR, f"scene_{scene_num:02d}_sfx.wav")
-                try:
-                    self.ffmpeg.mix_sfx(seg, sfx_path, sfx_seg, volume=0.35)
-                    if sfx_seg.exists():
-                        seg = sfx_seg  # Use the version with SFX injected
-                except Exception as e:
-                    Messenger.warning(f"Failed to mix SFX '{sfx_name}' for scene {scene_num}: {e}")
+            if seg.exists() and sfx_path:
+                current_audio = seg
+                transitions_added = 0
+
+                # Mix whoosh at each stickman timeline transition
+                if stickman_timeline:
+                    prev_state = None
+                    for tl_item in stickman_timeline:
+                        tl_state = tl_item.state if hasattr(tl_item, 'state') else tl_item.get('state', '')
+                        if prev_state is not None and tl_state != prev_state:
+                            tl_start = tl_item.start_sec if hasattr(tl_item, 'start_sec') else tl_item.get('start_sec', 0)
+                            sfx_seg = self.get_idea_asset_path(idea_obj.id, self.AUDIOS_DIR, f"scene_{scene_num:02d}_sfx_{transitions_added}.wav")
+                            try:
+                                self.ffmpeg.mix_sfx_at(current_audio, sfx_path, sfx_seg, start_sec=tl_start, volume=0.3)
+                                if sfx_seg.exists():
+                                    current_audio = sfx_seg
+                                    transitions_added += 1
+                            except Exception as e:
+                                Messenger.warning(f"SFX transition failed at {tl_start}s: {e}")
+                        prev_state = tl_state
+
+                # Scene-level SFX if no stickman_timeline
+                if not stickman_timeline:
+                    sfx_default = self.resource_base / self.SFX_DIR / "swoosh.wav"
+                    if sfx_default.exists():
+                        sfx_seg = self.get_idea_asset_path(idea_obj.id, self.AUDIOS_DIR, f"scene_{scene_num:02d}_sfx.wav")
+                        try:
+                            self.ffmpeg.mix_sfx(current_audio, sfx_default, sfx_seg, volume=0.35)
+                            if sfx_seg.exists():
+                                current_audio = sfx_seg
+                        except Exception as e:
+                            Messenger.warning(f"SFX failed for scene {scene_num}: {e}")
+
+                if transitions_added > 0 or current_audio != seg:
+                    seg = current_audio
 
             if seg.exists():
                 audio_segments.append(seg)

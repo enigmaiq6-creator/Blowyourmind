@@ -4,6 +4,12 @@ from flows.image_content_generator.pipeline.prompt_base.models import BaseIdea, 
 from flows.image_content_generator.pipeline.prompt_shorts.fact_split import constants as fact_split_constants
 
 
+class StickmanTimelineItem(BaseModel):
+    start_sec: float = Field(description="Start time in seconds for this stickman state.")
+    end_sec: float = Field(description="End time in seconds for this stickman state.")
+    state: str = Field(description="Character state: 'estado_A', 'estado_B', or 'estado_curiosidad'.")
+
+
 class PexelsQuery(BaseModel):
     query_sujeto_a: str = Field(description="Highly descriptive English search query for stock photo of Subject A (e.g. 'wolf howling in snowy forest').")
     query_sujeto_b: str = Field(description="Highly descriptive English search query for stock photo of Subject B (e.g. 'golden retriever playing in park').")
@@ -47,6 +53,7 @@ class FactSplitScene(Scene):
     act_number: int = Field(description="Act number: 1, 2, 3, or 4.")
     stickman_state: str = Field(description="Character state: 'estado_A', 'estado_B', or 'estado_curiosidad'.")
     sujeto_visible: str = Field(description="Which subject is visible: 'A', 'B', or 'ambos'.")
+    stickman_timeline: Optional[List[StickmanTimelineItem]] = Field(default=None, description="Time-based stickman state changes within this scene. When null, stickman_state is used for the full duration.")
     visual_text: Optional[str] = Field(default=None, description="Text overlay shown on screen during this act in English.")
     pexels_query_a: Optional[str] = Field(default=None, description="Pexels query for Subject A image.")
     pexels_query_b: Optional[str] = Field(default=None, description="Pexels query for Subject B image.")

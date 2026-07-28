@@ -346,6 +346,26 @@ class FFmpegTool(BaseModelTool):
         ]
         self._run(cmd)
 
+    def mix_sfx_at(self, base_audio: Path, sfx_audio: Path, out_path: Path, start_sec: float, volume: float = 0.35) -> None:
+        """
+        Mixes a short Sound Effect at a specific timestamp into the base audio.
+        Uses adelay to shift the SFX to the correct position, then amix.
+        """
+        delay_ms = int(start_sec * 1000)
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", str(base_audio),
+            "-i", str(sfx_audio),
+            "-filter_complex",
+            f"[0:a]aformat=sample_rates=44100:channel_layouts=mono[a0];"
+            f"[1:a]volume={volume},aformat=sample_rates=44100:channel_layouts=mono,adelay={delay_ms}[a1];"
+            f"[a0][a1]amix=inputs=2:duration=first:dropout_transition=2[a]",
+            "-map", "[a]",
+            "-v", "error",
+            str(out_path)
+        ]
+        self._run(cmd)
+
     def extract_audio(self, video_in: Path, audio_out: Path) -> None:
         """
         Extracts audio from a video file, optimized for Whisper STT.

@@ -15,13 +15,14 @@ interface LevelMarker {
   endTime: number;
 }
 
-const ACCENT = '#FFB800';
-const TEXT_SHADOW = '0 2px 12px rgba(0,0,0,0.7), 0 4px 24px rgba(0,0,0,0.3)';
+const ACCENT = '#00FFFF';
+const TEXT_SHADOW = '0 2px 12px rgba(0,0,0,0.9), 0 4px 24px rgba(0,0,0,0.6)';
+const TEXT_STROKE = '3.5px #000000';
 
 const IMPACT_COLORS: Record<string, { from: string; to: string }> = {
-  Low: { from: '#00D25A', to: '#00E676' },
-  Medium: { from: '#FF8C00', to: '#FFB300' },
-  High: { from: '#FF1744', to: '#FF5252' },
+  Low: { from: '#00E676', to: '#00FFAA' },
+  Medium: { from: '#00BFFF', to: '#00FFFF' },
+  High: { from: '#FF4500', to: '#FF6B35' },
   Extreme: { from: '#D500F9', to: '#E040FB' },
 };
 
@@ -88,13 +89,15 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
             color: '#ffffff', fontSize: 52, fontWeight: 900,
             fontFamily: '"Montserrat Black", Inter, Arial Black, sans-serif',
             textTransform: 'uppercase', letterSpacing: '0.06em',
-            textShadow: '0 4px 20px rgba(0,0,0,0.6), 0 2px 4px rgba(0,0,0,0.8)',
+            WebkitTextStroke: '2.5px #000000',
+            textShadow: '0 4px 20px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.9)',
           }}>
             {topHeadline}
           </span>
           <div style={{
-            width: 80, height: 3, margin: '12px auto 0',
+            width: 100, height: 4, margin: '14px auto 0',
             background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)`,
+            boxShadow: `0 0 12px ${ACCENT}66`,
           }}/>
         </div>
       )}
@@ -166,7 +169,7 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
 
         return (
           <div key={pi} style={{ 
-            position: 'absolute', left: 0, right: 0, bottom: 280,
+            position: 'absolute', left: 0, right: 0, top: 640,
             transform: `translateY(${phraseEnter}px)`,
             opacity: phraseOpacity,
             display: 'flex', justifyContent: 'center', zIndex: 100,
@@ -203,7 +206,8 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
                     fontSize: isCurrentWord ? 68 : 56,
                     fontFamily: '"Montserrat Bold", Inter, Arial, sans-serif',
                     fontWeight: 700,
-                    color: isCurrentWord ? '#FFEA00' : '#ffffff',
+                    color: isCurrentWord ? '#00FFFF' : '#ffffff',
+                    WebkitTextStroke: isCurrentWord ? TEXT_STROKE : '2.5px #000000',
                     textShadow: isCurrentWord ? TEXT_SHADOW : '0 2px 10px rgba(0,0,0,0.6)',
                     lineHeight: 1.3,
                     letterSpacing: '0.02em',
@@ -215,10 +219,10 @@ export const Subtitles: React.FC<{ words: Word[], topHeadline?: string, levelMar
                     {isCurrentWord && (
                       <div style={{
                         position: 'absolute', bottom: -2, left: '5%', right: '5%',
-                        height: 3.5,
+                        height: 4,
                         background: currentLevel ? getImpactGradient(currentLevel.impacto) : ACCENT,
-                        borderRadius: 1.5,
-                        boxShadow: currentLevel ? getImpactGlow(currentLevel.impacto) : `0 0 8px ${ACCENT}66`,
+                        borderRadius: 2,
+                        boxShadow: currentLevel ? getImpactGlow(currentLevel.impacto) : `0 0 14px ${ACCENT}88`,
                       }}/>
                     )}
                   </span>

@@ -41,14 +41,14 @@ class VertexAIAudioGenerator(BaseModelTool):
         synthesis_input = texttospeech.SynthesisInput(text=text)
 
         # Build the voice request
-        # We'll use a high-quality English Studio voice
+        # Using energetic, lively male Studio voice
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
-            name="en-US-Studio-Q" # High quality male Studio voice
+            name="en-US-Studio-O" # Energetic, lively male Studio voice
         )
 
         # Select the type of audio file you want returned
-        speaking_rate = float(os.getenv("TTS_SPEAKING_RATE", "0.92"))
+        speaking_rate = float(os.getenv("TTS_SPEAKING_RATE", "1.05"))
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.LINEAR16,
             sample_rate_hertz=16000,
