@@ -17,6 +17,8 @@ class PexelsTool(BaseModelTool):
     def fetch_image(self, query: str, out_path: Path, min_width: int = 1080) -> bool:
         """
         Busca una imagen basada en el query y la descarga.
+        Prueba sin orientación primero; si no hay resultados, prueba square.
+        Recorta la imagen a formato cuadrado (center crop) para el layout Fact Split.
         Retorna True si fue exitoso, False en caso contrario.
         """
         if not self.api_key:
@@ -31,34 +33,31 @@ class PexelsTool(BaseModelTool):
         url = "https://api.pexels.com/v1/search"
         headers = {"Authorization": self.api_key}
 
-        random_page = random.randint(1, 3)
-        params = {
-            "query": query,
-            "per_page": 15,
-            "page": random_page,
-            "orientation": "square"
-        }
+        def search_pexels(orientation: str = "") -> list:
+            nonlocal url, headers
+            for attempt in range(2):
+                page = 1 if attempt == 0 else random.randint(1, 3)
+                params = {"query": query, "per_page": 15, "page": page}
+                if orientation:
+                    params["orientation"] = orientation
+                resp = requests.get(url, headers=headers, params=params)
+                resp.raise_for_status()
+                photos = resp.json().get("photos", [])
+                if photos:
+                    return photos
+            return []
 
         try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-
-            photos = data.get("photos", [])
+            photos = search_pexels()
             if not photos:
-                if random_page > 1:
-                    params["page"] = 1
-                    response = requests.get(url, headers=headers, params=params)
-                    data = response.json()
-                    photos = data.get("photos", [])
+                photos = search_pexels("square")
 
-                if not photos:
-                    Messenger.warning(f"⚠️ No se encontraron imágenes para '{query}' en Pexels.")
-                    return False
+            if not photos:
+                Messenger.warning(f"⚠️ No se encontraron imágenes para '{query}' en Pexels.")
+                return False
 
             selected = random.choice(photos)
             src = selected.get("src", {})
-
             download_link = src.get("large") or src.get("original")
             if not download_link:
                 return False
@@ -68,9 +67,24 @@ class PexelsTool(BaseModelTool):
             img_res.raise_for_status()
 
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(out_path, "wb") as f:
+            raw_path = out_path.with_suffix(".raw" + out_path.suffix)
+            with open(raw_path, "wb") as f:
                 for chunk in img_res.iter_content(chunk_size=8192):
                     f.write(chunk)
+
+            from PIL import Image
+            img = Image.open(raw_path)
+            w, h = img.size
+            if w != h:
+                side = min(w, h)
+                left = (w - side) // 2
+                top = (h - side) // 2
+                img = img.crop((left, top, left + side, top + side))
+                img.save(out_path, quality=92)
+                raw_path.unlink()
+                Messenger.info(f"   ✂️ Recortada a cuadrado: {side}x{side}")
+            else:
+                raw_path.rename(out_path)
 
             Messenger.success(f"✅ Imagen descargada: {out_path.name}")
             return True
