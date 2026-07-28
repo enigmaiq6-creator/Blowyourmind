@@ -761,27 +761,27 @@ class Pipeline(BaseModelTool):
                 filters.append(f"[0:v]format=rgba[bg]")
 
                 idx = 1
-                # Overlay subject A (top-left, 400x400, rounded via alpha if needed)
+                # Overlay subject A (top-left, 480x480)
                 if img_a.exists() and sujeto in ("A", "ambos"):
                     inputs.append(f"-i {img_a}")
-                    filters.append(f"[{idx}:v]scale=400:400,format=rgba[img_a]")
-                    filters.append(f"[bg][img_a]overlay=x=100:y=200[bg]")
+                    filters.append(f"[{idx}:v]scale=480:480,format=rgba[img_a]")
+                    filters.append(f"[bg][img_a]overlay=x=40:y=60[bg]")
                     idx += 1
                     # Label above subject A
                     _name_a = sujeto_a.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
-                    filters.append(f"[bg]drawtext=text='{_name_a}':fontsize=24:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=300-text_w/2:y=158:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=1:bordercolor=black@0.8[bg]")
+                    filters.append(f"[bg]drawtext=text='{_name_a}':fontsize=32:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=280-text_w/2:y=32:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=2:bordercolor=black@0.8[bg]")
 
-                # Overlay subject B (top-right, 400x400)
+                # Overlay subject B (top-right, 480x480)
                 if img_b.exists() and sujeto in ("B", "ambos"):
                     inputs.append(f"-i {img_b}")
-                    filters.append(f"[{idx}:v]scale=400:400,format=rgba[img_b]")
-                    filters.append(f"[bg][img_b]overlay=x=580:y=200[bg]")
+                    filters.append(f"[{idx}:v]scale=480:480,format=rgba[img_b]")
+                    filters.append(f"[bg][img_b]overlay=x=560:y=60[bg]")
                     idx += 1
                     # Label above subject B
                     _name_b = sujeto_b.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
-                    filters.append(f"[bg]drawtext=text='{_name_b}':fontsize=24:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=780-text_w/2:y=158:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=1:bordercolor=black@0.8[bg]")
+                    filters.append(f"[bg]drawtext=text='{_name_b}':fontsize=32:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8:x=800-text_w/2:y=32:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf':borderw=2:bordercolor=black@0.8[bg]")
 
-                # Overlay stickman (bottom-center) — dynamic timeline if present
+                # Overlay stickman (bottom-center, large) — dynamic timeline if present
                 if stickman_timeline:
                     for tl_item in stickman_timeline:
                         tl_state = tl_item.state if hasattr(tl_item, 'state') else tl_item.get('state', 'estado_curiosidad')
@@ -791,20 +791,17 @@ class Pipeline(BaseModelTool):
                         if not state_file.exists():
                             continue
                         inputs.append(f"-i {state_file}")
-                        filters.append(f"[{idx}:v]scale=400:600,format=rgba[sm{idx}]")
+                        filters.append(f"[{idx}:v]scale=650:975,format=rgba[sm{idx}]")
                         enable = f":enable='between(t,{tl_start},{tl_end})'"
-                        filters.append(f"[bg][sm{idx}]overlay=x=340:y=800{enable}[bg]")
+                        filters.append(f"[bg][sm{idx}]overlay=x=215:y=580{enable}[bg]")
                         idx += 1
                 elif stickman.exists():
                     inputs.append(f"-i {stickman}")
-                    filters.append(f"[{idx}:v]scale=400:600,format=rgba[sm]")
-                    filters.append(f"[bg][sm]overlay=x=340:y=800[bg]")
+                    filters.append(f"[{idx}:v]scale=650:975,format=rgba[sm]")
+                    filters.append(f"[bg][sm]overlay=x=215:y=580[bg]")
                     idx += 1
 
-                # Add visual text if present
-                if visual_text:
-                    escaped = visual_text.replace("'", "'\\\\''").replace(":", "\\:").replace("%", "\\%")
-                    filters.append(f"[bg]drawtext=text='{escaped}':fontsize=42:fontcolor=black:x=(w-text_w)/2:y=650:fontfile='C\\:\\\\Windows\\\\Fonts\\\\arial.ttf'[bg]")
+                # Remove visual text drawtext (subject labels are above images; names at bottom removed)
 
                 filter_complex = "; ".join(filters) if filters else "null"
 

@@ -41,10 +41,10 @@ class VertexAIAudioGenerator(BaseModelTool):
         synthesis_input = texttospeech.SynthesisInput(text=text)
 
         # Build the voice request
-        # Using energetic, lively male Studio voice
+        # Using warm, deep male Studio voice
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
-            name="en-US-Studio-O" # Energetic, lively male Studio voice
+            name="en-US-Studio-Q" # Warm, deep male Studio voice
         )
 
         # Select the type of audio file you want returned
