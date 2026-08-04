@@ -424,6 +424,43 @@ class Pipeline(BaseModelTool):
         Messenger.success(f"Step 2 ready: {State.IMAGES_GENERATED} finalized.\n")
 
 
+    def step3_generate_audios(self):
+        """Step 3: Generating voiceover audio for each scene."""
+        idea_obj = self.store.get_first_by_state(State.IMAGES_GENERATED, category=self._category)
+        if not idea_obj:
+            Messenger.warning("Step 3 skipped: No idea in IMAGES_GENERATED state.")
+            return
+
+        Messenger.info(f"\\n--- Step 3 started: Generating audios for '{idea_obj.title}' ---")
+        script = self.load_script(idea_obj)
+
+        for scene in script.scenes:
+            sn = getattr(scene, 'scene_number', 1)
+            audio_path = self.get_idea_asset_path(idea_obj.id, self.AUDIOS_DIR, self.SCENE_AUDIO_PATTERN.format(sn))
+            
+            if audio_path.exists() and audio_path.stat().st_size > 1024:
+                Messenger.info(f"   Audio for scene {sn} already exists.")
+                continue
+
+            text = getattr(scene, 'narration', '')
+            if not text:
+                continue
+
+            prompt = self.prompt_manager().get_audio_prompt(text, mode=self.mode)
+            try:
+                self.audio_gen().generate_audio(
+                    prompt=prompt,
+                    output_path=str(audio_path)
+                )
+                Messenger.success(f"   ✅ Audio {sn} generated.")
+            except Exception as e:
+                Messenger.error(f"   ❌ Failed to generate audio for scene {sn}: {e}")
+                return
+
+        idea_obj.state = State.AUDIO_GENERATED
+        self.store.save(idea_obj)
+        Messenger.success(f"Step 3 ready: {State.AUDIO_GENERATED} finalized.\\n")
+
     def step2b_generate_video_clips(self):
         """
         Step 2b: Componer cada escena con el estilo cinemático (Ken Burns)
