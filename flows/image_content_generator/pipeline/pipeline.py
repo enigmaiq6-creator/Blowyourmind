@@ -446,11 +446,10 @@ class Pipeline(BaseModelTool):
             if not text:
                 continue
 
-            prompt = self.prompt_manager.get_audio_prompt(text, mode=self.mode)
             try:
-                self.audio_gen.generate_audio(
-                    prompt=prompt,
-                    output_path=str(audio_path)
+                self.audio_gen.text_to_speech(
+                    text=text,
+                    audio_path=audio_path
                 )
                 Messenger.success(f"   ✅ Audio {sn} generated.")
             except Exception as e:
@@ -459,7 +458,7 @@ class Pipeline(BaseModelTool):
 
         idea_obj.state = State.AUDIO_GENERATED
         self.store.save(idea_obj)
-        Messenger.success(f"Step 3 ready: {State.AUDIO_GENERATED} finalized.\\n")
+        Messenger.success(f"Step 3 ready: {State.AUDIO_GENERATED} finalized.")
 
     def step2b_generate_video_clips(self):
         """
