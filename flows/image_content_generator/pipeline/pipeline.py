@@ -446,9 +446,9 @@ class Pipeline(BaseModelTool):
             if not text:
                 continue
 
-            prompt = self.prompt_manager().get_audio_prompt(text, mode=self.mode)
+            prompt = self.prompt_manager.get_audio_prompt(text, mode=self.mode)
             try:
-                self.audio_gen().generate_audio(
+                self.audio_gen.generate_audio(
                     prompt=prompt,
                     output_path=str(audio_path)
                 )
