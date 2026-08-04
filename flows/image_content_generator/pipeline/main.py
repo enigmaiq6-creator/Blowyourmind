@@ -32,7 +32,7 @@ def main():
     parser.add_argument("orientation", type=VideoOrientation, choices=list(VideoOrientation))
     parser.add_argument("step", type=PipelineStep, choices=list(PipelineStep))
     parser.add_argument("--avoid", type=str, default="", help="List of topics to avoid")
-    parser.add_argument("--mode", type=str, default="fact_split", choices=["fact_split"], help="Content generation mode")
+    parser.add_argument("--mode", type=str, default="finance", choices=["fact_split", "finance"], help="Content generation mode")
     args = parser.parse_args()
 
     # Determine output base based on orientation

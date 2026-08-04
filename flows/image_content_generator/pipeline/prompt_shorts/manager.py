@@ -7,35 +7,34 @@ from flows.image_content_generator.pipeline.prompt_base.models import (
     BaseIdea,
     CategoryHandler,
     VideoScript,
-    ImagePrompt,
 )
-from flows.image_content_generator.pipeline.prompt_shorts.fact_split.models import FactSplitHandler, FactSplitIdea
-from flows.image_content_generator.pipeline.prompt_shorts.fact_split import constants as fact_split_constants
+from flows.image_content_generator.pipeline.prompt_shorts.finance.models import FinanceHandler, FinanceIdea
+from flows.image_content_generator.pipeline.prompt_shorts.finance import constants as finance_constants
 
 from tools.common.messenger import Messenger
 from tools.text_generation.gemini import GeminiTextGenerator
 
 
 class PromptManagerShorts(BasePromptManager):
-    """Manager for Fact Split short-form video content."""
+    """Manager for Finance Papercraft short-form video content."""
 
-    CATEGORIES: Sequence[Type[CategoryHandler]] = [FactSplitHandler]
+    CATEGORIES: Sequence[Type[CategoryHandler]] = [FinanceHandler]
 
-    FACT_SPLIT_AUDIO_PROMPT: str = fact_split_constants.AUDIO_PROMPT_FACT_SPLIT
+    FINANCE_AUDIO_PROMPT: str = finance_constants.AUDIO_PROMPT_FINANCE
 
-    def get_audio_prompt(self, audio_text: str, mode: str = "fact_split") -> str:
-        return self.FACT_SPLIT_AUDIO_PROMPT.format(audio_text=audio_text)
+    def get_audio_prompt(self, audio_text: str, mode: str = "finance") -> str:
+        return self.FINANCE_AUDIO_PROMPT.format(audio_text=audio_text)
 
     def generate_full_story(
-        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = "", mode: str = "fact_split"
+        self, content_gen: GeminiTextGenerator, titles_to_avoid: list[str] = [], extra_avoid: str = "", mode: str = "finance"
     ) -> Tuple[BaseIdea, VideoScript, str]:
-        category = "fact_split"
-        idea_model = FactSplitIdea
-        idea_prompt = fact_split_constants.IDEA_PROMPT_FACT_SPLIT
-        script_prompt = fact_split_constants.SCRIPT_PROMPT_FACT_SPLIT
-        series_name = "BlowYourMind Fact Split"
-        handler_class = FactSplitHandler
-        focus_areas = fact_split_constants.FOCUS_AREAS_FACT_SPLIT
+        category = "finance"
+        idea_model = FinanceIdea
+        idea_prompt = finance_constants.IDEA_PROMPT_FINANCE
+        script_prompt = finance_constants.SCRIPT_PROMPT_FINANCE
+        series_name = "BlowYourMind Finance History"
+        handler_class = FinanceHandler
+        focus_areas = finance_constants.FOCUS_AREAS_FINANCE
 
         # Count parts to avoid repetition
         parts_count = sum(1 for t in titles_to_avoid if series_name in str(t))
@@ -74,13 +73,13 @@ class PromptManagerShorts(BasePromptManager):
 
         idea_data = content_gen.generate_text(full_idea_prompt + avoid_msg, idea_model)
 
-        Messenger.info(f"\n--- Generating FACT SPLIT Script: {idea_data.title} ---")
+        Messenger.info(f"\n--- Generating FINANCE Script: {idea_data.title} ---")
 
         full_script_prompt = (
             script_prompt +
             f"\n\nIDEA TO DEVELOP: {idea_data.title}\n"
-            f"SUJETO A: {idea_data.sujeto_a}\n"
-            f"SUJETO B: {idea_data.sujeto_b}\n"
+            f"HOOK: {idea_data.hook}\n"
+            f"KEY TAKEAWAY: {idea_data.key_takeaway}\n"
         )
         script = content_gen.generate_text(full_script_prompt, handler_class)
 
@@ -94,8 +93,5 @@ class PromptManagerShorts(BasePromptManager):
         if "caption" in idea_data.model_fields:
             new_val = str(getattr(idea_data, "caption", "")) + transparency_footer
             setattr(idea_data, "caption", new_val)
-        elif "hook" in idea_data.model_fields:
-            new_val = str(getattr(idea_data, "hook", "")) + transparency_footer
-            setattr(idea_data, "hook", new_val)
 
         return idea_data, script, category
