@@ -387,17 +387,6 @@ class Pipeline(BaseModelTool):
                 return False
 
         def generate_one(scene):
-            cat = getattr(idea_obj, "category", "")
-            if cat == "fact_split":
-                query_a = getattr(scene, "pexels_query_a", None) or ""
-                query_b = getattr(scene, "pexels_query_b", None) or ""
-                out_a = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "subject_a.png")
-                out_b = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, "subject_b.png")
-                if query_a and not out_a.exists():
-                    fetch_one(f"Subject A", query_a, out_a)
-                if query_b and not out_b.exists():
-                    fetch_one(f"Subject B", query_b, out_b)
-                return
 
             action_prompt = getattr(scene, "image_prompt", None) or getattr(scene, "narration", f"A cinematic scene about {idea_obj.title}")
             out_name = f"scene_{scene.scene_number:02d}.png"
@@ -416,7 +405,15 @@ class Pipeline(BaseModelTool):
                     future.result()
                 except Exception as e:
                     Messenger.error(f"   ❌ Image generation failed: {e}")
-                    raise
+                    raise e
+        
+        # Verify that all images were actually created
+        for scene in script.scenes:
+            out_name = f"scene_{scene.scene_number:02d}.png"
+            out_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, out_name)
+            if not out_path.exists():
+                Messenger.error(f"   ❌ Image for scene {scene.scene_number} was not generated.")
+                return
 
         self.cost_tracker.add_image_cost(len(script.scenes))
         idea_obj.state = State.IMAGES_GENERATED
