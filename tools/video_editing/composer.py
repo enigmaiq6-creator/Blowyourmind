@@ -68,48 +68,35 @@ def _build_zoompan_exprs(pattern: str, total_frames: int, nf: int, duration: flo
 
 
 def compose_scene_from_image(image_path: str, audio_path: str, duration: float, output: str, pattern_idx: int = 0, width: int = 1080, height: int = 1920, audio_codec: str = 'aac') -> str:
-    """Create a video from a static image with classic slow centered Ken Burns zoom."""
+    """Create a video from a static image with Ken Burns zoom, avoiding ffmpeg hangs."""
     Path(output).parent.mkdir(parents=True, exist_ok=True)
-    fps = 30
-    total_frames = max(2, int(duration * fps))
-    nf = total_frames - 1
+    
+    # Scale to fill screen and crop excess
+    vf_fill = f"scale='max({width},iw*{height}/ih)':'max({height},ih*{width}/iw)',crop={width}:{height}"
+    
+    # Simple continuous zoom
+    zoom_expr = "1.0 + 0.0015*on"
+    pos_expr = "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+    
+    # We use d=1 so zoompan outputs exactly 1 frame per input frame.
+    # Combined with -loop 1, this works perfectly and avoids infinite buffering deadlocks.
+    vf = f"{vf_fill},zoompan=z='{zoom_expr}':d=1:{pos_expr}:s={width}x{height},format=yuv420p"
 
-    patterns = ['zoom-in', 'zoom-out']
-
-    pattern = patterns[pattern_idx % len(patterns)]
-
-    z_expr, x_expr, y_expr, _, _ = _build_zoompan_exprs(
-        pattern, total_frames, nf, duration, width, height
-    )
-
-    supersample = 2
-    sw = width * supersample
-    sh = height * supersample
-
-    video_chain = (
-        f'[0:v]scale=\'max({sw},iw)\':\'max({sh},ih)\':force_original_aspect_ratio=increase,'
-        f'zoompan=z=\'{z_expr}\':x=\'{x_expr}\':y=\'{y_expr}\':d={total_frames}:s={sw}x{sh}:fps={fps},'
-        f'scale={width}:{height}:flags=lanczos,'
-        f'setsar=1[v]'
-    )
-
-    filter_complex = f'{video_chain};[1:a]dynaudnorm=p=0.95:m=100[a]'
-
+    # We use -t instead of -shortest to forcefully stop at the exact duration
     subprocess.run([
-        'ffmpeg', '-y',
-        '-loop', '1',
+        'ffmpeg', '-y', '-loop', '1',
         '-i', image_path,
         '-i', audio_path,
-        '-filter_complex', filter_complex,
-        '-map', '[v]',
-        '-map', '[a]',
+        '-vf', vf,
+        '-r', '30',
+        '-fps_mode', 'cfr',
+        '-t', str(duration),
         '-c:v', 'libx264',
-        '-preset', 'medium',
-        '-crf', '18',
-        '-r', str(fps),
+        '-preset', 'veryfast',
+        '-crf', '20',
         '-c:a', audio_codec,
         '-b:a', '192k',
-        '-shortest',
+        '-v', 'error',
         output,
     ], check=True, capture_output=True, text=True)
     return output
