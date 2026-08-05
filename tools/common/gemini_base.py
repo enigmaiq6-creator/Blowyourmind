@@ -123,7 +123,7 @@ class GeminiBase(BaseModelTool):
                 "gemini-2.0-flash": "gemini-2.5-flash",
                 "gemini-2.5-flash": "gemini-2.5-flash",
                 "gemini-2.5-flash-preview-tts": "gemini-2.5-flash-tts",
-                "gemini-3.1-flash-image-preview": "imagen-3.0-generate-002",
+                "gemini-3.1-flash-image-preview": "gemini-2.5-flash-image",
                 "veo-3.1-fast-generate-001": "veo-2.0-generate-001",
             }
             kwargs['model'] = mapping.get(original_model, original_model)

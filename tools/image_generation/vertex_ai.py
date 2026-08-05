@@ -55,32 +55,38 @@ class VertexAIImageGenerator:
         """
         Messenger.info(f"Generating Vertex AI Image: {prompt[:50]}...")
         
-        max_attempts = 6
-        base_delay = 10.0
+        max_attempts = 5
+        base_delay = 5.0
         
         for attempt in range(1, max_attempts + 1):
             try:
-                response = self.client.models.generate_images(
-                    model='imagen-3.0-generate-001',
-                    prompt=prompt,
-                    config=types.GenerateImagesConfig(
-                        number_of_images=1,
-                        aspect_ratio=self.aspect_ratio,
+                response = self.client.models.generate_content(
+                    model='gemini-2.5-flash-image',
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["IMAGE"],
                     )
                 )
 
-                if not response or not response.generated_images:
-                    raise RuntimeError("❌ Vertex AI Imagen no devolvió imágenes")
+                # Extract image bytes from the response parts
+                image_bytes = None
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data is not None:
+                        image_bytes = part.inline_data.data
+                        break
+
+                if not image_bytes:
+                    raise RuntimeError("Vertex AI no devolvio imagen en la respuesta")
 
                 # Save the image
                 with open(output_path, "wb") as f:
-                    f.write(response.generated_images[0].image.image_bytes)
+                    f.write(image_bytes)
                 
-                Messenger.image(f"Imagen generada con éxito: {output_path}")
+                Messenger.image(f"Imagen generada con exito: {output_path}")
                 return
             except Exception as e:
                 error_str = str(e)
-                Messenger.warning(f"⚠️ Attempt {attempt}/{max_attempts} failed: {error_str}")
+                Messenger.warning(f"Attempt {attempt}/{max_attempts} failed: {error_str}")
                 
                 if attempt == max_attempts:
                     raise e
@@ -90,9 +96,9 @@ class VertexAIImageGenerator:
                 sleep_time = (base_delay * (2 ** (attempt - 1))) + random.uniform(1.0, 3.0)
                 
                 if is_rate_limit:
-                    Messenger.warning(f"🛑 Rate limit/Quota exhausted. Sleeping for {sleep_time:.2f}s before retrying...")
+                    Messenger.warning(f"Rate limit/Quota exhausted. Sleeping for {sleep_time:.2f}s before retrying...")
                 else:
-                    Messenger.warning(f"🔄 General exception. Sleeping for {sleep_time:.2f}s before retrying...")
+                    Messenger.warning(f"General exception. Sleeping for {sleep_time:.2f}s before retrying...")
                 
                 time.sleep(sleep_time)
 
