@@ -112,10 +112,10 @@ class DailyAutomator:
 
         avoid_msg = self.get_recent_topics()
         try:
-            cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", "fact_split"]
+            cmd = [sys.executable, "-m", "flows.image_content_generator.pipeline.main", "short", "all", "--avoid", avoid_msg, "--mode", "finance"]
             subprocess.run(cmd, check=True)
             Messenger.success(f"✅ Video completed!")
-            self.log_post("video", "Fact Split Video")
+            self.log_post("video", "Finance Video")
             self.sync_to_github()
         except Exception as e:
             Messenger.error(f"Error during video task: {e}")
