@@ -687,29 +687,28 @@ class Pipeline(BaseModelTool):
         # FINAL COST REPORT
         self.cost_tracker.report()
 
-    def generate_facebook_description(self, title: str) -> str:
+    def generate_facebook_description(self, title: str, script_text: str = "") -> str:
         """
         Generates an ultra-short, high-engagement description for Facebook/Instagram Reels.
-        Goal: drive comments and shares. 300k views in 25 days = need viral engagement.
+        Uses the script narration to make sure it's accurate to the video content.
         """
         import re
         title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", title, flags=re.IGNORECASE).strip()
 
+        context_prompt = f"Full video narration / script:\n{script_text}\n" if script_text else ""
+
         prompt = f"""
-        You write viral Reels captions for "BlowYourMind". Caption for: "{title}"
-        
+        You write viral Reels captions for "BlowYourMind" (a channel focusing on Finance, Money and Economic History). 
+        Caption for: "{title}"
+        {context_prompt}
         RULES (strict):
         1. MAX 2 lines. Ultra short. TikTok/Reels style.
         2. Start with a question or controversial statement that forces a comment.
         3. End with a call-to-action asking for an opinion (e.g. "Which side are you on? 👇").
         4. EXACTLY 10 hashtags. Always include: #BlowYourMind #MindBlowing #ViralReel
+           Ensure the remaining 7 hashtags are directly related to the script details (e.g. #FinanceHistory #MoneyFacts #EconomicHistory, etc.). Do NOT use generic geography hashtags.
         5. NEVER explain the video. The caption should ADD mystery, not summarize.
         6. Use 1-2 emojis max.
-        
-        Examples of good captions:
-        - "Wait till you see where this is going 🤯 Which country surprised you most? 👇"
-        - "This changes EVERYTHING you know about geography. Are you team REALITY or team WHAT IF? 👇"
-        - "Most people don't know this. And that's the problem. Comment your reaction 👇"
         
         Respond ONLY with the caption + hashtags.
         """
@@ -717,7 +716,7 @@ class Pipeline(BaseModelTool):
             return self.text_gen.generate(prompt).strip()
         except Exception as e:
             Messenger.warning(f"AI Description generation failed: {e}. Using fallback.")
-            return f"🤯 {title}\n\nThis changes everything. Which side are you on? 👇\n\n#BlowYourMind #MindBlowing #ViralReel #GeographyFacts #WhatIf #DidYouKnow #Foryou #HiddenWorld #NatureIsCrazy #Mysteries"
+            return f"🤯 {title}\n\nThis changes everything. Which side are you on? 👇\n\n#BlowYourMind #MindBlowing #ViralReel #FinanceHistory #EconomicHistory #MoneyFacts #Foryou #DidYouKnow #HistoryMysteries"
 
     def step8_upload_to_facebook(self):
         """
@@ -749,10 +748,17 @@ class Pipeline(BaseModelTool):
                 break
 
             # 3. Generates optimized description
-            Messenger.info("   Generating AI-optimized description...")
+            Messenger.info("   Generating AI-optimized description based on script...")
             import re
             cleaned_video_title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", video_title, flags=re.IGNORECASE).strip()
-            description = self.generate_facebook_description(cleaned_video_title)
+            
+            try:
+                script = self.load_script(idea_obj)
+                script_text = script.whisper_payload
+            except Exception:
+                script_text = ""
+                
+            description = self.generate_facebook_description(cleaned_video_title, script_text)
 
             # --- BLINDAJE CONTRA BANEOS (TODO ES TODO) ---
             # 1. AI Transparency (Mandatory Meta 2026)
