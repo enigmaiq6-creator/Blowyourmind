@@ -48,13 +48,34 @@ class InstagramTool(BaseModelTool):
 
     def upload_to_public_host(self, file_path: Path) -> str:
         """
-        Uploads a local video file to a public hosting service to get a direct URL
-        that Instagram's servers can access. Tries file.io first, then 0x0.st as fallback.
+        Uploads a local video/image file to a public hosting service to get a direct URL
+        that Instagram's servers can access. Tries multiple free hosts with auto-expiry.
         """
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # --- Intento 1: file.io (más confiable, soporta archivos grandes) ---
+        # --- Intento 1: tmpfiles.org (Rápido, auto-borrado en 60 min, muy confiable) ---
+        try:
+            Messenger.info(f"📤 Uploading file to tmpfiles.org for public URL...")
+            with open(file_path, "rb") as f:
+                response = requests.post(
+                    "https://tmpfiles.org/api/v1/upload",
+                    files={"file": f},
+                    timeout=120
+                )
+            response.raise_for_status()
+            data = response.json()
+            if data.get("status") == "success" and "data" in data and "url" in data["data"]:
+                url = data["data"]["url"]
+                # Convert to direct download URL (e.g. https://tmpfiles.org/dl/123/name)
+                direct_url = url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
+                Messenger.info(f"   ✅ Public URL (tmpfiles.org): {direct_url}")
+                return direct_url
+            raise RuntimeError(f"tmpfiles.org returned unexpected response: {data}")
+        except Exception as e:
+            Messenger.warning(f"⚠️ tmpfiles.org failed: {e}. Trying file.io...")
+
+        # --- Intento 2: file.io (Soporta archivos grandes) ---
         try:
             Messenger.info(f"📤 Uploading file to file.io for public URL...")
             with open(file_path, "rb") as f:
@@ -62,7 +83,7 @@ class InstagramTool(BaseModelTool):
                     "https://file.io",
                     files={"file": f},
                     data={"expires": "1d"},
-                    timeout=300
+                    timeout=180
                 )
             response.raise_for_status()
             data = response.json()
@@ -72,16 +93,32 @@ class InstagramTool(BaseModelTool):
                 return url
             raise RuntimeError(f"file.io returned unexpected response: {data}")
         except Exception as e:
-            Messenger.warning(f"⚠️ file.io failed: {e}. Trying 0x0.st fallback...")
+            Messenger.warning(f"⚠️ file.io failed: {e}. Trying transfer.sh...")
 
-        # --- Intento 2: 0x0.st (fallback) ---
+        # --- Intento 3: transfer.sh (Excelente velocidad, PUT request) ---
+        try:
+            Messenger.info(f"📤 Uploading file to transfer.sh for public URL...")
+            with open(file_path, "rb") as f:
+                response = requests.put(
+                    f"https://transfer.sh/{file_path.name}",
+                    data=f,
+                    timeout=180
+                )
+            response.raise_for_status()
+            url = response.text.strip()
+            Messenger.info(f"   ✅ Public URL (transfer.sh): {url}")
+            return url
+        except Exception as e:
+            Messenger.warning(f"⚠️ transfer.sh failed: {e}. Trying 0x0.st fallback...")
+
+        # --- Intento 4: 0x0.st (Última opción) ---
         try:
             Messenger.info(f"📤 Uploading file to 0x0.st for public URL...")
             with open(file_path, "rb") as f:
                 response = requests.post(
                     "https://0x0.st",
                     files={"file": f},
-                    timeout=300
+                    timeout=180
                 )
             response.raise_for_status()
             url = response.text.strip()
