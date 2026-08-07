@@ -215,6 +215,8 @@ class InstagramTool(BaseModelTool):
                 }
                 
                 response = requests.post(container_url, data=container_params)
+                if response.status_code != 200:
+                    Messenger.error(f"   ❌ Instagram API error response for {path.name}: {response.text}")
                 response.raise_for_status()
                 child_id = response.json()["id"]
                 child_ids.append(child_id)
@@ -239,6 +241,8 @@ class InstagramTool(BaseModelTool):
         }
         
         response = requests.post(main_url, data=main_params)
+        if response.status_code != 200:
+            Messenger.error(f"   ❌ Instagram API main container error: {response.text}")
         response.raise_for_status()
         container_id = response.json()["id"]
         Messenger.info(f"   Main Carousel container created (ID: {container_id}). Waiting for processing...")

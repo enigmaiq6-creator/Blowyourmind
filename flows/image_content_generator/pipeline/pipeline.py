@@ -910,13 +910,24 @@ class Pipeline(BaseModelTool):
                 try:
                     Messenger.info("   Preparing image carousel post...")
                     
-                    # 1. Collect all existing scene images
+                    # 1. Collect all existing scene images, convert to JPEG for Instagram compatibility
                     scene_images = []
+                    temp_jpg_paths = []
                     for scene in script.scenes:
                         sn = getattr(scene, 'scene_number', 1)
                         img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{sn:02d}.png")
                         if img_path.exists():
-                            scene_images.append(img_path)
+                            try:
+                                from PIL import Image
+                                img_jpg_path = img_path.with_suffix('.jpg')
+                                with Image.open(img_path) as im:
+                                    im_rgb = im.convert('RGB')
+                                    im_rgb.save(img_jpg_path, 'JPEG', quality=95)
+                                scene_images.append(img_jpg_path)
+                                temp_jpg_paths.append(img_jpg_path)
+                            except Exception as conv_err:
+                                Messenger.warning(f"   ⚠️ Failed to convert {img_path.name} to JPEG: {conv_err}. Using PNG fallback.")
+                                scene_images.append(img_path)
                             
                     if scene_images:
                         Messenger.info(f"   Found {len(scene_images)} images for carousel post.")
@@ -944,6 +955,14 @@ class Pipeline(BaseModelTool):
                         Messenger.warning("   No scene images found. Skipping carousel post.")
                 except Exception as car_e:
                     Messenger.warning(f"   ⚠️ Failed to publish image carousel: {car_e}")
+                finally:
+                    # Clean up temporary JPEG files
+                    for temp_jpg in temp_jpg_paths:
+                        try:
+                            if temp_jpg.exists():
+                                temp_jpg.unlink()
+                        except Exception:
+                            pass
 
                 # 5. Updates state to UPLOADED.
                 idea_obj.state = State.UPLOADED
