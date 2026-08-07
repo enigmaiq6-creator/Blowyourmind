@@ -278,7 +278,6 @@ def compose_final(
     video_chain = (
         f'[0:v]eq=contrast=1.04:saturation=1.06:brightness=-0.01,'
         f'unsharp=luma_msize_x=5:luma_msize_y=5:luma_amount=0.5,'
-        f'fade=t=in:st=0:d={fade_in},'
         f'fade=t=out:st={fade_out_start}:d={fade_out},'
         f'ass=\'{escaped}\'[v]'
     )
