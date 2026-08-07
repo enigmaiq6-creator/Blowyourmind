@@ -35,7 +35,8 @@ class FacebookTool(BaseModelTool):
     ) -> str:
         """
         Uploads a video to a Facebook Page using the resumable (chunked) upload API.
-        Can be saved as an unpublished draft if published=False.
+        When published=True, uses the /reels endpoint so it appears in the page feed.
+        When published=False, uploads as a hidden draft via /videos.
         """
         if not file_path.exists():
             raise FileNotFoundError(f"Video file not found: {file_path}")
@@ -43,7 +44,10 @@ class FacebookTool(BaseModelTool):
         file_size = file_path.stat().st_size
         chunk_size = 10 * 1024 * 1024  # 10MB per chunk
         
-        Messenger.info(f"🚀 Starting Facebook video upload: {file_path.name} ({file_size / (1024*1024):.2f} MB)")
+        # Use /reels when publishing publicly so it appears in the page feed/timeline.
+        # Use /videos for drafts (unpublished).
+        upload_endpoint_type = "reels" if published else "videos"
+        Messenger.info(f"🚀 Starting Facebook {upload_endpoint_type} upload: {file_path.name} ({file_size / (1024*1024):.2f} MB)")
 
         # 1. START Phase
         params = {
@@ -52,7 +56,7 @@ class FacebookTool(BaseModelTool):
             "access_token": self.access_token
         }
         
-        response = requests.post(f"{self.video_url}/{self.page_id}/videos", params=params)
+        response = requests.post(f"{self.video_url}/{self.page_id}/{upload_endpoint_type}", params=params)
         if response.status_code != 200:
             Messenger.error(f"START Phase failed: {response.status_code} - {response.text}")
             response.raise_for_status()
@@ -84,7 +88,7 @@ class FacebookTool(BaseModelTool):
                 }
                 
                 resp = requests.post(
-                    f"{self.video_url}/{self.page_id}/videos",
+                    f"{self.video_url}/{self.page_id}/{upload_endpoint_type}",
                     params={"access_token": self.access_token},
                     data=data_payload,
                     files=files
@@ -107,11 +111,11 @@ class FacebookTool(BaseModelTool):
         if not published:
             finish_params["published"] = "false"
 
-        response = requests.post(f"{self.video_url}/{self.page_id}/videos", params=finish_params)
+        response = requests.post(f"{self.video_url}/{self.page_id}/{upload_endpoint_type}", params=finish_params)
         response.raise_for_status()
         
         if response.json().get("success"):
-            status_msg = "published successfully" if published else "saved as draft (unpublished)"
+            status_msg = "published as Reel in feed" if published else "saved as draft (unpublished)"
             Messenger.success(f"✅ Video {status_msg}! ID: {video_id}")
             return video_id
         else:

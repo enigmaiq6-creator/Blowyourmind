@@ -54,26 +54,24 @@ class InstagramTool(BaseModelTool):
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # --- Intento 1: tmpfiles.org (Rápido, auto-borrado en 60 min) ---
+        # --- Intento 1: catbox.moe (CDN directo, Meta puede descargarlo sin problemas) ---
         try:
-            Messenger.info(f"📤 Uploading file to tmpfiles.org for public URL...")
+            Messenger.info(f"📤 Uploading file to catbox.moe for public URL...")
             with open(file_path, "rb") as f:
                 response = requests.post(
-                    "https://tmpfiles.org/api/v1/upload",
-                    files={"file": f},
+                    "https://catbox.moe/user/api.php",
+                    data={"reqtype": "fileupload", "userhash": ""},
+                    files={"fileToUpload": (file_path.name, f, "image/jpeg")},
                     timeout=120
                 )
             response.raise_for_status()
-            data = response.json()
-            if data.get("status") == "success" and "data" in data and "url" in data["data"]:
-                # The API returns a page URL like https://tmpfiles.org/12345/file.jpg
-                # The direct download link is the same URL — it serves the binary directly
-                url = data["data"]["url"]
-                Messenger.info(f"   ✅ Public URL (tmpfiles.org): {url}")
+            url = response.text.strip()
+            if url.startswith("https://"):
+                Messenger.info(f"   ✅ Public URL (catbox.moe): {url}")
                 return url
-            raise RuntimeError(f"tmpfiles.org returned unexpected response: {data}")
+            raise RuntimeError(f"catbox.moe returned unexpected response: {url}")
         except Exception as e:
-            Messenger.warning(f"⚠️ tmpfiles.org failed: {e}. Trying file.io...")
+            Messenger.warning(f"⚠️ catbox.moe failed: {e}. Trying file.io...")
 
         # --- Intento 2: file.io (Soporta archivos grandes) ---
         try:
