@@ -718,6 +718,34 @@ class Pipeline(BaseModelTool):
             Messenger.warning(f"AI Description generation failed: {e}. Using fallback.")
             return f"🤯 {title}\n\nThis changes everything. Which side are you on? 👇\n\n#MoneyMysteries #MindBlowing #ViralReel #FinanceHistory #EconomicHistory #MoneyFacts #Foryou #DidYouKnow #HistoryMysteries"
 
+    def generate_carousel_description(self, title: str, script_text: str) -> str:
+        """
+        Generates a very short, context-relevant description for an image carousel post.
+        The description explains what is being shown in the images (from the script) and keeps it concise.
+        """
+        import re
+        title = re.sub(r"\s*\[Hook\s+[A-Z]\]", "", title, flags=re.IGNORECASE).strip()
+        
+        prompt = f"""
+        You write viral, short Reels/Instagram carousel (swipe image post) descriptions for "MoneyMysteries" (a channel about Finance & Economic History).
+        The carousel displays 3D papercraft scene illustrations showing this story: "{title}".
+        Video Script Narration:
+        "{script_text}"
+        
+        RULES:
+        1. Write a very short caption (max 2-3 sentences) summarizing the story told by these images.
+        2. Focus on a curious detail from the script.
+        3. End with an invitation to swipe the images (e.g. "Swipe left to see the story unfold! 👈").
+        4. Include exactly 5 hashtags directly related to the story details (always include #MoneyMysteries #FinanceHistory).
+        
+        Respond ONLY with the caption + hashtags.
+        """
+        try:
+            return self.text_gen.generate(prompt).strip()
+        except Exception as e:
+            Messenger.warning(f"AI Carousel Description generation failed: {e}. Using fallback.")
+            return f"🤯 {title}\n\nSwipe left to see the full story unfold! 👈\n\n#MoneyMysteries #FinanceHistory #EconomicHistory #DidYouKnow #MoneyFacts"
+
     def step8_upload_to_facebook(self):
         """
         Upload to Facebook: Uploads all COMPLETED videos to the configured Facebook Page.
@@ -877,6 +905,45 @@ class Pipeline(BaseModelTool):
                             "  4. Publish the Reel\n"
                             "━" * 60
                         )
+
+                # --- NEW FASE: IMAGE CAROUSEL POST ---
+                try:
+                    Messenger.info("   Preparing image carousel post...")
+                    
+                    # 1. Collect all existing scene images
+                    scene_images = []
+                    for scene in script.scenes:
+                        sn = getattr(scene, 'scene_number', 1)
+                        img_path = self.get_idea_asset_path(idea_obj.id, self.IMAGES_DIR, f"scene_{sn:02d}.png")
+                        if img_path.exists():
+                            scene_images.append(img_path)
+                            
+                    if scene_images:
+                        Messenger.info(f"   Found {len(scene_images)} images for carousel post.")
+                        
+                        # 2. Generate carousel description
+                        carousel_desc = self.generate_carousel_description(cleaned_video_title, script_text)
+                        
+                        # Add a small AI disclaimer/signature to carousel post
+                        carousel_footer = (
+                            "\n\n---\n"
+                            "✨ MoneyMysteries Gallery\n"
+                            "#MoneyMysteries #VisualHistory #AIArt"
+                        )
+                        final_carousel_desc = carousel_desc + carousel_footer
+                        
+                        # 3. Upload Carousel to Facebook
+                        Messenger.info("   Uploading carousel post to Facebook...")
+                        self.facebook.publish_carousel(scene_images, final_carousel_desc)
+                        
+                        # 4. Upload Carousel to Instagram (if enabled)
+                        if instagram_publish:
+                            Messenger.info("   Uploading carousel post to Instagram...")
+                            self.instagram.publish_carousel(scene_images, final_carousel_desc)
+                    else:
+                        Messenger.warning("   No scene images found. Skipping carousel post.")
+                except Exception as car_e:
+                    Messenger.warning(f"   ⚠️ Failed to publish image carousel: {car_e}")
 
                 # 5. Updates state to UPLOADED.
                 idea_obj.state = State.UPLOADED

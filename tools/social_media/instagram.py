@@ -52,11 +52,11 @@ class InstagramTool(BaseModelTool):
         that Instagram's servers can access. Tries file.io first, then 0x0.st as fallback.
         """
         if not file_path.exists():
-            raise FileNotFoundError(f"Video file not found: {file_path}")
+            raise FileNotFoundError(f"File not found: {file_path}")
 
         # --- Intento 1: file.io (más confiable, soporta archivos grandes) ---
         try:
-            Messenger.info(f"📤 Uploading video to file.io for public URL...")
+            Messenger.info(f"📤 Uploading file to file.io for public URL...")
             with open(file_path, "rb") as f:
                 response = requests.post(
                     "https://file.io",
@@ -76,7 +76,7 @@ class InstagramTool(BaseModelTool):
 
         # --- Intento 2: 0x0.st (fallback) ---
         try:
-            Messenger.info(f"📤 Uploading video to 0x0.st for public URL...")
+            Messenger.info(f"📤 Uploading file to 0x0.st for public URL...")
             with open(file_path, "rb") as f:
                 response = requests.post(
                     "https://0x0.st",
@@ -155,4 +155,92 @@ class InstagramTool(BaseModelTool):
         media_id = publish_resp.json()["id"]
         
         Messenger.success(f"✅ Reel successfully published on Instagram! ID: {media_id}")
+        return media_id
+
+    def publish_carousel(self, image_paths: list[Path], caption: str = "") -> str:
+        """
+        Uploads multiple images as carousel items, then publishes them as a carousel.
+        """
+        import json
+        insta_id = self.get_instagram_business_account_id()
+        
+        child_ids = []
+        for path in image_paths:
+            try:
+                public_url = self.upload_to_public_host(path)
+                
+                # Create a media container for this carousel item
+                container_url = f"{self.base_url}/{insta_id}/media"
+                container_params = {
+                    "image_url": public_url,
+                    "is_carousel_item": "true",
+                    "access_token": self.access_token
+                }
+                
+                response = requests.post(container_url, data=container_params)
+                response.raise_for_status()
+                child_id = response.json()["id"]
+                child_ids.append(child_id)
+                Messenger.info(f"   Carousel item container created (ID: {child_id}) for {path.name}")
+                
+                # Brief sleep to avoid hitting limits
+                time.sleep(2)
+            except Exception as e:
+                Messenger.error(f"❌ Failed to process carousel item {path.name}: {e}")
+                
+        if not child_ids:
+            raise RuntimeError("No carousel items were uploaded successfully. Cannot create Instagram carousel.")
+            
+        # Create the main carousel container
+        Messenger.info("🎬 Creating main Instagram Carousel container...")
+        main_url = f"{self.base_url}/{insta_id}/media"
+        main_params = {
+            "media_type": "CAROUSEL",
+            "children": json.dumps(child_ids),
+            "caption": caption,
+            "access_token": self.access_token
+        }
+        
+        response = requests.post(main_url, data=main_params)
+        response.raise_for_status()
+        container_id = response.json()["id"]
+        Messenger.info(f"   Main Carousel container created (ID: {container_id}). Waiting for processing...")
+        
+        # Poll status
+        status_url = f"{self.base_url}/{container_id}"
+        status_params = {
+            "fields": "status_code,status,error_message",
+            "access_token": self.access_token
+        }
+        
+        max_attempts = 15
+        for attempt in range(1, max_attempts + 1):
+            time.sleep(5)
+            status_resp = requests.get(status_url, params=status_params)
+            status_resp.raise_for_status()
+            status_data = status_resp.json()
+            status_code = status_data.get("status_code")
+            error_msg = status_data.get("error_message", "No error details")
+            
+            Messenger.info(f"   Carousel container status check {attempt}/{max_attempts}: {status_code}")
+            if status_code == "FINISHED":
+                break
+            elif status_code == "ERROR":
+                raise RuntimeError(f"Instagram failed to process the carousel: {error_msg}")
+        else:
+            raise TimeoutError("Instagram carousel processing timed out.")
+            
+        # Publish the Carousel
+        Messenger.info("🚀 Publishing Instagram Carousel...")
+        publish_url = f"{self.base_url}/{insta_id}/media_publish"
+        publish_params = {
+            "creation_id": container_id,
+            "access_token": self.access_token
+        }
+        
+        publish_resp = requests.post(publish_url, data=publish_params)
+        publish_resp.raise_for_status()
+        media_id = publish_resp.json()["id"]
+        
+        Messenger.success(f"✅ Carousel successfully published on Instagram! ID: {media_id}")
         return media_id

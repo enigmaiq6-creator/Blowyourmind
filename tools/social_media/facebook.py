@@ -322,3 +322,20 @@ class FacebookTool(BaseModelTool):
         except Exception as e:
             Messenger.error(f"❌ Exception uploading captions: {str(e)}")
             return False
+
+    def publish_carousel(self, image_paths: list[Path], description: str = "") -> str:
+        """
+        Uploads multiple images as unpublished photos, then publishes them as a carousel.
+        """
+        photo_ids = []
+        for path in image_paths:
+            try:
+                pid = self.upload_photo_unpublished(path)
+                photo_ids.append(pid)
+            except Exception as e:
+                Messenger.error(f"❌ Failed to upload image {path.name} for carousel: {e}")
+                
+        if not photo_ids:
+            raise RuntimeError("No photos were uploaded successfully. Cannot create Facebook carousel.")
+            
+        return self.create_carousel_post(description, photo_ids)
