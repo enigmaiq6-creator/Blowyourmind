@@ -698,14 +698,14 @@ class Pipeline(BaseModelTool):
         context_prompt = f"Full video narration / script:\n{script_text}\n" if script_text else ""
 
         prompt = f"""
-        You write viral Reels captions for "BlowYourMind" (a channel focusing on Finance, Money and Economic History). 
+        You write viral Reels captions for "MoneyMysteries" (a channel focusing on Finance, Money and Economic History). 
         Caption for: "{title}"
         {context_prompt}
         RULES (strict):
         1. MAX 2 lines. Ultra short. TikTok/Reels style.
         2. Start with a question or controversial statement that forces a comment.
         3. End with a call-to-action asking for an opinion (e.g. "Which side are you on? 👇").
-        4. EXACTLY 10 hashtags. Always include: #BlowYourMind #MindBlowing #ViralReel
+        4. EXACTLY 10 hashtags. Always include: #MoneyMysteries #MindBlowing #ViralReel
            Ensure the remaining 7 hashtags are directly related to the script details (e.g. #FinanceHistory #MoneyFacts #EconomicHistory, etc.). Do NOT use generic geography hashtags.
         5. NEVER explain the video. The caption should ADD mystery, not summarize.
         6. Use 1-2 emojis max.
@@ -716,7 +716,7 @@ class Pipeline(BaseModelTool):
             return self.text_gen.generate(prompt).strip()
         except Exception as e:
             Messenger.warning(f"AI Description generation failed: {e}. Using fallback.")
-            return f"🤯 {title}\n\nThis changes everything. Which side are you on? 👇\n\n#BlowYourMind #MindBlowing #ViralReel #FinanceHistory #EconomicHistory #MoneyFacts #Foryou #DidYouKnow #HistoryMysteries"
+            return f"🤯 {title}\n\nThis changes everything. Which side are you on? 👇\n\n#MoneyMysteries #MindBlowing #ViralReel #FinanceHistory #EconomicHistory #MoneyFacts #Foryou #DidYouKnow #HistoryMysteries"
 
     def step8_upload_to_facebook(self):
         """
@@ -767,8 +767,8 @@ class Pipeline(BaseModelTool):
             transparency_footer = (
                 "\n\n---\n"
                 "🤖 **AI-Generated Content**: This video has been created with the support of Artificial Intelligence for entertainment and educational purposes.\n\n"
-                "✨ Published by BlowYourMind.\n"
-                "#MadeWithAI #AIContent #BlowYourMind #ViralVideo"
+                "✨ Published by MoneyMysteries.\n"
+                "#MadeWithAI #AIContent #MoneyMysteries #ViralVideo"
             )
             
             final_description = description + transparency_footer
@@ -824,7 +824,7 @@ class Pipeline(BaseModelTool):
                         # --- FASE 4: AUTO-COMENTARIO (Cebo de engagement) ---
                         Messenger.info("   Generating polemic auto-comment...")
                         prompt_comment = f"""
-                        You are the creator of the series "BlowYourMind". You just uploaded a video titled: "{video_title}".
+                        You are the creator of the series "MoneyMysteries". You just uploaded a video titled: "{video_title}".
                         Write a short comment (1 line) in the form of a POLEMIC QUESTION to pin as the first comment of the video.
                         The goal is for people to debate or argue in the replies. 
                         Do not use hashtags. Be direct, a bit cynical, and very controversial.

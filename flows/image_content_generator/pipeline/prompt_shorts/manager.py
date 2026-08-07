@@ -32,7 +32,7 @@ class PromptManagerShorts(BasePromptManager):
         idea_model = FinanceIdea
         idea_prompt = finance_constants.IDEA_PROMPT_FINANCE
         script_prompt = finance_constants.SCRIPT_PROMPT_FINANCE
-        series_name = "BlowYourMind Finance History"
+        series_name = "MoneyMysteries Finance History"
         handler_class = FinanceHandler
         focus_areas = finance_constants.FOCUS_AREAS_FINANCE
 
@@ -87,7 +87,7 @@ class PromptManagerShorts(BasePromptManager):
         transparency_footer = (
             "\n\n---\n"
             "💡 **Transparency**: This content has been produced with the support of Artificial Intelligence for educational and entertainment purposes.\n\n"
-            "✨ Created by the BlowYourMind team."
+            "✨ Created by the MoneyMysteries team."
         )
 
         if "caption" in idea_data.model_fields:

@@ -52,7 +52,7 @@ def main():
         description = parts[1].strip()
     else:
         title = clean_name
-        description = f"🤯 {title}\n\nWhat do you think about this? 👇\n\n#BlowYourMind #ViralReels #Mysteries #DidYouKnow #History"
+        description = f"🤯 {title}\n\nWhat do you think about this? 👇\n\n#MoneyMysteries #ViralReels #Mysteries #DidYouKnow #History"
         
     Messenger.info(f"\n==========================================")
     Messenger.info(f"Processing: {video_path.name}")

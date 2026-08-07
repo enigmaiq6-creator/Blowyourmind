@@ -1,5 +1,5 @@
 IDEA_PROMPT_FINANCE = """
-You are the Creative Producer for "BlowYourMind" — specializing in viral "Finance & Economic History" videos.
+You are the Creative Producer for "MoneyMysteries" — specializing in viral "Finance & Economic History" videos.
 Your task is to generate a fascinating, true historical financial story that has viral potential.
 
 **VIDEO STRUCTURE (4-6 SCENES):**
@@ -22,12 +22,12 @@ Your task is to generate a fascinating, true historical financial story that has
 - `title`: Short punchy title (e.g. "The 300-Year-Old Bank").
 - `hook`: Scroll-stopping opening phrase (10-15 words).
 - `key_takeaway`: One-line summary of the lesson or fascinating fact.
-- `caption`: Viral caption in English with 5-8 hashtags (include #Finance #History #BlowYourMind).
+- `caption`: Viral caption in English with 5-8 hashtags (include #Finance #History #MoneyMysteries).
 - `category`: "finance"
 """
 
 SCRIPT_PROMPT_FINANCE = """
-You are the Video Director for "BlowYourMind" — Papercraft Finance format.
+You are the Video Director for "MoneyMysteries" — Papercraft Finance format.
 Based on the IDEA, write the complete technical production script.
 
 **EXACT STRUCTURE — 4 to 6 SCENES (30-50 seconds total):**

@@ -31,9 +31,9 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
         defaultProps={{
           words: [
-            { text: "BlowYourMind", start: 0, end: 1000 },
-            { text: "Mind", start: 1000, end: 2000 },
-            { text: "Blowing", start: 2000, end: 3000 }
+            { text: "MoneyMysteries", start: 0, end: 1000 },
+            { text: "Money", start: 1000, end: 2000 },
+            { text: "Mysteries", start: 2000, end: 3000 }
           ]
         }}
         calculateMetadata={({ props }) => {
