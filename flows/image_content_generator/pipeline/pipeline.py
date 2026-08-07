@@ -538,7 +538,7 @@ class Pipeline(BaseModelTool):
         
         from tools.video_editing.composer import concat_videos_audio
         try:
-            concat_videos_audio(scene_clips, str(concat_out), transition_duration=0.6)
+            concat_videos_audio(scene_clips, str(concat_out), transition_duration=0.0)
             Messenger.success(f"   ✅ Concatenated video generated.")
         except Exception as e:
             Messenger.error(f"   ❌ Failed to concatenate: {e}")

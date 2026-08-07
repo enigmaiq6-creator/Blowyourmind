@@ -136,7 +136,7 @@ TRANSITION_TYPES = [
     'fade', 'fadeblack', 'dissolve', 'zoomin',
 ]
 
-CTA_TEXT = 'SÍGUEME SI QUIERES APRENDER MÁS'
+CTA_TEXT = 'FOLLOW ME TO LEARN MORE'
 
 
 def _ass_ts(seconds: float) -> str:
