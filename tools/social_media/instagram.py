@@ -54,7 +54,7 @@ class InstagramTool(BaseModelTool):
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # --- Intento 1: tmpfiles.org (Rápido, auto-borrado en 60 min, muy confiable) ---
+        # --- Intento 1: tmpfiles.org (Rápido, auto-borrado en 60 min) ---
         try:
             Messenger.info(f"📤 Uploading file to tmpfiles.org for public URL...")
             with open(file_path, "rb") as f:
@@ -66,11 +66,11 @@ class InstagramTool(BaseModelTool):
             response.raise_for_status()
             data = response.json()
             if data.get("status") == "success" and "data" in data and "url" in data["data"]:
+                # The API returns a page URL like https://tmpfiles.org/12345/file.jpg
+                # The direct download link is the same URL — it serves the binary directly
                 url = data["data"]["url"]
-                # Convert to direct download URL (e.g. https://tmpfiles.org/dl/123/name)
-                direct_url = url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
-                Messenger.info(f"   ✅ Public URL (tmpfiles.org): {direct_url}")
-                return direct_url
+                Messenger.info(f"   ✅ Public URL (tmpfiles.org): {url}")
+                return url
             raise RuntimeError(f"tmpfiles.org returned unexpected response: {data}")
         except Exception as e:
             Messenger.warning(f"⚠️ tmpfiles.org failed: {e}. Trying file.io...")
