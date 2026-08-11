@@ -22,9 +22,15 @@ class GeminiUsage(BaseModelTool):
 
 
 def _is_daily_quota_exhausted(exc: Exception) -> bool:
-    """Returns True if the error is a hard daily quota limit (limit: 0), not a per-minute rate limit."""
-    msg = str(exc)
-    return "limit: 0" in msg and "GenerateRequestsPerDayPerProjectPerModel" in msg
+    """Returns True if the error is related to quota exhaustion."""
+    msg = str(exc).lower()
+    return any(s in msg for s in [
+        "limit: 0", 
+        "quota exceeded", 
+        "resource_exhausted", 
+        "429", 
+        "too many requests"
+    ])
 
 
 def _should_rotate_key(exc: Exception) -> bool:
