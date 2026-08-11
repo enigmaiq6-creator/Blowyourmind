@@ -44,9 +44,9 @@ class FacebookTool(BaseModelTool):
         file_size = file_path.stat().st_size
         chunk_size = 10 * 1024 * 1024  # 10MB per chunk
         
-        # Use /reels when publishing publicly so it appears in the page feed/timeline.
+        # Use /video_reels when publishing publicly so it appears in the page feed/timeline as a Reel.
         # Use /videos for drafts (unpublished).
-        upload_endpoint_type = "reels" if published else "videos"
+        upload_endpoint_type = "video_reels" if published else "videos"
         Messenger.info(f"🚀 Starting Facebook {upload_endpoint_type} upload: {file_path.name} ({file_size / (1024*1024):.2f} MB)")
 
         # 1. START Phase
