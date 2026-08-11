@@ -9,7 +9,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiTextGenerator(GeminiBase):
-    text_model: str = "gemini-2.0-flash"
+    text_model: str = "gemini-2.5-flash"
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
@@ -20,9 +20,7 @@ class GeminiTextGenerator(GeminiBase):
         """
         if not prompt:
              Messenger.error("❌ ERROR: PROMPT VACÍO")
-        else:
-             Messenger.info(f"DEBUG PROMPT LEN: {len(prompt)}")
-
+        
         response = self._execute_with_retry(
             "models.generate_content",
             model=self.text_model,

@@ -27,6 +27,31 @@ def _is_daily_quota_exhausted(exc: Exception) -> bool:
     return "limit: 0" in msg and "GenerateRequestsPerDayPerProjectPerModel" in msg
 
 
+def _should_rotate_key(exc: Exception) -> bool:
+    """
+    Returns True if we should immediately rotate to the next API key/client.
+    Covers:
+    - Hard daily quota exhaustion (limit: 0)
+    - Model deprecated, shut down, or not available on this key/project
+    - Any RESOURCE_EXHAUSTED that is not a transient per-minute rate limit
+    """
+    msg = str(exc)
+    # Hard daily quota
+    if _is_daily_quota_exhausted(exc):
+        return True
+    # Model deprecated, unavailable, or does not exist on this key
+    if any(s in msg for s in [
+        "is not supported",
+        "deprecated",
+        "does not exist",
+        "model not found",
+        "404",
+        "gemini-2.0-flash",   # catch any stale 2.0-flash references
+    ]):
+        return True
+    return False
+
+
 class GeminiBase(BaseModelTool):
     _clients_info: List[dict] = PrivateAttr(default_factory=list)
     _client_index: int = PrivateAttr(default=0)
@@ -133,13 +158,14 @@ class GeminiBase(BaseModelTool):
         try:
             return func(*args, **kwargs)
         except errors.ClientError as e:
-            # If daily quota is hard-exhausted (limit: 0), rotate to next key immediately
-            if _is_daily_quota_exhausted(e):
+            # Rotate key on quota exhaustion OR model being deprecated/unavailable
+            if _should_rotate_key(e):
+                Messenger.warning(f"🔄 [KEY ROTATION] Motivo: {str(e)[:150]}")
                 if self._rotate_to_next_client():
-                    # Retry immediately (re-raise as APIError to trigger tenacity retry, which will resolve new client method)
+                    # Re-raise as APIError to trigger tenacity retry with the new client
                     raise errors.APIError(str(e), None)  # type: ignore[arg-type]
                 else:
-                    Messenger.error("🚫 Todas las claves API han alcanzado su cuota diaria. Reintentando en backoff...")
+                    Messenger.error("🚫 Todas las claves/clientes han fallado. Reintentando en backoff...")
             raise
 
     def _extract_usage(self, response: Any, model_name: str) -> GeminiUsage:
