@@ -34,92 +34,119 @@ class FacebookTool(BaseModelTool):
         published: bool = True
     ) -> str:
         """
-        Uploads a video to a Facebook Page using the resumable (chunked) upload API.
-        When published=True, uses the /reels endpoint so it appears in the page feed.
-        When published=False, uploads as a hidden draft via /videos.
+        Uploads a video to a Facebook Page.
+        When published=True, uses the /video_reels API (rupload.facebook.com) so it appears in the page feed as a Reel.
+        When published=False, uploads as a hidden draft via the classic /videos resumable API.
         """
         if not file_path.exists():
             raise FileNotFoundError(f"Video file not found: {file_path}")
 
         file_size = file_path.stat().st_size
-        chunk_size = 10 * 1024 * 1024  # 10MB per chunk
         
-        # Use /video_reels when publishing publicly so it appears in the page feed/timeline as a Reel.
-        # Use /videos for drafts (unpublished).
-        upload_endpoint_type = "video_reels" if published else "videos"
-        Messenger.info(f"🚀 Starting Facebook {upload_endpoint_type} upload: {file_path.name} ({file_size / (1024*1024):.2f} MB)")
-
-        # 1. START Phase
-        params = {
-            "upload_phase": "start",
-            "file_size": file_size,
-            "access_token": self.access_token
-        }
-        
-        response = requests.post(f"{self.video_url}/{self.page_id}/{upload_endpoint_type}", params=params)
-        if response.status_code != 200:
-            Messenger.error(f"START Phase failed: {response.status_code} - {response.text}")
-            response.raise_for_status()
-        
-        data = response.json()
-        
-        upload_session_id = data["upload_session_id"]
-        video_id = data["video_id"]
-        
-        Messenger.info(f"   Upload session started: {upload_session_id}")
-
-        # 2. TRANSFER Phase (Chunks)
-        with open(file_path, "rb") as f:
-            start_offset = 0
-            while start_offset < file_size:
-                chunk = f.read(chunk_size)
-                end_offset = start_offset + len(chunk)
-                
-                percentage = (start_offset / file_size) * 100
-                Messenger.info(f"   Uploading chunk: {start_offset} - {end_offset} ({percentage:.0f}%)")
-                
-                files = {
-                    "video_file_chunk": ("chunk.mp4", chunk, "video/mp4")
-                }
-                data_payload = {
-                    "upload_phase": "transfer",
-                    "upload_session_id": upload_session_id,
-                    "start_offset": start_offset,
-                }
-                
-                resp = requests.post(
-                    f"{self.video_url}/{self.page_id}/{upload_endpoint_type}",
-                    params={"access_token": self.access_token},
-                    data=data_payload,
-                    files=files
-                )
-                resp.raise_for_status()
-                
-                start_offset = end_offset
-
-        Messenger.info("   Transfer complete.")
-
-        # 3. FINISH Phase
-        finish_params = {
-            "upload_phase": "finish",
-            "upload_session_id": upload_session_id,
-            "description": description,
-            "access_token": self.access_token
-        }
-        if title:
-            finish_params["title"] = title
         if not published:
-            finish_params["published"] = "false"
+            # --- CLASSIC DRAFT VIDEO UPLOAD (/videos) ---
+            chunk_size = 10 * 1024 * 1024  # 10MB per chunk
+            Messenger.info(f"🚀 Starting Facebook video draft upload: {file_path.name} ({file_size / (1024*1024):.2f} MB)")
 
-        response = requests.post(f"{self.video_url}/{self.page_id}/{upload_endpoint_type}", params=finish_params)
-        response.raise_for_status()
-        
-        if response.json().get("success"):
-            status_msg = "published as Reel in feed" if published else "saved as draft (unpublished)"
-            Messenger.success(f"✅ Video {status_msg}! ID: {video_id}")
+            params = {
+                "upload_phase": "start",
+                "file_size": file_size,
+                "access_token": self.access_token
+            }
+            response = requests.post(f"{self.video_url}/{self.page_id}/videos", params=params)
+            response.raise_for_status()
+            data = response.json()
+            upload_session_id = data["upload_session_id"]
+            video_id = data["video_id"]
+            Messenger.info(f"   Upload session started: {upload_session_id}")
+
+            with open(file_path, "rb") as f:
+                start_offset = 0
+                while start_offset < file_size:
+                    chunk = f.read(chunk_size)
+                    end_offset = start_offset + len(chunk)
+                    percentage = (start_offset / file_size) * 100
+                    Messenger.info(f"   Uploading chunk: {start_offset} - {end_offset} ({percentage:.0f}%)")
+                    
+                    resp = requests.post(
+                        f"{self.video_url}/{self.page_id}/videos",
+                        params={"access_token": self.access_token},
+                        data={
+                            "upload_phase": "transfer",
+                            "upload_session_id": upload_session_id,
+                            "start_offset": start_offset,
+                        },
+                        files={"video_file_chunk": ("chunk.mp4", chunk, "video/mp4")}
+                    )
+                    resp.raise_for_status()
+                    start_offset = end_offset
+
+            finish_params = {
+                "upload_phase": "finish",
+                "upload_session_id": upload_session_id,
+                "description": description,
+                "access_token": self.access_token,
+                "published": "false"
+            }
+            if title:
+                finish_params["title"] = title
+
+            response = requests.post(f"{self.video_url}/{self.page_id}/videos", params=finish_params)
+            response.raise_for_status()
+            Messenger.success(f"✅ Video saved as draft! ID: {video_id}")
             return video_id
+
         else:
-            raise RuntimeError(f"Finish phase failed: {response.text}")
+            # --- FACEBOOK REELS UPLOAD (/video_reels) ---
+            Messenger.info(f"🚀 Starting Facebook Reel upload: {file_path.name} ({file_size / (1024*1024):.2f} MB)")
+            
+            # 1. START Phase
+            start_params = {
+                "upload_phase": "start",
+                "access_token": self.access_token
+            }
+            # Note: reels start phase uses graph.facebook.com, not graph-video
+            response = requests.post(f"{self.base_url}/{self.page_id}/video_reels", params=start_params)
+            if response.status_code != 200:
+                Messenger.error(f"Reels START Phase failed: {response.text}")
+                response.raise_for_status()
+            
+            video_id = response.json()["video_id"]
+            Messenger.info(f"   Reel upload session started, video_id: {video_id}")
+            
+            # 2. TRANSFER Phase (rupload.facebook.com)
+            rupload_url = f"https://rupload.facebook.com/video-upload/{self.api_version}/{video_id}"
+            headers = {
+                "Authorization": f"OAuth {self.access_token}",
+                "offset": "0",
+                "file_size": str(file_size)
+            }
+            Messenger.info("   Uploading Reel binary to rupload.facebook.com...")
+            with open(file_path, "rb") as f:
+                # Meta allows sending the entire file in one POST for this endpoint
+                upload_resp = requests.post(rupload_url, headers=headers, data=f)
+            
+            if upload_resp.status_code != 200:
+                Messenger.error(f"Reels TRANSFER Phase failed: {upload_resp.text}")
+                upload_resp.raise_for_status()
+            Messenger.info("   Transfer complete.")
+
+            # 3. FINISH Phase
+            finish_params = {
+                "upload_phase": "finish",
+                "video_id": video_id,
+                "video_state": "PUBLISHED",
+                "description": description,
+                "access_token": self.access_token
+            }
+            response = requests.post(f"{self.base_url}/{self.page_id}/video_reels", params=finish_params)
+            
+            if response.status_code != 200:
+                Messenger.error(f"Reels FINISH Phase failed: {response.text}")
+                response.raise_for_status()
+                
+            Messenger.success(f"✅ Reel published in feed! ID: {video_id}")
+            return video_id
 
     def upload_photo(self, file_path: Path, caption: str = "") -> str:
         """
