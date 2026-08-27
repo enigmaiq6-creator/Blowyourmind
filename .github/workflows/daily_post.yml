@@ -2,9 +2,11 @@ name: BlowYourMind Content Engine
 
 on:
   schedule:
-    # Runs daily at 06:00 UTC (adjust to your preferred timezone)
+    # Programación interna (por defecto 06:00 UTC)
     - cron: '0 6 * * *'
   workflow_dispatch:
+  repository_dispatch:
+    types: [trigger-blowyourmind]
 
 concurrency:
   group: daily-post
