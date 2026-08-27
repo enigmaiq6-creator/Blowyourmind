@@ -315,43 +315,13 @@ class Pipeline(BaseModelTool):
         # Cost tracking (approx 2000 tokens)
         self.cost_tracker.add_text_cost(2000)
 
-        # --- FASE 3: A/B TESTING (Generar Gancho B) ---
-        Messenger.info("   Generating alternative Hook B...")
-        prompt_b = f"""
-    You have the following video script:
-    Title: {idea_data.title}
-    Hook A (Original): {script.scenes[0].narration}
+        # Guardar la idea única para la ejecución
+        idea_obj = self.store.add_new_idea(idea_data.title, category)
+        self.save_json(idea_obj.id, self.IDEA_JSON, idea_data)
+        self.save_json(idea_obj.id, self.SCRIPT_JSON, script)
+        self.store.update_state(idea_obj.id, State.SCRIPT_GENERATED)
 
-    Write a COMPLETELY DIFFERENT new Hook (Scene 1).
-    If the original was aggressive/direct, make this one curious/mysterious (or vice versa).
-    Must last maximum 3 seconds (15 words). Must be in English.
-    Respond ONLY with the narrative text of the new hook, no quotes or extra text.
-    """
-        hook_b = self.text_gen.generate(prompt_b)
-        self.cost_tracker.add_text_cost(200)
-
-        # Create alternative version B
-        import copy
-        script_b = copy.deepcopy(script)
-        script_b.scenes[0].narration = hook_b
-
-        idea_b = copy.deepcopy(idea_data)
-        idea_b.title = f"{idea_data.title} [Hook B]"
-
-        # Save Idea B
-        idea_obj_b = self.store.add_new_idea(idea_b.title, category)
-        self.save_json(idea_obj_b.id, self.IDEA_JSON, idea_b)
-        self.save_json(idea_obj_b.id, self.SCRIPT_JSON, script_b)
-        self.store.update_state(idea_obj_b.id, State.SCRIPT_GENERATED)
-        Messenger.info(f"   Hook B generated and queued as Idea {idea_obj_b.id}.")
-
-        # Save Idea A (or the only one if stickman)
-        idea_obj_a = self.store.add_new_idea(idea_data.title, category)
-        self.save_json(idea_obj_a.id, self.IDEA_JSON, idea_data)
-        self.save_json(idea_obj_a.id, self.SCRIPT_JSON, script)
-        self.store.update_state(idea_obj_a.id, State.SCRIPT_GENERATED)
-
-        Messenger.success(f"   Step 1 ready: State.SCRIPT_GENERATED finalized.")
+        Messenger.success(f"   Step 1 ready: Idea #{idea_obj.id} ('{idea_data.title}') queued.")
 
     def step2_generate_images(self):
         """

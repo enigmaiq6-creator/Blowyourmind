@@ -5,6 +5,16 @@ on:
     # Programación interna (por defecto 06:00 UTC)
     - cron: '0 6 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Formato de contenido (auto, finance, fact_split)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - finance
+          - fact_split
   repository_dispatch:
     types: [trigger-blowyourmind]
 
@@ -66,12 +76,13 @@ jobs:
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          CONTENT_MODE: ${{ inputs.mode || github.event.client_payload.mode || 'auto' }}
           SAVE_AS_DRAFT: "false"
           INSTAGRAM_PUBLISH: "true"
           USE_VERTEX_AI_IMAGE: "true"
           USE_VERTEX_AI_AUDIO: "true"
         run: |
-          echo "🎬 Generating Fact Split video..."
+          echo "🎬 Generating BlowYourMind Video (${{ inputs.mode || github.event.client_payload.mode || 'auto' }})..."
           poetry run python flows/image_content_generator/pipeline/daily_automated_content.py
 
       - name: Commit and Push Changes (Tracking Repetition)
