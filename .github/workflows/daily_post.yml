@@ -1,9 +1,9 @@
 name: BlowYourMind Content Engine
 
 on:
-  schedule:
-    # Programación interna (por defecto 06:00 UTC)
-    - cron: '0 6 * * *'
+#  schedule:
+#    # Programación interna (por defecto 06:00 UTC)
+#    - cron: '0 6 * * *'
   workflow_dispatch:
   repository_dispatch:
     types: [trigger-blowyourmind]
